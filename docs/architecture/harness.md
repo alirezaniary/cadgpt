@@ -53,10 +53,17 @@ Each exists because a specific silent failure is possible without it, and each i
 Gate 3 checks that nobody *wrote* a forbidden import. Gate 4 checks that the forbidden thing
 is *not installable* in the engine environment at all.
 
-Gate 3 alone can be defeated by `importlib`, a plugin entry point, or a raw HTTP call to an
-inference endpoint. Gate 4 cannot: if the package is not in the resolved environment, the
-call cannot be made regardless of how it is spelled. This is the difference between a policy
-and a fact, and I1 needs to be a fact.
+Gate 3 alone can be defeated by `importlib` or a plugin entry point. Gate 4 cannot: if the
+package is not in the resolved environment, the call cannot be made regardless of how it is
+spelled. This is the difference between a policy and a fact, and I1 needs to be a fact.
+
+Gate 4 does **not** close the raw-HTTP path, and this document previously claimed it did.
+`ifctester` is a forced inherited component and it pulls `requests` into the engine closure, so
+an HTTP client is present there and cannot be removed without forking a component I3 forbids
+forking. Gate 4 therefore asserts two things: no inference SDK resolves, and every HTTP-capable
+package in the closure is on an allowlist recorded with the inherited component that forces it —
+so the closure cannot grow one silently. The raw-HTTP path is closed by gate 3 instead, which
+forbids `src/engine` from importing any HTTP client or socket module. See DEC-0023.
 
 ## Gate 8 in particular
 

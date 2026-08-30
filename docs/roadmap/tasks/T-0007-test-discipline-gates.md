@@ -61,7 +61,7 @@ Mocking: none.
 ```
 make verify                      # exits 0, prints "9 gates registered"
 python -m tools.verify --list    # all nine, in cost order
-pytest tools/tests/ -q
+uv run --group dev pytest tools/tests/ -q
 ```
 Report the full `make verify` output. **This is P0's completion evidence** — nine gates, each
 with a committed proof it can fail.

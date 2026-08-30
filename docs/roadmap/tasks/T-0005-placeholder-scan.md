@@ -59,7 +59,7 @@ Mocking: none.
 ## Acceptance
 ```
 make verify                      # exits 0, prints "6 gates registered"
-pytest tools/tests/test_gate_placeholder.py -q
+uv run --group dev pytest tools/tests/test_gate_placeholder.py -q
 ```
 
 ## Deliverables

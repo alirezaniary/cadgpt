@@ -71,7 +71,7 @@ The isolation that makes I1 a fact rather than a policy (`docs/ddd/05-import-con
 
 | Distribution | Contains | May depend on |
 | --- | --- | --- |
-| `cadgpt-engine` | `src/engine` | ifcopenshell, ifcpatch, ifctester, topologicpy, shapely, pydantic. **No inference SDK, no HTTP client.** |
+| `cadgpt-engine` | `src/engine` | ifcopenshell, ifcpatch, ifctester, topologicpy, shapely, pydantic. **No inference SDK, no HTTP client** — declared, and no inference SDK in the resolved closure either. `ifctester` forces `requests`/`flask` transitively; that is allowlisted and attributed, never grown (DEC-0023). |
 | `cadgpt-presentation` | `src/presentation` | engine, WeasyPrint, arabic-reshaper, python-bidi |
 | `cadgpt-codification` | `src/codification` | engine, an inference SDK |
 | `cadgpt-assistance` | `src/assistance` | engine, presentation, an inference SDK, MCP |

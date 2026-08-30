@@ -62,7 +62,7 @@ Mocking: none. `tmp_path` for constructed trees.
 ## Acceptance
 ```
 make verify                      # exits 0, prints "5 gates registered"
-pytest tools/tests/test_gate_jurisdiction.py -q
+uv run --group dev pytest tools/tests/test_gate_jurisdiction.py -q
 ```
 Report the failure output for the bad fixture — it must name file, line and identifier.
 

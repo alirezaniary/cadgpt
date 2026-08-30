@@ -61,7 +61,7 @@ Mocking: none.
 ## Acceptance
 ```
 make verify                      # exits 0, prints "7 gates registered"
-pytest tools/tests/test_gate_module_contract.py -q
+uv run --group dev pytest tools/tests/test_gate_module_contract.py -q
 ```
 
 ## Deliverables

@@ -34,6 +34,7 @@ Reopens if → Consequences accepted.
 | [0009](DEC-0009-two-inference-planes.md) | Two inference planes behind one OpenAI-compatible port | Lead | DECIDED |
 | [0019](DEC-0019-inherited-vs-authored-in-the-rule-layer.md) | What is inherited in the rule layer, and what cannot be | Lead | DECIDED |
 | [0020](DEC-0020-rules-are-data.md) | Rules are versioned data records loaded at check time; the engine is jurisdiction-blind | Lead | DECIDED |
+| [0023](DEC-0023-engine-group-transitive-http-client.md) | What "no HTTP client in the engine" means when an inherited component brings one | Lead | DECIDED |
 
 ## Process
 

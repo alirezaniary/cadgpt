@@ -15,6 +15,7 @@ the mechanism can fail.
 - `docs/architecture/harness.md`
 - `docs/architecture/stack.md`
 - `docs/architecture/module-map.md`
+- `docs/process/readme-ai-convention.md`
 - `decisions/DEC-0022-gates-ship-with-their-artifact.md`
 
 ## Contract
@@ -55,7 +56,7 @@ hides how much else is broken and makes an agent iterate one gate at a time.
 
 ## Files
 Create: `pyproject.toml`, `Makefile`, `tools/__init__.py`, `tools/verify.py`,
-`tools/tests/test_verify.py`
+`tools/tests/__init__.py`, `tools/tests/test_verify.py`, `tools/readme.ai.md`
 Modify: none
 Forbidden: everything else. No `src/`. No dependencies beyond `uv`-managed dev tooling.
 
@@ -75,7 +76,7 @@ Mocking: none permitted. Invoke the real `make verify` via subprocess.
 ```
 make verify            # exits 0, prints "0 gates registered"
 python -m tools.verify --list
-pytest tools/tests/ -q
+uv run --group dev pytest tools/tests/ -q
 ```
 Quote the actual output of `make verify` in the completion report.
 

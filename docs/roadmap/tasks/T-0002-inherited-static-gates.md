@@ -60,7 +60,7 @@ around it.
 ## Acceptance
 ```
 make verify                      # exits 0, prints "3 gates registered"
-pytest tools/tests/ -q
+uv run --group dev pytest tools/tests/ -q
 ```
 Report the `make verify` output and the three gate lines.
 
