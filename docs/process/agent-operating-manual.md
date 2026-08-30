@@ -44,6 +44,70 @@ files: a spec in, code plus a `readme.ai.md` out.
   └─────┘
 ```
 
+## Dispatch — how a spec becomes a running session
+
+The section above describes the roles. This one is the mechanism, so "run T-0001" is an
+instruction and not a gesture.
+
+### A Task session
+
+The Lead invokes the Agent tool with:
+
+| Field | Value |
+| --- | --- |
+| `subagent_type` | `general-purpose` |
+| `description` | the task title, 3–5 words |
+| `prompt` | the standing preamble below, plus the task spec's path |
+
+Standing preamble, verbatim:
+
+> Read `CLAUDE.md`, then read `docs/roadmap/tasks/T-<id>.md` and follow it exactly.
+> Read only the files its Context section lists — needing another file means the spec is
+> wrong, and you report that rather than compensating for it.
+> Touch only the files its Files section lists.
+> Do not add a dependency. Do not stub a prerequisite. Do not decide anything: on meeting an
+> unresolved question, write `decisions/DEC-XXXX.md` with `Status: OPEN`, stop, and report.
+> Finish with the completion report format in `docs/process/definition-of-done.md`.
+
+The prompt carries a **pointer, not a copy**. The spec is the contract and it lives in version
+control; pasting it into a prompt creates a second copy that drifts from the committed one.
+
+**Never `subagent_type: "fork"` for a Task session.** A fork inherits the Lead's entire
+conversation — every decision debated, every path not taken, every correction. That is precisely
+the context a bounded session must not have: it is what makes the agent's output depend on a
+conversation nobody can review, instead of on a spec anybody can.
+
+### A Review session
+
+A second Agent call, `general-purpose`, given the task spec path and the diff — **never the Task
+session's reasoning or its completion report's narrative.** The reasoning is what would persuade
+it, which is the thing being guarded against.
+
+> Read `docs/roadmap/tasks/T-<id>.md` and `git diff <base>..HEAD`. Answer three questions:
+> (1) does the code do what the spec's acceptance command claims, and was the real path run;
+> (2) does it uphold every invariant the spec named;
+> (3) is anything here that was not asked for — scaffolding, an unused abstraction, a
+> configuration nothing reads, a dependency, a helpful extra.
+> Report findings only. Do not fix anything.
+
+### Concurrency
+
+**One Task session at a time.** DEC-0013 makes prerequisite order absolute, so T-0002 cannot
+start before T-0001's evidence exists. Running them in parallel would mean T-0002 building
+against an assumption about T-0001, which is the exact failure the rule prevents.
+
+Review may not overlap the next Task either — it gates integration, and integrating unreviewed
+work is what makes a later failure impossible to localize.
+
+The parallelism in this method is not across tasks. It is that each session is small enough to
+finish quickly and cheap enough to redo.
+
+### Where the Lead's own limit is
+
+The Lead session holds the plan and the decisions, not the code. When it starts holding
+implementation detail from completed tasks, it has become the long session this method exists to
+avoid — the signal to write state to the repository and start fresh.
+
 ## Why a separate Review session
 
 The agent that wrote the code is the worst judge of whether it meets the spec, for the same

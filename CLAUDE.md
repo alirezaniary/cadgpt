@@ -138,6 +138,12 @@ A task is subagent-ready only when all of the following are true:
 If any is false, the task is not ready; decompose further or unblock the prerequisite.
 `docs/process/task-spec.md` is the format.
 
+**Dispatch:** the Lead runs a task by invoking the Agent tool with `subagent_type:
+"general-purpose"`, passing a **pointer** to the spec — never a copy. Never `fork`: a fork
+inherits the Lead's whole conversation, which is exactly the context a bounded session must not
+have. One task at a time, and a separate Review session before integration.
+`docs/process/agent-operating-manual.md` has the preamble text and the reasoning.
+
 ---
 
 ## 6. Code standards
