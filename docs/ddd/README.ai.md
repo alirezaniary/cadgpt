@@ -12,6 +12,7 @@ are, and which rule is enforced by which object. Read before writing code in any
 | `03-bounded-contexts.md` | The ten contexts, the context map, and why each relationship has the pattern it has |
 | `04-aggregates-and-invariants.md` | Every consistency boundary and every invariant, with its single owner |
 | `05-import-contracts.md` | How I1 and I2 are machine-enforced, at two strengths |
+| `06-property-vocabulary.md` | Which §5.3 property names IFC already defines, which are ours, and why |
 
 ## Contract
 These files are **normative**. Code disagreeing with them is wrong, not the other way round.
