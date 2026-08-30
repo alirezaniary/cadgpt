@@ -10,24 +10,30 @@ one module under `tools/gates/`, exposing `run() -> GateResult`, plus one entry 
 `REGISTRY`. A gate is added by the task that introduces the artefact type it guards, in
 that same task (DEC-0022), with a test proving it can reject (DEC-0016).
 
-Four of the sixteen gates in `docs/architecture/harness.md` are registered today —
-1 (lint), 2 (types), 4 (isolation proof) and 14 (tests). `make verify` prints how many, so
-the harness's own coverage is visible rather than assumed — and each gate prints a summary
-line, so coverage *inside* a gate is visible on the same terms (DEC-0024). For `mypy` and
-`pytest` that line is a count of what was checked. For `ruff check` it is `All checks
-passed!`, which is the same string over this repository and over an empty directory and
-says nothing about how much was looked at; gate 1's coverage is not visible this way and
-is not claimed to be. Gate 4's line is the gate's own and carries both a count and an
-attribution — how many packages the `engine` group resolved to, that the inference SDKs
-raise `ImportError` there, and which HTTP-capable package arrives through which engine
-dependency.
+Seven of the sixteen gates in `docs/architecture/harness.md` are registered today —
+1 (lint), 2 (types), 4 (isolation proof), 5 (jurisdiction guard), 6 (placeholder scan),
+7 (module contract) and 14 (tests). `make verify` prints how many, so the harness's own
+coverage is visible rather than assumed — and each gate prints a summary line, so coverage
+*inside* a gate is visible on the same terms (DEC-0024). For `mypy` and `pytest` that line
+is a count of what was checked. For `ruff check` it is `All checks passed!`, which is the
+same string over this repository and over an empty directory and says nothing about how
+much was looked at; gate 1's coverage is not visible this way and is not claimed to be.
+Gate 4's line is the gate's own and carries both a count and an attribution — how many
+packages the `engine` group resolved to, that the inference SDKs raise `ImportError`
+there, and which HTTP-capable package arrives through which engine dependency. Gates 5, 6
+and 7 print nothing on a pass — there is no partial-coverage question for a full-tree
+`ast`/filesystem scan the way there is for a summarised external tool, so an empty detail
+is the honest report (`run_gates`, `tools/verify.py`).
 
 Gates 1, 2 and 14 re-implement no check. Each wraps an inherited tool (`CLAUDE.md` §6) and
 returns the tool's own output unedited: the agent reading a failing `make verify` needs the
-real message, not a summary of it. Gate 4 is the one gate that composes its own verdict,
-because no inherited tool answers "is an inference SDK importable in the engine closure" —
-it drives `uv` and a real interpreter, and hands back `uv`'s own words unedited whenever the
-environment could not be built at all.
+real message, not a summary of it. Gates 4, 5, 6 and 7 compose their own verdict, because no
+inherited tool answers "is an inference SDK importable in the engine closure", "does an
+identifier under `src/` or `tools/` name a jurisdiction", "is this code finished" or "does
+this module carry a conforming contract" — gate 4 drives `uv` and a real interpreter and
+hands back `uv`'s own words unedited whenever the environment could not be built at all;
+gates 5, 6 and 7 parse real files with `ast` (and, for gate 6's comments, `tokenize`) and
+report `path:line` and the offending identifier or pattern themselves.
 
 It is **not** part of the product. Nothing under `src/` may import it, and it ships in no
 distribution.
@@ -57,6 +63,9 @@ The public surface of `tools.verify`. Anything not listed here is internal.
   | 1 | `format-and-lint` | 1 | `tools/gates/lint.py` |
   | 2 | `types` | 2 | `tools/gates/types.py` |
   | 4 | `isolation-proof` | 3 | `tools/gates/isolation.py` |
+  | 5 | `jurisdiction-guard` | 1 | `tools/gates/jurisdiction.py` |
+  | 6 | `placeholder-scan` | 1 | `tools/gates/placeholder.py` |
+  | 7 | `module-contract` | 1 | `tools/gates/module_contract.py` |
   | 14 | `tests` | 3 | `tools/gates/tests.py` |
 
 - `in_cost_order(gates: Sequence[Gate]) -> list[Gate]` — cheapest first, ties broken by gate
@@ -138,6 +147,70 @@ forbids suppressing a warning, so every surviving `noqa` must be load-bearing. `
 selected on its own reports every other rule as non-enabled and so calls live suppressions
 dead; it is only meaningful next to the rules it is checking against.
 
+The public surface of `tools.gates.jurisdiction` — gate 5, the jurisdiction guard (I4,
+DEC-0020). Enforces I4 mechanically: a country, code body or clause reference may not
+appear in an **identifier** under `src/` or `tools/`; `packs/` is data and is never scanned.
+
+- `JURISDICTION_TOKENS: frozenset[str]` — whole-segment tokens (country names, ISO 3166-1
+  alpha-3 codes, named code-body acronyms). Bare two-letter alpha-2 codes are deliberately
+  absent: a naive match against one turns almost any English word into a false positive
+  (`iteration` opens with `IT`, Italy's code), which is exactly the class of failure the
+  false-positive guard in the module docstring exists to name. Extend by adding a lowercase
+  whole word here.
+- `token_in(identifier: str) -> str | None` — the jurisdiction token `identifier` names, or
+  `None`. Splits the identifier into lowercase snake/camel/digit segments and matches a
+  **whole segment** against `JURISDICTION_TOKENS`, or a code word immediately followed by a
+  digit segment (`clause_5_3_2`, `art14`, `sec_302`) against the clause-reference shape —
+  never a substring search.
+- `findings_in(source: str, path: Path) -> list[Finding]` — every jurisdiction-naming
+  identifier in one file's source: the module's own file name, every class, function and
+  parameter name, every assignment target, and every string used as a dict key. A pure
+  function over source text — no filesystem walk — so the matching rule is provable from a
+  single constructed snippet.
+- `Finding(path: Path, line: int, identifier: str, token: str)` — frozen dataclass. One
+  offending identifier, where it was found and which token it names.
+- `run() -> GateResult` — walks every `*.py` file under `src/` and `tools/` (a missing
+  `src/` is nothing to scan, not a failure — it does not exist yet at P0) and reports every
+  finding as `path:line: identifier ... names jurisdiction token ...`.
+
+The public surface of `tools.gates.placeholder` — gate 6, the placeholder scan
+(`docs/process/definition-of-done.md` condition 4). Four patterns, under `src/` and
+`tools/`: a `TODO`/`FIXME`/`XXX`/`HACK` marker in a real `#` comment; a function body that
+is only `pass` (or only `...`, unless the enclosing class is a `Protocol` or the file is a
+`.pyi` stub); `"placeholder"`/`"not implemented"`/`"dummy"` as the **direct** value of a
+`return` or an assignment; and a `raise NotImplementedError` that is bare or is not the
+first statement (after an optional docstring) of its function body.
+
+- `PLACEHOLDER_VALUES: frozenset[str]` — the three stand-in values, matched
+  case-insensitively as a whole string, never a substring.
+- `findings_in(source: str, path: Path) -> list[Finding]` — every placeholder pattern in
+  one file's source. A pure function over source text, structural (`ast` for the body and
+  raise shapes, `tokenize` for comments) rather than a regex over the whole file — a regex
+  cannot tell a stub `pass` from one legitimately doing nothing inside an `except` clause.
+- `Finding(path: Path, line: int, identifier: str, pattern: str)` — frozen dataclass.
+- `run() -> GateResult` — walks every `*.py` file under `src/` and `tools/` and reports
+  every finding as `path:line: pattern (identifier)`.
+
+The public surface of `tools.gates.module_contract` — gate 7, the module contract checker
+(DEC-0011, `docs/process/readme-ai-convention.md`). Checks presence and conformance of
+`readme.ai.md`, never content quality.
+
+- `REQUIRED_SECTIONS: tuple[str, ...]` — the nine fixed section names, in the fixed order,
+  from `docs/process/readme-ai-convention.md`. Reordering this is a change to the
+  convention and a decision record, not a task-level edit.
+- `problems_in(directory: Path) -> list[str]` — everything wrong with `directory`'s
+  `readme.ai.md`: missing entirely, missing a named section, sections present but out of
+  order, or a section with an empty body — or an empty list if it conforms. A pure function
+  over one directory, so each rule is provable from a single constructed package.
+- `run() -> GateResult` — checks every **module root** under `src/` and `tools/`: the
+  topmost directory on a given path carrying an `__init__.py`. A found module root's own
+  nested packages are not walked past — `docs/architecture/module-map.md` treats `tools/`
+  as one module even though `tools/gates/` and `tools/tests/` are separate packages beneath
+  it, and this is what keeps a nested package from needing a `readme.ai.md` of its own that
+  would duplicate the module root's. `src/` does not exist yet at P0, so this gate is
+  proven by its fixtures, not by its scan target (DEC-0016); the one thing it finds in the
+  real tree today is `tools/readme.ai.md` itself.
+
 ## Invariants enforced here
 None from `docs/ddd/04-aggregates-and-invariants.md`: `tools/` is outside the domain model
 and owns no domain aggregate.
@@ -209,9 +282,16 @@ enforcement layer).
 dev dependencies, so gate 2 reports `pytest` as a missing library stub for every test
 module that imports it, and gate 14 would have no `pytest` at all.
 
-`tools/gates/lint.py`, `types.py` and `tests.py` import `GateResult` under
-`TYPE_CHECKING` only, and `run_tools` imports it inside the function body: `tools.verify`
-imports `tools.gates` to build `REGISTRY`, so a module-level import back would be a cycle.
+`tools/gates/lint.py`, `types.py`, `tests.py`, `jurisdiction.py`, `placeholder.py` and
+`module_contract.py` import `GateResult` under `TYPE_CHECKING` only, and `run_tools`
+imports it inside the function body: `tools.verify` imports `tools.gates` to build
+`REGISTRY`, so a module-level import back would be a cycle.
+
+`tools/gates/jurisdiction.py`, `placeholder.py` and `module_contract.py` import nothing
+beyond the standard library — `ast` and `re` for the first two, `tokenize` and `io`
+additionally for `placeholder.py`, `re` and `dataclasses`/`pathlib` throughout. Unlike gate
+4 they need no environment and no subprocess: each is a pure parse of real files, which is
+what keeps them at cost tier 1.
 
 Tests additionally use `pytest` (dev group) and invoke `make` and the real runner through
 `subprocess`.
@@ -225,9 +305,10 @@ Tests additionally use `pytest` (dev group) and invoke `make` and the real runne
 
 ## Tests
 `tools/tests/test_verify.py`, `tools/tests/test_gates_static.py`,
-`tools/tests/test_gate_isolation.py` and `tools/tests/conftest.py`. Twenty-five tests,
-12 unit / 13 integration (48% unit, inside the 40–60% band gate 15 will enforce at
-T-0007).
+`tools/tests/test_gate_isolation.py`, `tools/tests/test_gate_jurisdiction.py`,
+`tools/tests/test_gate_placeholder.py`, `tools/tests/test_gate_module_contract.py` and
+`tools/tests/conftest.py`. Fifty-three tests, 26 unit / 27 integration (49% unit, inside
+the 40–60% band gate 15 will enforce at T-0007).
 
 Unit, over the runner's own logic (`test_verify.py`) — no process, no filesystem:
 - gates run cheapest-first, ties by number;
@@ -258,18 +339,47 @@ closure, because the closure it is about cannot be built by a repository that pa
   them and the engine dependency it arrives through. Allowlisted is not forbidden
   (DEC-0023), but it is never silent either.
 
+Unit, over gates 5, 6 and 7's own matching rules (`test_gate_jurisdiction.py`,
+`test_gate_placeholder.py`, `test_gate_module_contract.py`) — a pure function
+(`findings_in`/`problems_in`) over a constructed source string or package directory, no
+filesystem walk and no registry, so each rule is provable from one small snippet:
+- a module named for a country fails, a docstring naming one passes, and `iteration`,
+  `variance` and `secant` — each a false-positive risk against a naive two-letter ISO
+  substring search — all pass (gate 5);
+- a `TODO` in a comment fails, a body that is only `pass` fails, a bare
+  `raise NotImplementedError` fails, and `raise NotImplementedError("blocked on T-0009")`
+  on the first line of a body passes (gate 6);
+- a package with no `readme.ai.md` fails, one missing a section fails naming it, one with
+  its sections out of order fails, and one with an empty `Open questions` fails (gate 7).
+
 Integration, through the real `Makefile`, the real runner and the real tools:
 - `make verify` over this repository exits 0 and prints the registered count;
 - a copy of the harness whose `REGISTRY` is reset to one literal failing `Gate(...)` exits
   non-zero;
 - that run names the failing gate and prints `"1 gates registered, 1 failed"`;
-- each of the three bad inputs, planted where the tool scans it, makes a real `make verify`
-  exit non-zero and print `FAIL  gate <n>` for exactly the gate it targets. Each of those
-  copies registers **only the gate it is about** (`conftest.only_gate`), so a proof about
-  gate 1 does not also pay for `mypy` and the whole of `pytest` inside the copy. What
-  survives the filter is this repository's real registered gate, with its real name, cost
-  and `run`, reached through the copied `REGISTRY` itself; nothing any proof asserts
-  changed, and `make verify` went from 133 s to 84 s;
+- each of six bad inputs, planted where the tool scans it, makes a real `make verify`
+  exit non-zero and print `FAIL  gate <n>` for exactly the gate it targets — one each for
+  gates 1, 2 and 14, plus one each for gates 5, 6 and 7 (an identifier naming a country
+  under a copy's `src/`, a `pass`-only function body under `src/`, and a package under
+  `src/` with no `readme.ai.md`). Each of those copies registers **only the gate it is
+  about** (`conftest.only_gate`), so a proof about gate 1 does not also pay for `mypy` and
+  the whole of `pytest` inside the copy. What survives the filter is this repository's real
+  registered gate, with its real name, cost and `run`, reached through the copied
+  `REGISTRY` itself; nothing any proof asserts changed, and `make verify` went from 133 s
+  to 84 s;
+- gates 5 and 7 additionally prove that a missing `src/` is a clean pass rather than a
+  failure — `src/` does not exist in this repository yet, so each proof copies the harness
+  and runs the gate over the copy with no `src/` created in it at all;
+- gate 5 additionally proves the same jurisdiction-naming content passes when it sits in a
+  comment instead of an identifier, and when it sits under a copy's `packs/` instead of
+  `src/` — `packs/` is data (DEC-0020) and this gate never scans it;
+- gate 6 additionally proves a `pass` inside an `except` clause passes, and an `...`-only
+  body passes inside a `Protocol` and inside a `.pyi` stub — the three shapes a regex
+  cannot tell apart from a real stub, which is why gate 6 is built on `ast` structure
+  instead;
+- gate 7 additionally proves a package directory with no `__init__.py` is skipped rather
+  than required to carry a `readme.ai.md`, and that `tools/readme.ai.md` itself, and the
+  real tree, both pass;
 - **a full `make verify` and a nested one print different output** — the same copied tree
   registering gate 14 only, run twice, once plainly and once with `CADGPT_NESTED_VERIFY=1`
   in the child, with the full run's gate 14 line required to carry a `pytest` summary
@@ -505,11 +615,30 @@ FAIL  gate 2  types
 ```
 
 ## Open questions
-- Four gates of sixteen are registered. A green `make verify` today means the tree is
-  lint-clean, type-clean under `--strict`, its tests pass, and no inference SDK is
-  resolvable in the `engine` dependency closure — and nothing more. In particular **nothing
-  about `src/` is checked yet**, because there is no `src/`. Gates 5–7 are T-0004 to T-0006;
-  `docs/architecture/harness.md` names all sixteen and when each becomes real.
+- Seven gates of sixteen are registered. A green `make verify` today means the tree is
+  lint-clean, type-clean under `--strict`, its tests pass, no inference SDK is resolvable
+  in the `engine` dependency closure, no identifier under `src/` or `tools/` names a
+  jurisdiction, no placeholder pattern is left in under `src/` or `tools/`, and every module
+  root under `src/` or `tools/` carries a conforming `readme.ai.md` — and nothing more.
+  `src/` still does not exist, so gates 5, 6 and 7 are proven by their fixtures rather than
+  by anything real found under `src/` today (DEC-0016); the one thing gate 7 finds in the
+  real tree is `tools/readme.ai.md` itself. `docs/architecture/harness.md` names all sixteen
+  gates and when each becomes real.
+- **`JURISDICTION_TOKENS` (gate 5) is a starting set, not an exhaustive one.** It covers the
+  countries and code bodies named explicitly by T-0004 plus enough neighbours to be useful,
+  deliberately without bare two-letter ISO codes (the false-positive guard in
+  `tools/gates/jurisdiction.py`'s own docstring). Extending it for a jurisdiction not yet
+  covered is a one-line addition to the set, not a design change.
+- **Gate 7's "module root" is the topmost `__init__.py` on a given path, not every nested
+  package.** `docs/architecture/module-map.md` documents `tools/` as one module even though
+  `tools/gates/` and `tools/tests/` are separate Python packages beneath it, and this repo's
+  own `tools/readme.ai.md` already covers all three in one file — so this gate stops
+  descending the moment it finds a package, rather than demanding a `readme.ai.md` per
+  nested `__init__.py`. The same rule reaches `src/engine/ingest`, `src/engine/derivation`
+  and so on once `src/` exists, because `src/engine` itself is expected to carry no
+  `__init__.py` of its own (a namespace, not a module) — that expectation is untested until
+  the first `src/` task lands, and is worth checking against `docs/architecture/module-map.md`
+  again at that point.
 - **DEC-0023 is closed**, not open, and gate 4 ships to its terms: it does **not** close the
   raw-HTTP path. `ifctester` is a forced inherited component and pulls `requests`, `urllib3`,
   `flask` and `bcf-client` into the engine closure, so gate 4 asserts instead that no

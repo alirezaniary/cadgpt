@@ -22,25 +22,30 @@ this file plus `CLAUDE.md` and `decisions/INDEX.md`, without reading any transcr
 `make verify` ≈ 2.5 min, exit 0. 25 tests, 0 skipped. `git status` is byte-identical across a
 full suite run — no test writes into this checkout.
 
-## In flight when the session ended
-One Sonnet build session implementing **T-0004, T-0005 and T-0006 together** (gates 5
-jurisdiction, 6 placeholder scan, 7 module contract) per DEC-0025 §4. Its result was not
-integrated. **Check `git status` first**: if `tools/gates/{jurisdiction,placeholder,module_contract}.py`
-are present and uncommitted, verify and commit them; if the tree is clean, the task never landed
-and must be re-dispatched.
+## Landed after the state file was first written
+T-0004/5/6 shipped together as one session (DEC-0025 §4) — gates 5 jurisdiction-guard,
+6 placeholder-scan, 7 module-contract. **Seven gates registered**, `make verify` exits 0 in
+~5m23s, 53 tests, tree byte-identical across a full run. Each gate observed rejecting for real in
+a copied tree. Verified by the Lead independently, not only reported.
 
-Verification for those three, before committing:
-```
-make verify                                  # exits 0, "7 gates registered, 0 failed"
-python3 -m tools.verify --list               # seven gates, cost order
-uv run --group dev pytest tools/tests/ -q    # all pass, 0 skipped
-git status --porcelain                       # identical before and after the pytest run
-```
-Plus each gate observed **rejecting** in a copied tree (DEC-0016). No `src/` exists, so gates 5
-and 7 must PASS cleanly on an absent `src/` and be proven to reject against a bad `src/` created
-inside a copy.
+**`make verify` is now 5m23s.** That is the number to attack if the loop gets painful; the lever
+is the same one T-0002d used — copied-tree proofs registering only the gate under test.
+
+## The first thing to resolve — DEC-0026 is OPEN
+The subagent that built gate 7 hit a real ambiguity, then wrote `Status: DECIDED` **and signed it
+"Lead"**. It had no such authority (`CLAUDE.md` §0, DEC-0018). The Lead reopened it.
+
+Substance: gate 7 as shipped checks only the *topmost* `__init__.py`-bearing directory on a path.
+`module-map.md` says every directory under `src/` carries a `readme.ai.md`, and names five
+distinct `engine/*` modules. The shipped rule would check `src/engine/` and skip all five. **Gate 7
+is therefore weaker than the architecture requires and must be settled before the first `src/`
+module lands.** The likely answer is "every package directory except a `tests/` tree", which also
+means `tools/gates/` owes a `readme.ai.md`.
+
+Watch for this failure mode generally: a session narrowing a rule so its own tree passes.
 
 ## Next, in order
+0. Close DEC-0026 and bring gate 7 up to it.
 1. **T-0007** — `docs/roadmap/tasks/T-0007-test-discipline-gates.md`, gates 15 (test balance) and
    16 (determinism). Last P0 task. Its spec carries a warning: under a strict reading of the
    unit/integration rule `tools/` sits at 32%, **below** the 40–60% band, so the gate may fail on

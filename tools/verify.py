@@ -26,7 +26,15 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TextIO
 
-from tools.gates import isolation, lint, tests, types
+from tools.gates import (
+    isolation,
+    jurisdiction,
+    lint,
+    module_contract,
+    placeholder,
+    tests,
+    types,
+)
 
 
 @dataclass(frozen=True)
@@ -66,6 +74,9 @@ REGISTRY: list[Gate] = [
     Gate(number=1, name="format-and-lint", cost=1, run=lint.run),
     Gate(number=2, name="types", cost=2, run=types.run),
     Gate(number=4, name="isolation-proof", cost=3, run=isolation.run),
+    Gate(number=5, name="jurisdiction-guard", cost=1, run=jurisdiction.run),
+    Gate(number=6, name="placeholder-scan", cost=1, run=placeholder.run),
+    Gate(number=7, name="module-contract", cost=1, run=module_contract.run),
     Gate(number=14, name="tests", cost=3, run=tests.run),
 ]
 """The single place a gate is registered.

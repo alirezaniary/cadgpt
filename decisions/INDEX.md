@@ -51,6 +51,7 @@ Reopens if → Consequences accepted.
 | [0022](DEC-0022-gates-ship-with-their-artifact.md) | A gate ships with the artifact type it guards, not all at P0 | Lead | DECIDED |
 | [0024](DEC-0024-harness-tests-itself.md) | A harness whose tests invoke it must report what it did not run | Lead | DECIDED |
 | [0025](DEC-0025-throughput-over-recursive-self-proof.md) | Harness findings are recorded not recursed on; Sonnet builds; siblings ship together | Stakeholder | DECIDED |
+| [0026](DEC-0026-module-contract-scope-is-topmost-package.md) | Gate 7 checks the topmost package on a path, not every nested `__init__.py` | Lead | DECIDED |
 
 ## Direction
 
@@ -61,7 +62,12 @@ Reopens if → Consequences accepted.
 
 ## Open
 
-None.
+| # | Decision | Raised by | Status |
+| --- | --- | --- | --- |
+| [0026](DEC-0026-module-contract-scope-is-topmost-package.md) | What counts as a module for gate 7 — topmost package, or every package but a tests tree | Subagent | **OPEN** |
+
+Gate 7 ships implementing the narrower rule and is weaker than `module-map.md` requires. Close
+this before the first `src/` module lands.
 
 `DEC-0015` was previously listed here and is closed: real regulatory content is loaded last, by
 stakeholder direction, and the entire pipeline is built and proven against sample and synthetic
