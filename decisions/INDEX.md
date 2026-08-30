@@ -50,6 +50,7 @@ Reopens if → Consequences accepted.
 | [0021](DEC-0021-licence-not-tracked.md) | Licence and legal questions are out of engineering scope | Stakeholder | DECIDED |
 | [0022](DEC-0022-gates-ship-with-their-artifact.md) | A gate ships with the artifact type it guards, not all at P0 | Lead | DECIDED |
 | [0024](DEC-0024-harness-tests-itself.md) | A harness whose tests invoke it must report what it did not run | Lead | DECIDED |
+| [0025](DEC-0025-throughput-over-recursive-self-proof.md) | Harness findings are recorded not recursed on; Sonnet builds; siblings ship together | Stakeholder | DECIDED |
 
 ## Direction
 
