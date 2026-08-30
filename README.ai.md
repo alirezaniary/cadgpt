@@ -5,8 +5,9 @@ An agentic engineering system for buildings: verify a design against the regulat
 for it, deterministically, citing a resolvable basis for every verdict and naming every gap in
 coverage.
 
-**No source code exists yet.** This repository currently holds the product specification and
-the engineering framework built around it. The first code is P0, the verification harness.
+The first code is P0, the verification harness: `tools/` holds the gate registry behind
+`make verify`. Everything else here is still the product specification and the engineering
+framework built around it. No `src/` exists yet — the engine begins at C1.1.
 
 ## Contract — read in this order
 
@@ -18,7 +19,7 @@ the engineering framework built around it. The first code is P0, the verificatio
 | `docs/ddd/` | The domain analysis. Normative: code disagreeing with it is wrong. |
 | `docs/architecture/` | Stack, module map, and the sixteen gates behind `make verify`. |
 | `docs/process/` | How work is decomposed, bounded, executed and proved. |
-| `decisions/INDEX.md` | Every engineering decision, and the one that is still open. |
+| `decisions/INDEX.md` | Every engineering decision. None is open. |
 
 ## Invariants upheld here
 The seven product invariants (`prd.md` §3) govern everything. Two are machine-checked:
@@ -36,12 +37,17 @@ Any vendor relationship, account, marketplace, partner programme, certification 
 service (I6). Permanent. Public scripting interfaces only, local installation only.
 
 ## Tests
-None yet. Policy is decided: 50/50 unit and integration, mocking only at a genuine external
-boundary, every behaviour proven across layers, fixtures as generator scripts.
-`docs/process/testing-strategy.md`.
+`tools/tests/` only, 4 unit and 3 integration, run by `uv run --group dev pytest tools/tests/ -q`.
+Policy: 50/50 unit and integration, mocking only at a genuine external boundary, every behaviour
+proven across layers, fixtures as generator scripts. `docs/process/testing-strategy.md`.
 
 ## How to run it
-Nothing runs yet. The first runnable artefact is `make verify` over an empty tree, which is P0.
+```
+make verify                    # runs every registered gate, cheapest first
+python -m tools.verify --list  # what is registered, without running it
+```
+The registry is empty: each gate ships with the artifact type it guards (DEC-0022), so the count
+grows task by task. `tools/readme.ai.md` is the module contract.
 
 ## Open questions
 - **Five real IFC models from five different offices** are needed to judge O1 (`prd.md` §11

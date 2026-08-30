@@ -5,9 +5,8 @@
 # and every gate brings its own tooling when it is registered (DEC-0022).
 
 PYTHON ?= python3
-VERIFY_ARGS ?=
 
 .PHONY: verify
 
 verify:
-	$(PYTHON) -m tools.verify $(VERIFY_ARGS)
+	$(PYTHON) -m tools.verify

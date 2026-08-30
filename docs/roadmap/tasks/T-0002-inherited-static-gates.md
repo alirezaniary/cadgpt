@@ -30,19 +30,45 @@ Three modules exposing `run() -> GateResult`, registered in `REGISTRY`:
 On failure, `detail` carries the tool's own output. Do not summarize or reformat it — the agent
 reading it needs the real message.
 
+**How the gates invoke their tools.** Each shells out via `uv run --group dev <tool> ...`, and
+`ruff`, `mypy` and `pytest` are declared in the `dev` dependency group. DEC-0005 already settled
+that these three are the static enforcement layer, so declaring them executes a settled decision
+rather than taking a new one — but do not add a fourth tool.
+
+`uvx mypy --strict tools/` is **not** viable and must not be used: `uvx` builds an isolated
+environment with no dev dependencies, so `tools/tests/test_verify.py` importing `pytest` yields
+`Cannot find implementation or library stub for module named "pytest"`. Gate 2 must run mypy in
+an environment where the dev group is present.
+
+**Gate 14 recurses unless you stop it.** `tools/tests/test_verify.py` proves the runner can fail
+by copying `Makefile`, `pyproject.toml` and `tools/` into `tmp_path` and running real `make
+verify` there. Once gate 14 wraps `pytest`, that copied tree's `make verify` would run pytest,
+which would copy a tree and run `make verify` again, without bound. Fix it in the **test**, not
+with a production flag: the helper must **reset** the copied `REGISTRY` — emit `REGISTRY.clear()`
+before the `REGISTRY.append(Gate(...))` block it writes into the copied `tools/verify.py` — so the
+copy runs exactly the one deliberately-failing gate and nothing else. Do not reintroduce a
+registry-injection surface in `tools/verify.py`; T-0001a removed one for good reason.
+
 ## Invariants this task must uphold
 - **Every gate ships with a proof it fails** (DEC-0016). A gate with no failing fixture is not
   merged.
 - Configure `ruff` and `mypy` in `pyproject.toml`, not in separate config files — one place.
 - `mypy --strict` covers `tools/` with no blanket ignores. A needed ignore is narrow, inline,
   and carries a reason.
+- The `ruff` rule selection must include **`RUF100`** (unused `noqa`). `CLAUDE.md` forbids
+  suppressing a warning, so every `noqa` that survives must be load-bearing; one left behind for
+  a rule the selection later drops reads as though a real defect were being silenced. Note that
+  `ruff check --select RUF100` alone reports every *other* rule as "non-enabled" and so calls
+  live suppressions dead — RUF100 must be enabled **alongside** the real selection, never on its
+  own. Getting this backwards already cost one round of review here.
 
 ## Files
 Create: `tools/gates/__init__.py`, `tools/gates/lint.py`, `tools/gates/types.py`,
 `tools/gates/tests.py`, `tools/tests/badfixtures/` (three deliberately bad files),
 `tools/tests/test_gates_static.py`
-Modify: `pyproject.toml` (tool config), `tools/verify.py` (registration only),
-`tools/readme.ai.md`
+Modify: `pyproject.toml` (tool config, and `ruff`/`mypy`/`pytest` in the `dev` group),
+`tools/verify.py` (registration only), `tools/tests/test_verify.py` (reset the copied `REGISTRY`
+in the failure-proof helper, per the recursion note above), `tools/readme.ai.md`
 Forbidden: everything else. No `src/`. **Gate 3 (import-linter) is not in scope** — it needs
 `src/` packages and ships with C1.1 (DEC-0022).
 

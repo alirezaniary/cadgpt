@@ -20,14 +20,11 @@ Gate numbers are stable and match the table in ``docs/architecture/harness.md``.
 from __future__ import annotations
 
 import argparse
-import importlib
 import sys
+import traceback
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TextIO
-
-GATES_ATTR = "GATES"
-"""Name of the list a module passed to ``--extra-gate`` must expose."""
 
 
 @dataclass(frozen=True)
@@ -76,35 +73,39 @@ def in_cost_order(gates: Sequence[Gate]) -> list[Gate]:
     return sorted(gates, key=lambda gate: (gate.cost, gate.number))
 
 
-def load_gates(module_name: str) -> list[Gate]:
-    """Import ``module_name`` and return the ``GATES`` list it exposes."""
-    module = importlib.import_module(module_name)
-    gates = getattr(module, GATES_ATTR, None)
-    if not isinstance(gates, list) or not all(isinstance(gate, Gate) for gate in gates):
-        raise TypeError(f"{module_name} must define {GATES_ATTR}: list[Gate]")
-    return list(gates)
-
-
 def write_listing(gates: Sequence[Gate], out: TextIO) -> None:
     """Print the registered gates without running any of them."""
-    for gate in in_cost_order(gates):
-        out.write(f"gate {gate.number}  cost {gate.cost}  {gate.name}\n")
+    out.writelines(
+        f"gate {gate.number}  cost {gate.cost}  {gate.name}\n"
+        for gate in in_cost_order(gates)
+    )
     out.write(f"{len(gates)} gates registered\n")
 
 
 def run_gates(gates: Sequence[Gate], out: TextIO) -> bool:
-    """Run every gate in cost order, printing one line each. True only if all passed."""
+    """Run every gate in cost order, printing one line each. True only if all passed.
+
+    A gate that raises is a failing gate, not a crashed run: its traceback becomes the
+    detail. A runner that dies on the first broken gate hides how much else is broken.
+    """
     ordered = in_cost_order(gates)
     failed: list[Gate] = []
     for gate in ordered:
-        result = gate.run()
+        try:
+            result = gate.run()
+        except Exception:  # noqa: BLE001
+            # Whatever a gate raises is that gate's failure, not the runner's, so the
+            # remaining gates still run. format_exc() carries the exception type, its
+            # message and the traceback, so the printed detail is enough to fix the gate
+            # without re-running. KeyboardInterrupt and SystemExit still propagate: those
+            # are the operator stopping the run, not a gate reporting a defect.
+            result = GateResult(ok=False, detail=traceback.format_exc())
         out.write(
             f"{'PASS' if result.ok else 'FAIL'}  gate {gate.number}  {gate.name}\n"
         )
         if not result.ok:
             failed.append(gate)
-            for line in result.detail.splitlines():
-                out.write(f"        {line}\n")
+            out.writelines(f"        {line}\n" for line in result.detail.splitlines())
     out.write(f"{len(ordered)} gates registered, {len(failed)} failed\n")
     return not failed
 
@@ -124,36 +125,21 @@ def main(argv: list[str]) -> int:
         action="store_true",
         help="print the registered gates and exit 0 without running them",
     )
-    parser.add_argument(
-        "--extra-gate",
-        dest="extra_gates",
-        action="append",
-        default=[],
-        metavar="MODULE",
-        help=(
-            "import MODULE and append its GATES to the registry for this run only. "
-            "This is how the runner's own failure is proved: DEC-0016 requires a gate "
-            "to ship with evidence that it fails, and the runner is no exception."
-        ),
-    )
     args = parser.parse_args(argv)
     list_only: bool = bool(args.list_only)
-    extra_modules: list[str] = list(args.extra_gates)
-
-    gates: list[Gate] = list(REGISTRY)
-    for module_name in extra_modules:
-        gates.extend(load_gates(module_name))
 
     if list_only:
-        write_listing(gates, sys.stdout)
+        write_listing(REGISTRY, sys.stdout)
         return 0
-    return 0 if run_gates(gates, sys.stdout) else 1
+    return 0 if run_gates(REGISTRY, sys.stdout) else 1
 
 
 if __name__ == "__main__":
-    # `python -m tools.verify` executes this file as `__main__`, so the classes defined
-    # above are not the ones a gate module importing `tools.verify` will see. Delegate to
-    # the properly imported module so a Gate is a Gate whoever constructed it.
+    # `python -m tools.verify` would otherwise load this file twice under two names —
+    # once as `__main__` and once as `tools.verify` — so a gate module's
+    # `from tools.verify import GateResult` would not name the class the runner is
+    # holding, and its REGISTRY entries would land in the other copy's list. Delegate to
+    # the properly imported module so there is exactly one runner.
     from tools.verify import main as _main
 
     raise SystemExit(_main(sys.argv[1:]))

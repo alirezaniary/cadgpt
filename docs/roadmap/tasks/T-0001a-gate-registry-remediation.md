@@ -101,7 +101,7 @@ python -m tools.verify --list                  # exits 0
 python -m tools.verify --extra-gate x          # exits 2: the flag is gone
 uv run --group dev pytest tools/tests/ -q      # 7 passed
 uvx ruff check tools/                          # clean
-uvx mypy --strict tools/                       # clean
+uvx --with pytest mypy --strict tools/         # clean; bare `uvx mypy` cannot see the dev group
 ```
 Quote the actual output of every one of these in the completion report. Run them. The Review of
 T-0001 found strong evidence its acceptance commands were never executed — filesystem timestamps
