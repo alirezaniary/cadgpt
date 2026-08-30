@@ -3,6 +3,10 @@
 Written at the end of the first build session. A cold session should be able to resume from
 this file plus `CLAUDE.md` and `decisions/INDEX.md`, without reading any transcript.
 
+> **Superseded by `HANDOFF.md` at the repository root.** That file is written for a cold
+> agent with no transcript and is the current state of the work. What follows is the state as
+> of the end of the previous session and is kept for its decision history.
+
 ## Where this is
 
 **P0 is complete, reviewed, and its review findings are closed.** `make verify` exits 0 with
