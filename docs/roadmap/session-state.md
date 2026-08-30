@@ -30,7 +30,7 @@ Gates still unbuilt: 3 (ships with the first `src/` package, S1.1.2), 8–13 (O2
 `docs/architecture/harness.md` says which and when.
 
 ## In flight
-**T-0009** — the property vocabulary audit, S1.1.1, the first slice of C1.1. Writes no code:
+Nothing. (Historical: **T-0009** — the property vocabulary audit, S1.1.1, the first slice of C1.1. Writes no code:
 one table in `docs/ddd/06-property-vocabulary.md` resolving every `prd.md` §5.3 name to an
 inherited IFC quantity or an authored-here reason.
 

@@ -48,7 +48,10 @@ Gates still unbuilt: **3** (import contracts — next task, T-0011), 8–13 (O2,
 
 ---
 
-## 2. The one thing in flight — T-0010
+## 2. T-0010 — done and green
+
+**Committed at `253905a`, verified green.** The working tree is clean and there is nothing in
+flight. This section is kept for what it cost, which is the useful part.
 
 `src/` exists in the working tree. Its session was stopped mid-report when the session budget ran
 out, not because anything was wrong. Spec: `docs/roadmap/tasks/T-0010-property-name.md`.
@@ -86,12 +89,23 @@ encoded "`src/` does not exist" as a fact*:
    the right call, and means the copy needs the document. Now copies `docs/` too. Proven: all 9
    module tests pass inside a fresh `copied_tree`.
 
-**Status at handoff:** `ruff` and `mypy --strict tools/ src/` clean; 45 gate tests pass; all 9
-module tests pass both in this checkout and inside a fresh `copied_tree`. The last full run
-before these four fixes was down to a **single** outer failure
-(`test_a_full_run_is_visibly_different_from_a_nested_one`), whose cause was #4 above. A
-confirming full `make verify` was still running when the session ended — **run it before you
-trust the tree**, and see §9.
+**Verified after all four fixes:**
+
+```
+PASS  gate 1   format-and-lint    All checks passed! / 24 files already formatted
+PASS  gate 5   jurisdiction-guard 27 files scanned under src/, tools/
+PASS  gate 6   placeholder-scan   27 files scanned under src/, tools/
+PASS  gate 7   module-contract    4 module directories checked
+PASS  gate 15  test-balance       src/engine/observation: 5 unit / 4 integration (44%, in band)
+                                  tools: 47 unit / 35 integration (43%, in band)
+PASS  gate 2   types              Success: no issues found in 24 source files
+PASS  gate 16  determinism        81 tests, 2 runs, seeds 1/2, agreed; 10 deselected
+PASS  gate 4   isolation-proof    51 packages resolved; anthropic, openai raise ImportError
+PASS  gate 14  tests              91 passed in 558.62s
+9 gates registered, 0 failed
+```
+
+`git status` is clean after a full run — no test writes into this checkout.
 
 `.idea/cadgpt.iml` is editor noise; do not commit it. `uv.lock` is real — packaging changed.
 
@@ -226,27 +240,19 @@ Recorded so they are not mistaken for oversights:
 
 ## 9. The first thing to do
 
+The tree is green and clean. **Start at T-0011 — gate 3, the import contracts** (§3 item 2).
+
+Confirm the baseline first if you want it in your own transcript rather than on my word; it is
+about ten minutes now that `src/` is in the copied trees:
+
 ```
 env -u CADGPT_NESTED_VERIFY -u CADGPT_VERIFY_DEPTH make verify
 ```
 
-**If it exits 0** with `9 gates registered, 0 failed`, commit — the tree is T-0010 complete:
-
-```
-git add src pyproject.toml uv.lock tools/gates/types.py tools/readme.ai.md \
-        tools/gates/readme.ai.md tools/tests/conftest.py \
-        tools/tests/test_gate_jurisdiction.py tools/tests/test_gate_placeholder.py \
-        tools/tests/test_gate_module_contract.py
-```
-
-**If it does not**, the failures are the remainder of T-0010 and its spec's "Gates you must leave
-green" section is the checklist. Do not commit red without saying so in the message — there is
-precedent for that (`190c20a`) and the message says plainly that the tree is red and why.
-
-Then write T-0011's spec (gate 3) per §3.
-
-**One process note for whoever writes that spec:** the `conftest.py` omission in §2 is the *third*
-time a task spec has withheld a file the work required. `docs/process/task-spec.md` carries the
-rule and it was still missed here, because T-0010's Files list was written from what the change
+**One process note for whoever writes T-0011's spec:** the `conftest.py` omission in §2 was the
+*third* time a task spec withheld a file the work required. `docs/process/task-spec.md` carries
+the rule and it was still missed, because T-0010's Files list was written from what the change
 looked like — a new module — rather than from what it depended on. Read the Acceptance command
-back against the Files list before dispatching. Anything `make verify` touches is in scope.
+back against the Files list before dispatching. Anything `make verify` touches is in scope, and
+for gate 3 that means `pyproject.toml`, the gate module, its test, and `tools/tests/conftest.py`
+if the proof spawns anything.
