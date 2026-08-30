@@ -37,7 +37,9 @@ Any vendor relationship, account, marketplace, partner programme, certification 
 service (I6). Permanent. Public scripting interfaces only, local installation only.
 
 ## Tests
-`tools/tests/` only, 4 unit and 3 integration, run by `uv run --group dev pytest tools/tests/ -q`.
+`tools/tests/` only, 25 tests, run by `uv run --group dev pytest tools/tests/ -q`. The suite
+writes nothing into this checkout: a test needing altered input copies the tree into `tmp_path`
+first, so `git status` is byte-identical across a full run.
 Policy: 50/50 unit and integration, mocking only at a genuine external boundary, every behaviour
 proven across layers, fixtures as generator scripts. `docs/process/testing-strategy.md`.
 
@@ -46,8 +48,10 @@ proven across layers, fixtures as generator scripts. `docs/process/testing-strat
 make verify                    # runs every registered gate, cheapest first
 python -m tools.verify --list  # what is registered, without running it
 ```
-The registry is empty: each gate ships with the artifact type it guards (DEC-0022), so the count
-grows task by task. `tools/readme.ai.md` is the module contract.
+Four gates are registered — lint, types, isolation proof, tests. Each gate ships with the
+artifact type it guards (DEC-0022), so the count grows task by task, and the runner prints it so
+the harness's own coverage is visible rather than assumed. A gate reports what it did not run
+(DEC-0024). `tools/readme.ai.md` is the module contract.
 
 ## Open questions
 - **Five real IFC models from five different offices** are needed to judge O1 (`prd.md` §11

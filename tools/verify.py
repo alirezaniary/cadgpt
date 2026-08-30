@@ -26,7 +26,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TextIO
 
-from tools.gates import lint, tests, types
+from tools.gates import isolation, lint, tests, types
 
 
 @dataclass(frozen=True)
@@ -65,6 +65,7 @@ class Gate:
 REGISTRY: list[Gate] = [
     Gate(number=1, name="format-and-lint", cost=1, run=lint.run),
     Gate(number=2, name="types", cost=2, run=types.run),
+    Gate(number=4, name="isolation-proof", cost=3, run=isolation.run),
     Gate(number=14, name="tests", cost=3, run=tests.run),
 ]
 """The single place a gate is registered.

@@ -10,18 +10,24 @@ one module under `tools/gates/`, exposing `run() -> GateResult`, plus one entry 
 `REGISTRY`. A gate is added by the task that introduces the artefact type it guards, in
 that same task (DEC-0022), with a test proving it can reject (DEC-0016).
 
-Three of the sixteen gates in `docs/architecture/harness.md` are registered today —
-1 (lint), 2 (types) and 14 (tests). `make verify` prints how many, so the harness's own
-coverage is visible rather than assumed — and each gate prints its tool's own summary
+Four of the sixteen gates in `docs/architecture/harness.md` are registered today —
+1 (lint), 2 (types), 4 (isolation proof) and 14 (tests). `make verify` prints how many, so
+the harness's own coverage is visible rather than assumed — and each gate prints a summary
 line, so coverage *inside* a gate is visible on the same terms (DEC-0024). For `mypy` and
 `pytest` that line is a count of what was checked. For `ruff check` it is `All checks
 passed!`, which is the same string over this repository and over an empty directory and
 says nothing about how much was looked at; gate 1's coverage is not visible this way and
-is not claimed to be.
+is not claimed to be. Gate 4's line is the gate's own and carries both a count and an
+attribution — how many packages the `engine` group resolved to, that the inference SDKs
+raise `ImportError` there, and which HTTP-capable package arrives through which engine
+dependency.
 
-No gate re-implements a check. Each wraps an inherited tool (`CLAUDE.md` §6) and returns
-the tool's own output unedited: the agent reading a failing `make verify` needs the real
-message, not a summary of it.
+Gates 1, 2 and 14 re-implement no check. Each wraps an inherited tool (`CLAUDE.md` §6) and
+returns the tool's own output unedited: the agent reading a failing `make verify` needs the
+real message, not a summary of it. Gate 4 is the one gate that composes its own verdict,
+because no inherited tool answers "is an inference SDK importable in the engine closure" —
+it drives `uv` and a real interpreter, and hands back `uv`'s own words unedited whenever the
+environment could not be built at all.
 
 It is **not** part of the product. Nothing under `src/` may import it, and it ships in no
 distribution.
@@ -50,6 +56,7 @@ The public surface of `tools.verify`. Anything not listed here is internal.
   | --- | --- | --- | --- |
   | 1 | `format-and-lint` | 1 | `tools/gates/lint.py` |
   | 2 | `types` | 2 | `tools/gates/types.py` |
+  | 4 | `isolation-proof` | 3 | `tools/gates/isolation.py` |
   | 14 | `tests` | 3 | `tools/gates/tests.py` |
 
 - `in_cost_order(gates: Sequence[Gate]) -> list[Gate]` — cheapest first, ties broken by gate
@@ -93,6 +100,37 @@ The public surface of `tools.gates`:
 - `tests.run() -> GateResult` — gate 14. `pytest` with no path, so it collects whatever the
   repository holds rather than a list that has to be remembered.
 
+The public surface of `tools.gates.isolation` — gate 4, the isolation proof (DEC-0004,
+DEC-0023). It is the only gate with a surface of its own, because its rule is data:
+
+- `FORBIDDEN_IN_ENGINE: tuple[str, ...]` — `("anthropic", "openai")`. Importing one of these
+  in the engine environment must raise `ImportError`.
+- `HTTP_CAPABLE: tuple[str, ...]` — every distribution we know can open a socket. Presence
+  is not itself a failure.
+- `ALLOWED_HTTP: tuple[tuple[str, str], ...]` — `(package, reached_via)` pairs. Today
+  `requests`, `urllib3`, `flask` and `bcf-client`, each via `ifctester`. `reached_via` is the
+  declared **member of the `engine` group** the package is reached through, not its immediate
+  parent: `urllib3` arrives under `requests` under `bcf-client`, and what the ratchet is about
+  is which engine dependency is responsible for the whole path. Adding a pair is a decision
+  record (DEC-0023).
+- `ENGINE_GROUP: str` — `"engine"`, the dependency group in `pyproject.toml` that is
+  `cadgpt-engine`.
+- `ResolvedEngineEnvironment(package_count: int, inference_sdks_importable: tuple[str, ...],
+  http_capable_reached_via: tuple[tuple[str, tuple[str, ...]], ...])` — frozen dataclass.
+  What a real, built engine environment turned out to contain.
+- `resolve() -> ResolvedEngineEnvironment` — exports the `engine` group, builds a throwaway
+  virtualenv from it under a temporary directory, imports each `FORBIDDEN_IN_ENGINE` name in
+  *that* interpreter, lists what was installed, and attributes each installed `HTTP_CAPABLE`
+  package to the engine dependencies it arrives through (`uv tree --invert`). Raises on any
+  step that does not complete, carrying that step's invocation, exit code and output.
+- `verdict(environment: ResolvedEngineEnvironment) -> GateResult` — the whole of the gate's
+  rule and nothing else. Public because the case gate 4 exists for — an engine environment
+  that *does* import an inference SDK — is the one case a repository passing its own verify
+  cannot build, so the rule has to be reachable without building it.
+- `run() -> GateResult` — `verdict(resolve())`, with a failed resolution turned into
+  `ok=False` carrying the resolver's own message. **Never a skip:** an isolation proof that
+  could not run has proved nothing, and saying so is the only honest report of it.
+
 Rule selection, line length and the exclusions for `ruff` and `mypy` are configured in
 `pyproject.toml` and nowhere else — one place, no per-tool config files. The selection
 includes `RUF100` (unused `noqa`) **alongside** the real rule set, because `CLAUDE.md`
@@ -113,7 +151,12 @@ callers:
   (`tools/verify.py`) — the `try`/`except Exception` around `gate.run()` means one broken
   gate cannot hide how much else is broken.
 - **A gate reports its tool verbatim.** `run_tools` (`tools/gates/__init__.py`) — the
-  failure detail is the tool's own stdout and stderr, never a summary of them.
+  failure detail is the tool's own stdout and stderr, never a summary of them. `isolation`
+  does not use `run_tools`, and holds the same line itself: every `uv` step it drives
+  reports its invocation, exit code and output unedited when it fails.
+- **An isolation proof that could not run fails.** `isolation.run`
+  (`tools/gates/isolation.py`) — a missing `engine` group, an unreachable index or a
+  virtualenv with no interpreter in it is `ok=False`, never a skip and never a pass.
 - **A gate that checked less than it was asked to says so.** `run_gates`
   (`tools/verify.py`) prints a non-empty detail on `PASS`, and `run_tools`
   (`tools/gates/__init__.py`) makes a succeeding tool's own summary line — the last
@@ -137,6 +180,23 @@ callers:
 `dataclasses` (the two value objects), `traceback` (the detail of a raising gate), `sys`,
 `collections.abc`, `typing` — plus `tools.gates`, which is stdlib-only too (`subprocess`,
 `pathlib`).
+
+`tools/gates/isolation.py` is the one gate that does not go through `run_tools`. It drives
+`uv` directly — `uv export`, `uv venv`, `uv pip install --no-deps`, `uv pip list` and
+`uv tree --invert` — and then the interpreter of the environment it has just built, because
+what it proves is a property of *that* environment and not of the dev one. It passes neither
+`--locked` nor `--frozen`, so a `pyproject.toml` that has drifted from `uv.lock` is resolved
+as written: an `openai` added to the `engine` group has to reach the gate for the gate to
+mean anything. `uv run --group dev` behaves the same way, so this is not a new licence.
+`--no-deps` is passed because the export *is* the closure — every package is already pinned
+in it — so re-resolving would ask the index about a set it already has; installing the
+exported set exactly is also what the gate then claims to have built.
+
+**Gate 4 needs a warm `uv` cache or a reachable index**, and it is the only gate that needs
+more than the dev group. That is inherent: an environment cannot be resolved out of nothing.
+It fails closed when it cannot be, and that path has been exercised for real — a `pypi.org`
+outage mid-run produced `FAIL  gate 4  isolation-proof` with `error: Request failed after 3
+retries` under it and a non-zero `make verify`, not a skip and not a pass.
 
 Nothing third-party is **imported**, on purpose. The gates reach their tools by
 `subprocess`, through `uv run --group dev`, at the moment the gate runs. So a missing or
@@ -164,9 +224,10 @@ Tests additionally use `pytest` (dev group) and invoke `make` and the real runne
 - **Any inference client or model SDK** (I1, I2) — as for every module in this repository.
 
 ## Tests
-`tools/tests/test_verify.py`, `tools/tests/test_gates_static.py` and
-`tools/tests/conftest.py`. Twenty-one tests, 10 unit / 11 integration (48% unit, inside the
-40–60% band gate 15 will enforce at T-0007).
+`tools/tests/test_verify.py`, `tools/tests/test_gates_static.py`,
+`tools/tests/test_gate_isolation.py` and `tools/tests/conftest.py`. Twenty-five tests,
+12 unit / 13 integration (48% unit, inside the 40–60% band gate 15 will enforce at
+T-0007).
 
 Unit, over the runner's own logic (`test_verify.py`) — no process, no filesystem:
 - gates run cheapest-first, ties by number;
@@ -187,6 +248,15 @@ tool's words. One gate, one call, nothing of the runner or the `Makefile` involv
 - gate 2 rejects a contradicted annotation and its detail contains
   `Incompatible types in assignment`;
 - gate 14 rejects a failing test and its detail names the failing test.
+
+Unit, over gate 4's rule (`test_gate_isolation.py`) — `isolation.verdict` over a described
+closure, because the closure it is about cannot be built by a repository that passes:
+- a closure in which an inference SDK imports is `ok=False` and the detail names it, and
+  names only it;
+- the recorded closure — `requests`, `urllib3`, `flask` and `bcf-client`, each via
+  `ifctester`, with no inference SDK — is `ok=True`, and the detail still names every one of
+  them and the engine dependency it arrives through. Allowlisted is not forbidden
+  (DEC-0023), but it is never silent either.
 
 Integration, through the real `Makefile`, the real runner and the real tools:
 - `make verify` over this repository exits 0 and prints the registered count;
@@ -217,6 +287,16 @@ Integration, through the real `Makefile`, the real runner and the real tools:
   over a minute. A collection-only run executes nothing and so can spawn nothing, and its
   summary must report exactly two deselected tests, matched on a word boundary so that
   `12 deselected` cannot satisfy a check for `2 deselected`;
+- this repository's real `engine` group resolves into a real virtualenv in which both
+  `anthropic` and `openai` raise `ImportError`, and whose HTTP-capable set is exactly
+  `ALLOWED_HTTP` by its recorded paths. This is the assertion
+  `docs/ddd/05-import-contracts.md` calls enforcement tier 1: not that nobody wrote the
+  import, but that the package is not there to import;
+- a **copy** whose `engine` group has `openai` added makes a real `make verify` exit
+  non-zero and print `FAIL  gate 4  isolation-proof` with `openai` named in the detail.
+  Measured: `exit: 2`, `FAIL  gate 4  isolation-proof`, `openai imports in the engine
+  environment.` The copy registers gate 4 only, and this checkout's `pyproject.toml` is
+  never touched;
 - with the marker **set**, a child reports skips for exactly
   `conftest.SPAWNS_A_RE_ENTERING_PROCESS` and nothing else, compared by node id through the
   child's JUnit XML. This is the pin that makes the previous item mean something: that child
@@ -244,7 +324,7 @@ copy's root; every bad input is planted there, and the gate — or the whole of 
 copy's gate checks the copy; that is why the three `run()` proofs go through
 `conftest.gate_result_in`, a process rooted at the copy, rather than calling `run()` in this
 one. Nothing is lost: the gate scans its own root either way, and the `Makefile`, the
-runner, `ruff`, `mypy`, `pytest` and the bad input are all real. Nine of the twenty-one
+runner, `ruff`, `mypy`, `pytest` and the bad input are all real. Ten of the twenty-five
 tests work this way, and each copy that runs `make verify` registers only the gate its proof
 is about. `copied_tree` writes that choice under a marker line at the end of the copy's
 `tools/verify.py`, **replacing** any edit already there rather than appending to it: one
@@ -310,6 +390,14 @@ something that runs that test again.
   is no longer what stands between the suite and a wrong summary. It stays because handing a
   child another tree's virtualenv is wrong on its own terms.
 
+**Neither of gate 4's integration proofs carries a nesting marker, and neither belongs in
+`SPAWNS_A_RE_ENTERING_PROCESS`.** One calls `isolation.resolve()` in this process; the other
+runs `make verify` over a copy registering gate 4 alone, and gate 4 drives `uv` and a
+throwaway interpreter, not this suite, so it cannot re-enter the harness. They are the same
+case as the two tests that drive `ruff` and `mypy`: a test skipped for a reason untrue about
+it is a proof silently lost. The consequence is that both run again inside every child this
+suite spawns, which is what gate 14 going from 83 s to 142 s is mostly made of.
+
 The marker names, the depth counter, both decorators and the `copied_tree`, `make_verify`,
 `run_pytest` and `gate_result_in` helpers are defined **once**, in `tools/tests/conftest.py`,
 and nowhere in `tools/verify.py` or `tools/gates/`: the runner has exactly one registration
@@ -322,13 +410,13 @@ and a test skipped for a reason untrue about it is a proof silently lost.
 
 The guard is spoofable, and DEC-0024 accepts that and makes its effect visible instead:
 gate 14 reports `pytest`'s summary line, so `env CADGPT_NESTED_VERIFY=1 make verify` prints
-`15 passed, 6 skipped` where a full run prints `21 passed`. **`make verify` alone is
+`19 passed, 6 skipped` where a full run prints `25 passed`. **`make verify` alone is
 therefore not evidence that this suite ran in full** — that is why every task also runs
 `uv run --group dev pytest tools/tests/ -q` directly, and why one test asserts the suite
 reports zero skips when the marker is absent.
 
-Both test modules import the shared pieces as `from tools.tests.conftest import ...`, not
-`from conftest import ...`. `tools/` is a package, so `mypy --strict tools/` names that file
+All three test modules import the shared pieces as `from tools.tests.conftest import ...`,
+not `from conftest import ...`. `tools/` is a package, so `mypy --strict tools/` names that file
 `tools.tests.conftest`; the bare spelling works under `pytest` and fails gate 2 with
 `Cannot find implementation or library stub for module named "conftest"`.
 
@@ -341,22 +429,33 @@ $ make verify
 python3 -m tools.verify
 PASS  gate 1  format-and-lint
         All checks passed!
-        9 files already formatted
+        11 files already formatted
 PASS  gate 2  types
-        Success: no issues found in 9 source files
+        Success: no issues found in 11 source files
+PASS  gate 4  isolation-proof
+        51 packages resolved from the engine group; anthropic, openai raise ImportError there; HTTP-capable present: requests via ifctester, urllib3 via ifctester, flask via ifctester, bcf-client via ifctester
 PASS  gate 14  tests
-        ======================== 21 passed in 83.42s (0:01:23) =========================
-3 gates registered, 0 failed
+        ======================== 25 passed in 142.43s (0:02:22) ========================
+4 gates registered, 0 failed
 $ echo $?
 0
 ```
 
+Gate 4's line is the one a customer or a regulator is shown, and it is the whole claim: this
+many packages resolved from the `engine` group, no inference SDK importable among them, and
+each HTTP-capable package present named with the engine dependency that forces it.
+
+Gate 4 itself costs under a second against a warm `uv` cache — a virtualenv built from
+hardlinked wheels — and tens of seconds the first time, when the closure has to be
+downloaded. It is cost 3 because that cold case is real, not because the warm one is slow.
+
 Gate 14 dominates the run because this suite drives the whole harness against copies of it:
-nine of the twenty-one tests run a real `make verify` or a real gate over a tree they copied
+ten of the twenty-five tests run a real `make verify` or a real gate over a tree they copied
 first. That is its cost 3, and it is the price of proving the gates instead of asserting
 them. Each of those copies registers only the gate its proof is about, which is what took
 `make verify` from 133 s to 84 s; the copy in the gate 14 proofs still runs a real `pytest`
-over itself, and that is the floor.
+over itself, and that is the floor. Gate 4's two integration proofs then took gate 14 from
+83 s to 142 s: they carry no nesting marker, correctly, so they run again in every child.
 
 Each `PASS` carries its tool's own summary line, so a run that checked less than it should
 is visible as one (DEC-0024) — gate 14's line is a count, gate 1's `All checks passed!` is
@@ -368,12 +467,14 @@ $ env CADGPT_NESTED_VERIFY=1 make verify
 python3 -m tools.verify
 PASS  gate 1  format-and-lint
         All checks passed!
-        9 files already formatted
+        11 files already formatted
 PASS  gate 2  types
-        Success: no issues found in 9 source files
+        Success: no issues found in 11 source files
+PASS  gate 4  isolation-proof
+        51 packages resolved from the engine group; anthropic, openai raise ImportError there; HTTP-capable present: requests via ifctester, urllib3 via ifctester, flask via ifctester, bcf-client via ifctester
 PASS  gate 14  tests
-        =================== 15 passed, 6 skipped in 63.06s (0:01:03) ===================
-3 gates registered, 0 failed
+        ================== 19 passed, 6 skipped in 102.78s (0:01:42) ===================
+4 gates registered, 0 failed
 ```
 
 A genuine child skips eight, not six: it carries the depth counter as well as the marker, so
@@ -387,8 +488,9 @@ Listing without running anything:
 $ python3 -m tools.verify --list
 gate 1  cost 1  format-and-lint
 gate 2  cost 2  types
+gate 4  cost 3  isolation-proof
 gate 14  cost 3  tests
-3 gates registered
+4 gates registered
 ```
 
 A failure prints the tool's own message, in full and unedited, indented under the gate that
@@ -403,18 +505,24 @@ FAIL  gate 2  types
 ```
 
 ## Open questions
-- Three gates of sixteen are registered. A green `make verify` today means the tree is
-  lint-clean, type-clean under `--strict` and its tests pass — and nothing more. In
-  particular **nothing about `src/` is checked yet**, because there is no `src/`. Gates
-  4–7 are T-0003 to T-0006; `docs/architecture/harness.md` names all sixteen and when each
-  becomes real.
-- **DEC-0023 is closed**, not open: gate 4 does not close the raw-HTTP path. `ifctester` is a
-  forced inherited component and pulls `requests` into the engine closure, so gate 4 asserts
-  instead that no inference SDK resolves and that every HTTP-capable package in the closure
-  is on an allowlist. The raw-HTTP path is closed by **gate 3** (import contracts), which
-  forbids `src/engine` from importing any HTTP client or socket module, and gate 3 ships at
-  **C1.1** — it cannot exist before there is an `src/` package to constrain. Until C1.1 that
-  path is unguarded, and that is known and scheduled, not overlooked.
+- Four gates of sixteen are registered. A green `make verify` today means the tree is
+  lint-clean, type-clean under `--strict`, its tests pass, and no inference SDK is
+  resolvable in the `engine` dependency closure — and nothing more. In particular **nothing
+  about `src/` is checked yet**, because there is no `src/`. Gates 5–7 are T-0004 to T-0006;
+  `docs/architecture/harness.md` names all sixteen and when each becomes real.
+- **DEC-0023 is closed**, not open, and gate 4 ships to its terms: it does **not** close the
+  raw-HTTP path. `ifctester` is a forced inherited component and pulls `requests`, `urllib3`,
+  `flask` and `bcf-client` into the engine closure, so gate 4 asserts instead that no
+  inference SDK resolves and that every HTTP-capable package in the closure is on the
+  allowlist by its recorded path. The raw-HTTP path is closed by **gate 3** (import
+  contracts), which forbids `src/engine` from importing any HTTP client or socket module, and
+  gate 3 ships at **C1.1** — it cannot exist before there is an `src/` package to constrain.
+  Until C1.1 that path is unguarded, and that is known and scheduled, not overlooked.
+- **Gate 4 reads the `engine` group's resolved closure, not what `src/engine` will import.**
+  A distribution boundary is only a proof for code that actually ships inside it, and no code
+  ships in `cadgpt-engine` yet. What the gate guarantees today is the environment; what makes
+  that guarantee load-bearing is `src/engine` existing and being packaged from this group,
+  which is C1.1's work.
 - Gate 2 checks `tools/` and gate 14 collects the whole repository. The first `src/` task
   must extend gate 2's paths in that same task, or `src/` will be type-checked by nothing
   while `make verify` stays green.
