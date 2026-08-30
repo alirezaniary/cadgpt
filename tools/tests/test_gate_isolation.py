@@ -24,6 +24,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from tools.gates import isolation
 from tools.gates.isolation import ALLOWED_HTTP, ENGINE_GROUP, ResolvedEngineEnvironment
 from tools.tests.conftest import copied_tree, make_verify, only_gate
@@ -75,6 +77,7 @@ def test_the_recorded_http_closure_with_no_inference_sdk_passes() -> None:
         assert f"{package} via {reached_via[0]}" in result.detail
 
 
+@pytest.mark.integration
 def test_the_real_engine_environment_has_no_importable_inference_sdk() -> None:
     """Resolve this repository's real `engine` group and look inside the result.
 
@@ -94,6 +97,7 @@ def test_the_real_engine_environment_has_no_importable_inference_sdk() -> None:
     assert isolation.verdict(environment).ok
 
 
+@pytest.mark.integration
 def test_an_inference_sdk_in_the_engine_group_fails_make_verify(tmp_path: Path) -> None:
     """Add `openai` to a copy's `engine` group; the real `make verify` must reject it.
 

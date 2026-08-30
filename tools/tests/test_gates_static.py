@@ -45,6 +45,8 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+import pytest
+
 from tools.tests.conftest import (
     REPO_ROOT,
     copied_tree,
@@ -73,6 +75,7 @@ def plant(fixture: str, copy: Path, destination: Path) -> None:
 # --- unit: the gate itself rejects, and carries its tool's own words ---------------
 
 
+@pytest.mark.integration
 def test_lint_gate_fails_on_an_unused_import(tmp_path: Path) -> None:
     """No nesting marker: `ruff` is not this suite, so this test cannot spawn itself."""
     copy = copied_tree(tmp_path)
@@ -85,6 +88,7 @@ def test_lint_gate_fails_on_an_unused_import(tmp_path: Path) -> None:
     assert LINT_PROBE.name in result.detail
 
 
+@pytest.mark.integration
 def test_types_gate_fails_on_a_mismatched_annotation(tmp_path: Path) -> None:
     """No nesting marker: `mypy` is not this suite, so this test cannot spawn itself."""
     copy = copied_tree(tmp_path)
@@ -98,6 +102,7 @@ def test_types_gate_fails_on_a_mismatched_annotation(tmp_path: Path) -> None:
 
 
 @outermost_run_only
+@pytest.mark.integration
 def test_tests_gate_fails_on_a_failing_test(tmp_path: Path) -> None:
     """`tests.run()` spawns `pytest`, so the child `gate_result_in` starts is marked."""
     copy = copied_tree(tmp_path)
@@ -113,6 +118,7 @@ def test_tests_gate_fails_on_a_failing_test(tmp_path: Path) -> None:
 
 
 @outermost_run_only
+@pytest.mark.integration
 def test_make_verify_fails_and_names_gate_1(tmp_path: Path) -> None:
     copy = copied_tree(tmp_path, only_gate(1))
     plant("unused_import.py", copy, LINT_PROBE)
@@ -125,6 +131,7 @@ def test_make_verify_fails_and_names_gate_1(tmp_path: Path) -> None:
 
 
 @outermost_run_only
+@pytest.mark.integration
 def test_make_verify_fails_and_names_gate_2(tmp_path: Path) -> None:
     copy = copied_tree(tmp_path, only_gate(2))
     plant("mismatched_annotation.py", copy, TYPES_PROBE)
@@ -137,6 +144,7 @@ def test_make_verify_fails_and_names_gate_2(tmp_path: Path) -> None:
 
 
 @outermost_run_only
+@pytest.mark.integration
 def test_make_verify_fails_and_names_gate_14(tmp_path: Path) -> None:
     copy = copied_tree(tmp_path, only_gate(14))
     plant("assertion_that_fails.py", copy, TESTS_PROBE)

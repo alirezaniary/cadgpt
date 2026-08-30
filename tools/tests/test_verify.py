@@ -199,12 +199,14 @@ def test_a_raising_gate_fails_and_the_gates_after_it_still_run() -> None:
 
 
 @outermost_run_only
+@pytest.mark.integration
 def test_make_verify_over_the_real_tree_exits_zero() -> None:
     result = make_verify(REPO_ROOT)
     assert result.returncode == 0, result.stdout + result.stderr
     assert f"{len(REGISTRY)} gates registered" in result.stdout
 
 
+@pytest.mark.integration
 def test_make_verify_exits_non_zero_when_a_registered_gate_fails(
     tmp_path: Path,
 ) -> None:
@@ -212,6 +214,7 @@ def test_make_verify_exits_non_zero_when_a_registered_gate_fails(
     assert result.returncode != 0, result.stdout + result.stderr
 
 
+@pytest.mark.integration
 def test_failing_run_names_the_gate_and_prints_the_registered_count(
     tmp_path: Path,
 ) -> None:
@@ -312,6 +315,7 @@ def _passed(summary: str) -> int:
 
 
 @depth_zero_only
+@pytest.mark.integration
 def test_a_full_run_is_visibly_different_from_a_nested_one(tmp_path: Path) -> None:
     """DEC-0024 end to end, at the entry point a person uses (T-0002c, D1).
 
@@ -361,6 +365,7 @@ def test_a_full_run_is_visibly_different_from_a_nested_one(tmp_path: Path) -> No
 
 
 @outermost_run_only
+@pytest.mark.integration
 def test_only_the_spawning_tests_skip_one_level_down(tmp_path: Path) -> None:
     """The skip set is pinned by name, not merely bounded (T-0002b, H2).
 
@@ -412,6 +417,7 @@ def test_only_the_spawning_tests_skip_one_level_down(tmp_path: Path) -> None:
 
 
 @depth_zero_only
+@pytest.mark.integration
 def test_nothing_is_skipped_without_the_nesting_marker(
     request: pytest.FixtureRequest,
 ) -> None:

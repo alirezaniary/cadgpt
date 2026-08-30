@@ -25,6 +25,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from tools.gates import determinism, test_balance
 from tools.gates.test_balance import ModuleCounts
 from tools.tests.conftest import copied_tree
@@ -78,6 +80,7 @@ def test_the_per_module_table_is_produced_even_on_success() -> None:
 # --- integration: gate 16 -----------------------------------------------------------
 
 
+@pytest.mark.integration
 def test_a_hash_seed_dependent_test_makes_determinism_fail_and_is_named(
     tmp_path: Path,
 ) -> None:
@@ -107,6 +110,7 @@ def test_a_hash_seed_dependent_test_makes_determinism_fail_and_is_named(
     assert "test_hashy.py::test_seed_dependent" in result.detail
 
 
+@pytest.mark.integration
 def test_a_stable_fixture_passes_and_reports_what_it_deselected(tmp_path: Path) -> None:
     """A real, tiny fixture with two ordinary tests and one `spawns_harness`-marked test
     that would raise if it ever ran. Gate 16 must deselect it in both runs, agree on the
@@ -135,6 +139,7 @@ def test_a_stable_fixture_passes_and_reports_what_it_deselected(tmp_path: Path) 
     assert "1 deselected (spawns_harness)" in result.detail
 
 
+@pytest.mark.integration
 def test_a_fresh_copy_of_the_harness_lists_nine_gates(tmp_path: Path) -> None:
     """`python -m tools.verify --list` prints every registered gate without running any
     of them — cheap, and listing spawns nothing that re-enters this suite.

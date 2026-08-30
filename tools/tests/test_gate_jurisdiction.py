@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from tools.gates import jurisdiction
 from tools.tests.conftest import (
     REPO_ROOT,
@@ -71,6 +73,7 @@ def test_iteration_variance_and_secant_pass() -> None:
 # --- integration: the same content, planted where the gate really scans ------------
 
 
+@pytest.mark.integration
 def test_make_verify_fails_and_names_gate_5(tmp_path: Path) -> None:
     copy = copied_tree(tmp_path, only_gate(5))
     (copy / "src").mkdir()
@@ -84,6 +87,7 @@ def test_make_verify_fails_and_names_gate_5(tmp_path: Path) -> None:
     assert "'iran'" in result.stdout
 
 
+@pytest.mark.integration
 def test_the_same_content_in_a_comment_passes(tmp_path: Path) -> None:
     copy = copied_tree(tmp_path)
     (copy / "src").mkdir()
@@ -97,6 +101,7 @@ def test_the_same_content_in_a_comment_passes(tmp_path: Path) -> None:
     assert result.ok is True
 
 
+@pytest.mark.integration
 def test_the_same_content_under_packs_passes(tmp_path: Path) -> None:
     copy = copied_tree(tmp_path)
     (copy / "packs").mkdir()
@@ -107,6 +112,7 @@ def test_the_same_content_under_packs_passes(tmp_path: Path) -> None:
     assert result.ok is True
 
 
+@pytest.mark.integration
 def test_the_real_tree_passes() -> None:
     result = jurisdiction.run()
 
@@ -118,6 +124,7 @@ def test_python_files_under_a_missing_root_is_empty() -> None:
     assert jurisdiction._python_files_under(REPO_ROOT / "src") == []
 
 
+@pytest.mark.integration
 def test_a_missing_src_is_a_clean_pass(tmp_path: Path) -> None:
     copy = copied_tree(tmp_path)
 

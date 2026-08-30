@@ -294,10 +294,12 @@ reason: a small constructed fixture, or a fresh copy, so a proof of either gate 
 `tools/tests/`, the tree it is defined in.
 
 The unit/integration split is not stated here as a number, deliberately: gate 15 computes it
-and prints it, and a number written into prose is a number that goes stale. Measured at
-T-0007: `tools` is 65 unit / 0 integration — outside the band, because no pre-existing test
-in `tools/tests/` carries `@pytest.mark.integration` yet
-(`decisions/DEC-0028-gate-15-real-tree-classification.md`, open).
+and prints it, and a number written into prose is a number that goes stale. T-0007a marked
+every pre-existing test in `tools/tests/` by what it actually does — one function's logic
+over constructed input is unit; copying a tree, spawning `make verify` or `pytest`, running a
+real `ruff`/`mypy`, building a real environment, or driving a gate's own `run()` over this
+repository's real filesystem is integration — and gate 15 now passes over `tools`, in band
+(`decisions/DEC-0029-gate-15-classification.md`, decided).
 
 ## How to run it
 Any single gate, without the rest of the harness:
@@ -348,8 +350,8 @@ $ make verify
   resolves, not that nothing opens a socket. Known and scheduled at C1.1, not overlooked.
 - **Gates 8–13 are unwritten.** `docs/architecture/harness.md` names all sixteen and when each
   becomes real.
-- **Gate 15 fails on the real tree today.** `tools` is 65 unit / 0 integration: every existing
-  test in `tools/tests/` predates the `integration` marker and none of the files that would
-  carry it are in T-0007's Files list, so this is not a bug in the gate — it is the gate
-  correctly finding a real imbalance it has no sanctioned way to fix in this task. See the
-  open decision this left behind (referenced from `## Tests` above) for the resolution.
+- **Gate 15's only subject is `tools` itself.** It reports `32 unit / 33 integration (51%
+  integration, in band)`, from markers a person applied by reading each test (T-0007a,
+  DEC-0029). One module in band is not evidence the band is right; the first `src/` module is
+  the first independent test of that, and DEC-0029's Reopens-if is what to read if it lands
+  outside.

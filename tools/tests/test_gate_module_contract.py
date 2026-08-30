@@ -21,6 +21,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from tools.gates import module_contract
 from tools.tests.conftest import (
     REPO_ROOT,
@@ -131,6 +133,7 @@ def test_the_walk_of_a_missing_root_is_empty(tmp_path: Path) -> None:
 # --- integration -------------------------------------------------------------------
 
 
+@pytest.mark.integration
 def test_a_package_nested_inside_a_module_is_checked_too(tmp_path: Path) -> None:
     """DEC-0026's regression: a bad package *beneath* a conforming one must still fail.
 
@@ -149,6 +152,7 @@ def test_a_package_nested_inside_a_module_is_checked_too(tmp_path: Path) -> None
     assert "nested" in result.stdout
 
 
+@pytest.mark.integration
 def test_a_tests_tree_inside_a_module_is_not_a_module(tmp_path: Path) -> None:
     """The other half of DEC-0026: a module's own ``tests/`` owes no ``readme.ai.md``."""
     copy = copied_tree(tmp_path)
@@ -165,6 +169,7 @@ def test_the_gates_package_carries_its_own_contract() -> None:
     assert module_contract.problems_in(REPO_ROOT / "tools" / "gates") == []
 
 
+@pytest.mark.integration
 def test_make_verify_fails_and_names_gate_7(tmp_path: Path) -> None:
     copy = copied_tree(tmp_path, only_gate(7))
     _write_package(copy / "src" / "bad", readme_body=None)
@@ -176,6 +181,7 @@ def test_make_verify_fails_and_names_gate_7(tmp_path: Path) -> None:
     assert "readme.ai.md is missing" in result.stdout
 
 
+@pytest.mark.integration
 def test_a_directory_without_init_is_skipped(tmp_path: Path) -> None:
     copy = copied_tree(tmp_path)
     (copy / "src" / "notapackage").mkdir(parents=True)
@@ -192,12 +198,14 @@ def test_tools_readme_passes() -> None:
     assert problems == []
 
 
+@pytest.mark.integration
 def test_the_real_tree_passes() -> None:
     result = module_contract.run()
 
     assert result.ok is True, result.detail
 
 
+@pytest.mark.integration
 def test_a_missing_src_is_a_clean_pass(tmp_path: Path) -> None:
     """``src/`` does not exist yet at P0; nothing to scan is not a failure."""
     copy = copied_tree(tmp_path)

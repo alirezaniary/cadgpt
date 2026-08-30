@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from tools.gates import placeholder
 from tools.tests.conftest import copied_tree, gate_result_in, make_verify, only_gate
 
@@ -55,6 +57,7 @@ def test_a_raise_with_a_reason_on_the_first_line_passes() -> None:
 # --- integration: the same shapes, planted where the gate really scans -------------
 
 
+@pytest.mark.integration
 def test_make_verify_fails_and_names_gate_6(tmp_path: Path) -> None:
     copy = copied_tree(tmp_path, only_gate(6))
     (copy / "src").mkdir()
@@ -70,6 +73,7 @@ def test_make_verify_fails_and_names_gate_6(tmp_path: Path) -> None:
     assert "only `pass`" in result.stdout
 
 
+@pytest.mark.integration
 def test_a_pass_inside_except_passes(tmp_path: Path) -> None:
     copy = copied_tree(tmp_path)
     (copy / "src").mkdir()
@@ -87,6 +91,7 @@ def test_a_pass_inside_except_passes(tmp_path: Path) -> None:
     assert result.ok is True, result.detail
 
 
+@pytest.mark.integration
 def test_an_ellipsis_in_a_protocol_body_passes(tmp_path: Path) -> None:
     copy = copied_tree(tmp_path)
     (copy / "src").mkdir()
@@ -102,6 +107,7 @@ def test_an_ellipsis_in_a_protocol_body_passes(tmp_path: Path) -> None:
     assert result.ok is True, result.detail
 
 
+@pytest.mark.integration
 def test_an_ellipsis_in_a_stub_file_passes(tmp_path: Path) -> None:
     copy = copied_tree(tmp_path)
     (copy / "src").mkdir()
@@ -112,6 +118,7 @@ def test_an_ellipsis_in_a_stub_file_passes(tmp_path: Path) -> None:
     assert result.ok is True, result.detail
 
 
+@pytest.mark.integration
 def test_the_real_tree_passes() -> None:
     result = placeholder.run()
 
