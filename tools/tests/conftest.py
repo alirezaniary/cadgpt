@@ -189,7 +189,31 @@ against the node ids a marked run really skipped.
 
 Add a test that spawns a re-entering process and it goes here too; a test that spawns
 ``ruff`` or ``mypy`` does not, because those tools are not this suite and cannot recurse.
+
+Also, separately, this frozenset drives which items ``pytest_collection_modifyitems``
+below tags ``@pytest.mark.spawns_harness`` — the marker gate 16 deselects with
+``-m "not spawns_harness"`` (DEC-0027 §1).
 """
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Apply `@pytest.mark.spawns_harness` (DEC-0027 §1/§2) to exactly the items whose
+    node id is in `SPAWNS_A_RE_ENTERING_PROCESS`, which is what gate 16 deselects with
+    `-m "not spawns_harness"`.
+
+    A hook, not a decorator on each of the eight tests, because those tests live in
+    `test_gates_static.py` and `test_verify.py`, and the recursion-safety machinery is
+    one spelling, in one file (this module's own docstring).
+    It does not make `test_verify.test_only_the_spawning_tests_skip_one_level_down`'s
+    second assertion tautological: that assertion compares the marker this hook applies
+    against the *skipped* set a real marked run produces, which is driven independently by
+    each test's own `outermost_run_only`/`depth_zero_only` decorator. The two mechanisms
+    are meant to name the same eight tests; the assertion is what keeps them from silently
+    drifting apart.
+    """
+    for item in items:
+        if item.nodeid in SPAWNS_A_RE_ENTERING_PROCESS:
+            item.add_marker(pytest.mark.spawns_harness)
 
 
 _NOT_INHERITED = frozenset({NESTED, "VIRTUAL_ENV"})

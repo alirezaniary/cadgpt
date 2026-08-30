@@ -54,6 +54,7 @@ Reopens if → Consequences accepted.
 | [0026](DEC-0026-module-contract-scope.md) | A module, for gate 7, is every package directory except a `tests/` tree | Lead | DECIDED |
 | [0027](DEC-0027-gate-16-scope.md) | Gate 16 varies seed and order over the suite minus the eight harness-spawning tests | Lead | DECIDED |
 | [0028](DEC-0028-import-contract-drift.md) | The layers contract names `packs` and `observation`; the dangling generator entry returns with the module | Lead | DECIDED |
+| [0029](DEC-0029-gate-15-classification.md) | Pre-existing tests are marked `integration` by what they do; the 40–60% band is not touched | Lead | DECIDED |
 
 ## Direction
 

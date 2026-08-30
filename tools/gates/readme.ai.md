@@ -9,7 +9,7 @@ are `tools.verify`'s, and a gate that reached for them would be a gate deciding 
 It is a module of its own, and not a section inside `tools/readme.ai.md`, because the two
 boundaries are genuinely different (DEC-0026). The runner's contract is four fields and a
 callable. A gate's contract is what it scans, what it refuses to scan, what its rule data
-means and what an extension to that data costs — and there are seven of them. Splitting the
+means and what an extension to that data costs — and there are nine of them. Splitting the
 two is what keeps either file short enough to be read instead of the code, which is the whole
 point of the convention.
 
@@ -17,7 +17,10 @@ point of the convention.
 and 14 wrap `ruff`, `mypy` and `pytest` and hand the tool's own output back unedited. Gates 5,
 6 and 7 have no tool to inherit — there is no off-the-shelf checker for "no identifier under
 `src/` names a jurisdiction" — and are `ast`/filesystem scans written here. Gate 4 drives
-`uv` to build a real environment and asks it a question no static tool can answer.
+`uv` to build a real environment and asks it a question no static tool can answer. Gate 15
+inherits `pytest --collect-only` to classify tests by their own marker rather than re-parsing
+test files itself; gate 16 inherits `pytest` a second time, with `pytest-randomly` (DEC-0027
+§3) doing the order-varying no gate here would want to author.
 
 ## Context
 Bounded context: **none**. `tools/` is outside the domain model entirely
@@ -162,6 +165,56 @@ The public surface of `tools.gates.module_contract` — gate 7, the module contr
   not exist yet at P0, so the gate is proven by its fixtures rather than by its scan target
   (DEC-0016); what it finds in the real tree today is `tools/readme.ai.md` and this file.
 
+The public surface of `tools.gates.test_balance` — gate 15, test balance (DEC-0010,
+`docs/process/testing-strategy.md`). Per module, counts unit versus integration tests and
+fails outside a 40-60% integration ratio; classification comes from `@pytest.mark.integration`
+alone, never from a file's path or name.
+
+- `MIN_INTEGRATION_RATIO`, `MAX_INTEGRATION_RATIO` — `0.40`, `0.60`.
+- `MIN_TESTS_TO_ENFORCE: int` — `4`. Below this many tests a module's ratio is reported but
+  never fails the gate — a ratio over so few tests is noise, not signal.
+- `ModuleCounts(module: str, unit: int, integration: int)` — frozen dataclass. `module` is a
+  path relative to the repository root. `total`, `integration_ratio`, `enforced` and
+  `in_band` are derived properties, not stored fields.
+- `verdict(counts: list[ModuleCounts]) -> GateResult` — the whole of the rule, over
+  already-computed counts. Pure: a constructed list proves every rule directly, with no
+  filesystem or subprocess involved. `detail` is the per-module table, on PASS as well as
+  FAIL (DEC-0024).
+- `run() -> GateResult` — `verdict` over real counts. A module is in scope when it is a
+  module directory (`tools.gates.module_contract.module_directories`, DEC-0026) that owns its
+  own `tests/` subdirectory; `tools/gates` shares `tools/tests/` with its parent rather than
+  owning a tree of its own, so only `tools` is in scope until that changes. Counts come from
+  two real `pytest --collect-only -q` invocations (`-m integration` and `-m "not integration"`)
+  — collection only, so this gate cannot itself execute a test body or spawn anything a test
+  body would.
+
+The public surface of `tools.gates.determinism` — gate 16, determinism (DEC-0027). Runs the
+suite twice, varying `PYTHONHASHSEED` and collection order, and fails if the two runs
+disagree about any test's outcome. The eight tests that spawn a process re-entering this
+harness (`tools/tests/conftest.SPAWNS_A_RE_ENTERING_PROCESS`) carry a `spawns_harness` marker,
+applied by a `pytest_collection_modifyitems` hook in `tools/tests/conftest.py` rather than by
+this module, and are deselected from both runs (`-m "not spawns_harness"`, DEC-0027 §1) —
+this module does not import that frozenset, because a gate must not depend on the test suite
+it checks.
+
+- `DESELECT_MARKER: str` — `"spawns_harness"`.
+- `RunResult(passed: frozenset[str], failed: frozenset[str], deselected: int)` — frozen
+  dataclass. One pytest run's outcome.
+- `verdict(first: RunResult, second: RunResult, seeds: tuple[str, str]) -> GateResult` — the
+  whole of the rule, over two already-computed runs. Pure, for the same reason
+  `test_balance.verdict` is. `detail` names every disagreeing test on FAIL, and reports the
+  test count, both seeds and the deselected count on PASS too (DEC-0024, DEC-0027 §4).
+- `execute(*, hash_seed: str, random_seed: int, report: Path, cwd: Path = REPO_ROOT) ->
+  RunResult` — one real, unmocked `pytest` subprocess with `spawns_harness` deselected,
+  `-p randomly --randomly-seed=<random_seed>` and `PYTHONHASHSEED=<hash_seed>`, reported
+  through a real JUnit report. `cwd` defaults to this repository, which is what the
+  registered gate always uses; a test proving this module's own rule points it at a small
+  constructed fixture directory instead, so a proof of gate 16 never re-enters the suite it
+  is defined in.
+- `run() -> GateResult` — `execute` twice, with two fixed (not random — `CLAUDE.md` §7
+  forbids unpinned randomness in a proof) `PYTHONHASHSEED`/`-p randomly` seed pairs, then
+  `verdict`.
+
 ## Invariants enforced here
 None from `docs/ddd/04-aggregates-and-invariants.md` — this module owns no domain aggregate.
 
@@ -189,12 +242,19 @@ Two invariants of the gate mechanism itself are enforced here and are not re-che
 - `tools.verify` — for `GateResult` only, and **imported inside each function, never at module
   level**. `tools.verify` imports this package to build `REGISTRY`, so a module-level import
   here is a cycle. `TYPE_CHECKING` blocks carry the annotation.
-- `subprocess`, `pathlib`, `ast`, `tokenize`, `re`, `json`, `tempfile` — the standard library
-  does all of the scanning. No third-party dependency is added for a gate.
+- `subprocess`, `pathlib`, `ast`, `tokenize`, `re`, `json`, `tempfile`, `os`,
+  `xml.etree.ElementTree` — the standard library does all of the scanning. No third-party
+  dependency is added for a gate.
 - `uv`, on `PATH` — every inherited tool is invoked as `uv run --group dev <tool>` so it
   resolves from the `dev` group in `pyproject.toml`. Gate 4 additionally drives `uv export`,
   `uv venv`, `uv pip install` and `uv tree`.
-- `ruff`, `mypy`, `pytest` — inherited, in the `dev` group, invoked never imported.
+- `ruff`, `mypy`, `pytest` — inherited, in the `dev` group, invoked never imported. `pytest`
+  additionally needs `pytest-randomly` (also in the `dev` group, DEC-0027 §3) for gate 16's
+  two `-p randomly` runs; every other invocation of `pytest` anywhere carries
+  `-p no:randomly` from `pyproject.toml`'s `addopts` and is unaffected by its presence.
+- `tools.gates.module_contract` — gate 15's `_modules_with_tests` reuses
+  `SCAN_ROOTS`/`module_directories`, the same walk gate 7 uses to find module directories, so
+  the two gates agree on what a module is without either re-implementing the other's walk.
 
 ## Must not depend on
 - **Anything under `src/`.** A gate that imported the code it checks could not report on a
@@ -223,15 +283,21 @@ directory, per `docs/architecture/module-map.md`. Gate 7 does not treat it as a 
 | `test_gate_placeholder.py` | Gate 6's four patterns, and each one planted in a copied tree. |
 | `test_gate_module_contract.py` | Gate 7's four conformance rules, the walk itself, and a bad package planted **beneath** a conforming one. |
 | `test_verify.py` | The runner, not the gates — registration, cost order, a raising gate, the nesting guards. |
+| `test_gate_test_discipline.py` | Gate 15's `verdict` over constructed `ModuleCounts` (a skewed module fails, a balanced one passes, a too-small one is reported not failed, the table survives a pass); gate 16's `execute`/`verdict` over small real fixture directories (a `PYTHONHASHSEED`-dependent test disagrees and is named, a stable fixture with a `spawns_harness`-marked test passes and reports what it deselected); a fresh, unedited `conftest.copied_tree` lists nine registered gates. |
 
 **Mocking: none.** Every gate is proven against real files, a real `Makefile` and real
 `ruff`/`mypy`/`pytest`. Gate 4 builds a real virtualenv. The only isolation is
 `conftest.copied_tree`, which copies the harness into `tmp_path` so a rejection proof plants
 its bad input somewhere other than this checkout — a real end-to-end run against a tree that
-is simply not this one.
+is simply not this one. Gates 15 and 16's own proofs use the same lever for a different
+reason: a small constructed fixture, or a fresh copy, so a proof of either gate never re-enters
+`tools/tests/`, the tree it is defined in.
 
 The unit/integration split is not stated here as a number, deliberately: gate 15 computes it
-and prints it, and a number written into prose is a number that goes stale.
+and prints it, and a number written into prose is a number that goes stale. Measured at
+T-0007: `tools` is 65 unit / 0 integration — outside the band, because no pre-existing test
+in `tools/tests/` carries `@pytest.mark.integration` yet
+(`decisions/DEC-0028-gate-15-real-tree-classification.md`, open).
 
 ## How to run it
 Any single gate, without the rest of the harness:
@@ -251,7 +317,19 @@ $ uv run --group dev python -c "from pathlib import Path; from tools.gates impor
 Two entries, not one — that is DEC-0026 in effect, and the topmost-only rule it replaced
 printed `['tools']`.
 
-All seven, in cost order, through the real entry point:
+Gate 16, in isolation, against a small real fixture rather than `tools/tests/` itself:
+
+```
+$ uv run --group dev python -c "
+from pathlib import Path
+from tools.gates import determinism as d
+r1 = d.execute(hash_seed='1', random_seed=1000003, report=Path('/tmp/a.xml'), cwd=Path('fixture'))
+r2 = d.execute(hash_seed='2', random_seed=2000017, report=Path('/tmp/b.xml'), cwd=Path('fixture'))
+print(d.verdict(r1, r2, seeds=('1', '2')))
+"
+```
+
+All nine, in cost order, through the real entry point:
 
 ```
 $ make verify
@@ -268,5 +346,10 @@ $ make verify
 - **Gate 3 (import contracts) is not here and cannot be**, until `src/` exists to constrain.
   Until then the raw-HTTP path out of the engine is unguarded — gate 4 proves no inference SDK
   resolves, not that nothing opens a socket. Known and scheduled at C1.1, not overlooked.
-- **Gates 8–13, 15 and 16 are unwritten.** `docs/architecture/harness.md` names all sixteen and
-  when each becomes real.
+- **Gates 8–13 are unwritten.** `docs/architecture/harness.md` names all sixteen and when each
+  becomes real.
+- **Gate 15 fails on the real tree today.** `tools` is 65 unit / 0 integration: every existing
+  test in `tools/tests/` predates the `integration` marker and none of the files that would
+  carry it are in T-0007's Files list, so this is not a bug in the gate — it is the gate
+  correctly finding a real imbalance it has no sanctioned way to fix in this task. See the
+  open decision this left behind (referenced from `## Tests` above) for the resolution.

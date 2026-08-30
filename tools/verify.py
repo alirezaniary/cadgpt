@@ -27,11 +27,13 @@ from dataclasses import dataclass
 from typing import TextIO
 
 from tools.gates import (
+    determinism,
     isolation,
     jurisdiction,
     lint,
     module_contract,
     placeholder,
+    test_balance,
     tests,
     types,
 )
@@ -77,6 +79,8 @@ REGISTRY: list[Gate] = [
     Gate(number=5, name="jurisdiction-guard", cost=1, run=jurisdiction.run),
     Gate(number=6, name="placeholder-scan", cost=1, run=placeholder.run),
     Gate(number=7, name="module-contract", cost=1, run=module_contract.run),
+    Gate(number=15, name="test-balance", cost=1, run=test_balance.run),
+    Gate(number=16, name="determinism", cost=2, run=determinism.run),
     Gate(number=14, name="tests", cost=3, run=tests.run),
 ]
 """The single place a gate is registered.

@@ -23,7 +23,9 @@ package = false
 
 [dependency-groups]
 # Tooling the harness itself needs. Gates bring their own tooling as they are registered.
-dev = ["pytest>=8.0", "ruff>=0.6", "mypy>=1.11"]
+# pytest-randomly is gate 16's (DEC-0027 §3): it is the only caller that re-enables it,
+# with -p randomly and two different seeds; every other run carries -p no:randomly below.
+dev = ["pytest>=8.0", "ruff>=0.6", "mypy>=1.11", "pytest-randomly>=3.15"]
 
 # cadgpt-engine — src/engine. No inference SDK and no HTTP client, ever (I1, I2).
 # This absence is asserted by the isolation-proof gate (harness.md gate 4).
@@ -112,3 +114,16 @@ exclude = ["^tools/tests/badfixtures/"]
 [tool.pytest.ini_options]
 # Tests live beside the module they prove, so the repository root must be importable.
 pythonpath = ["."]
+# Gate 15 (docs/architecture/harness.md): classification of unit vs integration is
+# explicit, never inferred from a file's path or name. spawns_harness is gate 16's
+# deselection marker (DEC-0027 §1) — exactly the eight tests
+# tools/tests/conftest.SPAWNS_A_RE_ENTERING_PROCESS names, pinned there rather than here.
+markers = [
+    "integration: a test that enters at a real outer boundary and exits at a real output",
+    "spawns_harness: spawns a process that re-enters this suite; gate 16 deselects it",
+]
+# pytest-randomly is installed for gate 16 (DEC-0027 §3) but must not change any other
+# run's collection order — gate 14, a developer's plain `pytest`, every copied-tree proof
+# in tools/tests/ all stay exactly as order-stable as before it was added. Gate 16 is the
+# only caller that passes -p randomly back, with two different seeds.
+addopts = ["-p", "no:randomly"]

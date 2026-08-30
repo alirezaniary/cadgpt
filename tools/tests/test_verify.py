@@ -378,6 +378,14 @@ def test_only_the_spawning_tests_skip_one_level_down(tmp_path: Path) -> None:
 
     The child is bounded by the marker it carries: every test that would spawn again is
     skipped in it, which is the same set this test is checking.
+
+    DEC-0027 §2 adds a second, independent comparison: the node ids
+    `conftest.pytest_collection_modifyitems` actually tagged `spawns_harness` — read via a
+    separate `--collect-only -q -m spawns_harness`, which executes nothing and so cannot
+    itself spawn anything — must equal the same frozenset. The skip set above is driven by
+    each test's own `outermost_run_only`/`depth_zero_only` decorator; this one is driven by
+    the hook. Both are meant to name the same eight tests, and this is what stops them
+    drifting apart silently.
     """
     report = tmp_path / "one-level-down.xml"
     result = run_pytest(REPO_ROOT, [f"--junit-xml={report}"], marked=True)
@@ -391,6 +399,16 @@ def test_only_the_spawning_tests_skip_one_level_down(tmp_path: Path) -> None:
         skipped.add(f"{module}.py::{case.get('name', '')}")
 
     assert skipped == set(SPAWNS_A_RE_ENTERING_PROCESS)
+
+    marked_result = run_pytest(
+        REPO_ROOT, ["--collect-only", "-m", "spawns_harness"], marked=True
+    )
+    assert marked_result.returncode == 0, marked_result.stdout + marked_result.stderr
+    marked = {line.strip() for line in marked_result.stdout.splitlines() if "::" in line}
+    assert marked == set(SPAWNS_A_RE_ENTERING_PROCESS), (
+        "DEC-0027 §2: the spawns_harness-marked node ids must equal "
+        f"SPAWNS_A_RE_ENTERING_PROCESS. Marked: {marked}"
+    )
 
 
 @depth_zero_only

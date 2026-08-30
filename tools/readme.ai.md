@@ -10,9 +10,10 @@ one module under `tools/gates/`, exposing `run() -> GateResult`, plus one entry 
 `REGISTRY`. A gate is added by the task that introduces the artefact type it guards, in
 that same task (DEC-0022), with a test proving it can reject (DEC-0016).
 
-Seven of the sixteen gates in `docs/architecture/harness.md` are registered today —
+Nine of the sixteen gates in `docs/architecture/harness.md` are registered today —
 1 (lint), 2 (types), 4 (isolation proof), 5 (jurisdiction guard), 6 (placeholder scan),
-7 (module contract) and 14 (tests). `make verify` prints how many, so the harness's own
+7 (module contract), 14 (tests), 15 (test balance) and 16 (determinism). `make verify`
+prints how many, so the harness's own
 coverage is visible rather than assumed — and each gate prints a summary line, so coverage
 *inside* a gate is visible on the same terms (DEC-0024). For `mypy` and `pytest` that line
 is a count of what was checked. For `ruff check` it is `All checks passed!`, which is the
@@ -23,7 +24,9 @@ packages the `engine` group resolved to, that the inference SDKs raise `ImportEr
 there, and which HTTP-capable package arrives through which engine dependency. Gates 5, 6
 and 7 print nothing on a pass — there is no partial-coverage question for a full-tree
 `ast`/filesystem scan the way there is for a summarised external tool, so an empty detail
-is the honest report (`run_gates`, `tools/verify.py`).
+is the honest report (`run_gates`, `tools/verify.py`). Gate 15's line is a per-module table,
+printed on pass and fail alike; gate 16's names the test count, both seeds and how many
+tests were deselected.
 
 Gates 1, 2 and 14 re-implement no check. Each wraps an inherited tool (`CLAUDE.md` §6) and
 returns the tool's own output unedited: the agent reading a failing `make verify` needs the
@@ -33,7 +36,9 @@ identifier under `src/` or `tools/` name a jurisdiction", "is this code finished
 this module carry a conforming contract" — gate 4 drives `uv` and a real interpreter and
 hands back `uv`'s own words unedited whenever the environment could not be built at all;
 gates 5, 6 and 7 parse real files with `ast` (and, for gate 6's comments, `tokenize`) and
-report `path:line` and the offending identifier or pattern themselves.
+report `path:line` and the offending identifier or pattern themselves. What gates 15 and 16
+inherit, compose and report is documented as their own module's contract in
+`tools/gates/readme.ai.md`, per DEC-0026, not here.
 
 It is **not** part of the product. Nothing under `src/` may import it, and it ships in no
 distribution.
@@ -66,6 +71,8 @@ The public surface of `tools.verify`. Anything not listed here is internal.
   | 5 | `jurisdiction-guard` | 1 | `tools/gates/jurisdiction.py` |
   | 6 | `placeholder-scan` | 1 | `tools/gates/placeholder.py` |
   | 7 | `module-contract` | 1 | `tools/gates/module_contract.py` |
+  | 15 | `test-balance` | 1 | `tools/gates/test_balance.py` |
+  | 16 | `determinism` | 2 | `tools/gates/determinism.py` |
   | 14 | `tests` | 3 | `tools/gates/tests.py` |
 
 - `in_cost_order(gates: Sequence[Gate]) -> list[Gate]` — cheapest first, ties broken by gate
