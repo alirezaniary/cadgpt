@@ -1,6 +1,6 @@
 """Tests for the gate registry runner, and the proof of this suite's nesting guard.
 
-Six unit tests over the runner's own logic and seven integration tests that invoke a real
+Seven unit tests over the runner's own logic and eight integration tests that invoke a real
 process. No mocking: a runner whose failure path is faked is a runner whose failure path
 has never run.
 
@@ -10,20 +10,26 @@ no exception — so the integration tests copy the harness into a temporary tree
 `conftest.copied_tree`, reset and re-register the copied runner's ``REGISTRY`` through that
 same list, and run the real `make verify` there.
 
-The copy's registry is **reset** rather than added to. Gate 14 runs `pytest`, so a copied
-tree that kept the real gates would run this file, which would make another copy and run
-`make verify` in it, without bound. Clearing the copied ``REGISTRY`` leaves exactly the one
-deliberately failing gate this test is about, and the reset lives here rather than as a flag
-in `tools/verify.py`: the runner has one registration path and gains no test-only surface.
+The copy's registry is **narrowed** rather than added to. Gate 14 runs `pytest`, so a
+copied tree that kept the real gates would run this file, which would make another copy
+and run `make verify` in it, without bound. Clearing the copied ``REGISTRY`` leaves
+exactly the one deliberately failing gate this test is about, and `conftest.only_gate`
+leaves exactly the one real gate a proof is about — a claim about gate 14's summary line
+pays for gate 14 and not for `ruff` and `mypy` as well. Both go through the copied
+``REGISTRY`` itself rather than a flag in `tools/verify.py`: the runner has one
+registration path and gains no test-only surface.
 `test_make_verify_over_the_real_tree_exits_zero` runs the *real* registry over this
-checkout, so it carries the nesting marker from `conftest.py` and is skipped one level down.
+checkout — it is the one test whose subject is the whole registry — so it carries the
+nesting marker from `conftest.py` and is skipped one level down.
 
 DEC-0024 asks three things of this module. `run_gates` must print a passing gate's detail,
 so a gate that skipped part of its work can say so — two unit tests pin that, one for a gate
 with something to report and one for a gate with nothing. The thing that *builds* that
 detail must not throw it away —
 `test_a_succeeding_command_reports_its_own_last_output_line` runs a real command through the
-real `run_tools` and pins the surviving line. And the whole chain has to hold at the
+real `run_tools` and pins the surviving line, and
+`test_a_succeeding_commands_summary_comes_from_stdout_not_stderr` pins that it is the tool's
+line and not whatever `uv` wrote after it. And the whole chain has to hold at the
 outermost real entry point, which is what
 `test_a_full_run_is_visibly_different_from_a_nested_one` proves: two real `make verify` runs
 over one copied tree, one plain and one marked, whose printed output must differ.
@@ -51,11 +57,14 @@ import pytest
 
 from tools.gates import run_tools
 from tools.tests.conftest import (
+    DEPTH,
     REPO_ROOT,
     SPAWNS_A_RE_ENTERING_PROCESS,
     copied_tree,
+    depth_from,
     depth_zero_only,
     make_verify,
+    only_gate,
     outermost_run_only,
     run_pytest,
 )
@@ -142,6 +151,24 @@ def test_a_passing_gate_with_an_empty_detail_prints_only_its_own_line() -> None:
 
     assert run_gates([_passing(1, "quiet-gate", 1, [])], out) is True
     assert out.getvalue() == ("PASS  gate 1  quiet-gate\n1 gates registered, 0 failed\n")
+
+
+def test_an_unparseable_depth_fails_the_way_too_deep_a_one_does() -> None:
+    """A depth counter that is not a number is an unbounded descent, not a depth of 0.
+
+    `conftest.DEPTH_HERE` is what caps this suite's recursion, and `int()` on a value that
+    is not a number raises a bare `ValueError` naming neither the variable nor what to do
+    about it. Reading it as 0 would be worse: the cap would then be applied to a depth the
+    session does not actually have.
+    """
+    with pytest.raises(RuntimeError) as raised:
+        depth_from("two")
+
+    message = str(raised.value)
+    assert DEPTH in message
+    assert "'two'" in message
+    assert "outermost_run_only" in message
+    assert "depth_zero_only" in message
 
 
 def test_a_raising_gate_fails_and_the_gates_after_it_still_run() -> None:
@@ -234,6 +261,36 @@ def test_a_succeeding_command_reports_its_own_last_output_line() -> None:
     assert result.detail == "the last line"
 
 
+_PRINTS_THEN_CHATTERS = (
+    "import sys\n"
+    "print('the tool reporting what it checked')\n"
+    "sys.stderr.write('Installed 12 packages in 23ms\\n')\n"
+)
+"""A command that summarises on stdout and is then talked over on stderr.
+
+The stderr line is what `uv` really prints when it populates a cold environment, which is
+every first run against a freshly copied tree.
+"""
+
+
+def test_a_succeeding_commands_summary_comes_from_stdout_not_stderr() -> None:
+    """DEC-0024: the gate's summary is the *tool's* report, not its runner's chatter.
+
+    `run_tools` used to take the last non-empty line of stdout and stderr merged, so
+    anything written to stderr after the tool finished became the gate's summary. Observed
+    over a cold copied tree: gate 1 reported `Installed 12 packages in 23ms` and, warm,
+    `All checks passed!` — the tool's own line displaced by whoever ran it, which is the
+    one thing that line exists to carry.
+
+    Failure detail is deliberately not narrowed this way, and this test says nothing about
+    it: on a failure both streams are wanted, unedited.
+    """
+    result = run_tools([["python", "-c", _PRINTS_THEN_CHATTERS]])
+
+    assert result.ok is True
+    assert result.detail == "the tool reporting what it checked"
+
+
 def _gate_14_detail(output: str) -> str:
     """The line `make verify` printed under its passing gate 14, indented by the runner."""
     lines = output.splitlines()
@@ -271,11 +328,18 @@ def test_a_full_run_is_visibly_different_from_a_nested_one(tmp_path: Path) -> No
     child carries `CADGPT_NESTED_VERIFY`. The marked one skips the tests that spawn, so it
     reports fewer passes — and must *say* so.
 
+    The copy registers **gate 14 only**. The claim is about gate 14's summary line; `ruff`
+    and `mypy` contribute nothing to it and running them here twice bought nothing. It also
+    restores the `full.stdout != nested.stdout` assertion below to something that can fail:
+    while a success summary came from stdout and stderr merged, the first run against a cold
+    copy carried `uv`'s `Installed N packages` in gate 1's detail and the second did not, so
+    the two runs differed whatever gate 14 did.
+
     This test spawns a child with **no** marker, so the marker cannot stop it running
     itself: `depth_zero_only` does. Its unmarked child runs the tests that spawn marked
     children, which is the deepest a correct run of this suite goes.
     """
-    copy = copied_tree(tmp_path)
+    copy = copied_tree(tmp_path, only_gate(14))
 
     full = make_verify(copy, marked=False)
     nested = make_verify(copy, marked=True)

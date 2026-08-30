@@ -27,8 +27,17 @@ and only those — carry ``outermost_run_only`` from ``conftest.py``, which skip
 level down: recursion stops there and the proof still runs at the depth a person or CI
 invokes it from. The two tests that drive ``ruff`` and ``mypy`` cannot recurse and are
 **not** skipped; a test skipped for a reason untrue about it is a proof silently lost
-(DEC-0024). Beyond that, ``conftest`` caps the depth, so a mistake in the skip set fails a
-session in seconds instead of forking.
+(DEC-0024). Beyond that, ``conftest`` caps the depth, which bounds the descent — but for
+these four tests it does not *name* the mistake: each asserts on the output of the run it
+started itself, so all four **pass** with their marker removed. What names it is
+``test_verify.test_only_the_spawning_tests_skip_one_level_down``, which pins the skipped
+node ids by name.
+
+**Each ``make verify`` proof registers only the gate it is about.** ``conftest.only_gate``
+filters the copy's ``REGISTRY`` down to that one real entry, so a proof that gate 1 rejects
+an unused import does not also pay for ``mypy`` and the whole of ``pytest`` in the copy. The
+gate that runs is this repository's registered gate, reached through the runner's one
+registration path; nothing about what each proof asserts changes.
 """
 
 from __future__ import annotations
@@ -41,6 +50,7 @@ from tools.tests.conftest import (
     copied_tree,
     gate_result_in,
     make_verify,
+    only_gate,
     outermost_run_only,
 )
 
@@ -104,7 +114,7 @@ def test_tests_gate_fails_on_a_failing_test(tmp_path: Path) -> None:
 
 @outermost_run_only
 def test_make_verify_fails_and_names_gate_1(tmp_path: Path) -> None:
-    copy = copied_tree(tmp_path)
+    copy = copied_tree(tmp_path, only_gate(1))
     plant("unused_import.py", copy, LINT_PROBE)
 
     result = make_verify(copy)
@@ -116,7 +126,7 @@ def test_make_verify_fails_and_names_gate_1(tmp_path: Path) -> None:
 
 @outermost_run_only
 def test_make_verify_fails_and_names_gate_2(tmp_path: Path) -> None:
-    copy = copied_tree(tmp_path)
+    copy = copied_tree(tmp_path, only_gate(2))
     plant("mismatched_annotation.py", copy, TYPES_PROBE)
 
     result = make_verify(copy)
@@ -128,7 +138,7 @@ def test_make_verify_fails_and_names_gate_2(tmp_path: Path) -> None:
 
 @outermost_run_only
 def test_make_verify_fails_and_names_gate_14(tmp_path: Path) -> None:
-    copy = copied_tree(tmp_path)
+    copy = copied_tree(tmp_path, only_gate(14))
     plant("assertion_that_fails.py", copy, TESTS_PROBE)
 
     result = make_verify(copy)

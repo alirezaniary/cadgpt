@@ -28,9 +28,18 @@ themselves and are skipped by depth instead (``depth_zero_only``).
 **3. The cap.** Every spawn helper here increments ``CADGPT_VERIFY_DEPTH`` in the child, and
 a session deeper than ``MAX_DEPTH`` fails at import, before it collects anything. Depth 2 is
 reached legitimately — an unmarked child at depth 1 runs the tests that spawn marked
-children at depth 2 — and nothing correct goes further. This supersedes per-vector
-fast-fails: any future mistake in a skip set surfaces in seconds as a named error instead of
-climbing 7 processes to 35 in thirty seconds, killable only by process group.
+children at depth 2 — and nothing correct goes further.
+
+The cap **bounds every vector** and that is what it is for: nothing climbs 7 processes to 35
+in thirty seconds any more, killable only by process group. It does **not** name every
+mistake. Of the eight tests in ``SPAWNS_A_RE_ENTERING_PROCESS``, four surface a lost marker
+as this module's own ``RuntimeError``, in seconds, saying which decorator is missing. The
+other four — the three ``test_make_verify_fails_and_names_gate_*`` proofs and
+``test_tests_gate_fails_on_a_failing_test`` — **pass** with their marker removed, because
+each asserts on the output of the run it started itself, which is there whatever happens
+below it. Those four are bounded, not caught, and what catches them is a different test:
+``test_verify.test_only_the_spawning_tests_skip_one_level_down`` compares the node ids a
+marked run really skipped against ``SPAWNS_A_RE_ENTERING_PROCESS`` and names the difference.
 
 The guards are a property of the **tests**. ``tools/verify.py`` and ``tools/gates/`` read
 neither marker nor the counter and gain no flag, no env read and no config key. T-0001a
@@ -85,17 +94,42 @@ marker absent, so the tests that spawn marked children run there too. Nothing co
 deeper, because a marked child skips every test that would spawn again.
 """
 
-DEPTH_HERE = int(os.environ.get(DEPTH, "0"))
+LOST_MARKER = (
+    f"Some test that spawns a process re-entering the harness has lost its marker — "
+    f"`outermost_run_only` ({NESTED}) for a test that spawns a marked child, "
+    f"`depth_zero_only` ({DEPTH}) for one that spawns an unmarked child. Failing the "
+    f"session now rather than spawning another."
+)
+"""What both depth failures mean, and what to look at. One spelling for both."""
+
+
+def depth_from(value: str) -> int:
+    """``DEPTH``'s value as a number, or the error an unusable value is.
+
+    An unparseable value is not a missing one and must not be read as depth 0: something
+    set the counter to something that is not a number, so this session cannot tell how far
+    below the run a person started it is and the cap cannot be applied at all. That is the
+    same failure as being too deep — the descent is unbounded — so it says the same thing,
+    rather than surfacing as a bare ``ValueError`` traceback from ``int()``.
+    """
+    try:
+        return int(value)
+    except ValueError:
+        raise RuntimeError(
+            f"{DEPTH}={value!r} is not a number, so this pytest session cannot tell how "
+            f"many spawns below the run a person started it is and the cap of "
+            f"{MAX_DEPTH} cannot be applied to it. {LOST_MARKER}"
+        ) from None
+
+
+DEPTH_HERE = depth_from(os.environ.get(DEPTH, "0"))
 """Read once, at import, so the cap below is applied before anything is collected."""
 
 if DEPTH_HERE > MAX_DEPTH:
     raise RuntimeError(
         f"{DEPTH}={DEPTH_HERE} is deeper than {MAX_DEPTH}: this pytest session is "
         f"{DEPTH_HERE} spawns below the run a person started, which no correct "
-        f"arrangement of this suite reaches. Some test that spawns a process re-entering "
-        f"the harness has lost its marker — `outermost_run_only` ({NESTED}) for a test "
-        f"that spawns a marked child, `depth_zero_only` ({DEPTH}) for one that spawns an "
-        f"unmarked child. Failing the session now rather than spawning another."
+        f"arrangement of this suite reaches. {LOST_MARKER}"
     )
 
 
@@ -163,12 +197,15 @@ _NOT_INHERITED = frozenset({NESTED, "VIRTUAL_ENV"})
 
 ``NESTED`` because ``_child_env`` decides it. ``VIRTUAL_ENV`` because a child rooted at a
 *copied* tree would otherwise be told to use this checkout's environment for that tree's
-project: ``uv`` then prints ``does not match the project environment path`` on stderr, and
-since ``_summary_line`` takes a tool's **last** output line, that warning becomes the gate's
-summary in place of ``pytest``'s counts — hiding exactly the difference DEC-0024 exists to
-show. Observed: gate 14 of both a full and a nested ``make verify`` in a copy reported the
-warning and nothing else. The gates read no environment; this is the caller not handing a
-child a virtualenv that belongs to a different tree.
+project — a child running a gate against one tree inside another tree's virtualenv, which is
+not the thing under test. ``uv`` says so, printing ``does not match the project environment
+path``; that is how it was found, because ``_summary_line`` then took the warning as the
+gate's summary in place of ``pytest``'s counts and gate 14 of both a full and a nested
+``make verify`` in a copy reported the warning and nothing else. That symptom is closed at
+its source — a success summary now comes from the tool's own stdout, never from stderr — so
+this entry is no longer what stands between the suite and a wrong summary. It stays because
+handing a child another tree's virtualenv is wrong on its own terms. The gates read no
+environment; this is the caller not doing it.
 """
 
 
@@ -188,6 +225,32 @@ def _child_env(*, marked: bool) -> dict[str, str]:
     return child
 
 
+REGISTRY_EDIT = "# --- registry edit appended by tools/tests/conftest.py ---"
+"""Where a copy's ``tools/verify.py`` stops being this repository's and starts being a
+test's. Everything from this line on is replaced by the next ``copied_tree``, so a copy of
+a copy carries one edit rather than two contradictory ones — which matters because an
+unmarked child made by an edited copy runs the tests that copy again."""
+
+
+def only_gate(number: int) -> str:
+    """An ``edit`` for ``copied_tree`` leaving exactly the gate ``number`` registered.
+
+    A copied-tree proof about one gate should pay for one gate. Without this the copy's
+    ``make verify`` runs ``ruff`` and ``mypy`` and ``pytest`` to prove something about a
+    single one of them, which is most of what ``make verify`` costs.
+
+    The gate that survives is the **real registered gate** — this filters ``REGISTRY``
+    rather than constructing a ``Gate`` of its own, so the proof still runs the entry this
+    repository ships, with its real name, cost and ``run``. Registering nothing would make
+    the copy's run vacuously green, so the edit refuses to leave an empty registry.
+    """
+    return (
+        f"\nREGISTRY[:] = [gate for gate in REGISTRY if gate.number == {number}]\n"
+        f"if not REGISTRY:\n"
+        f'    raise SystemExit("no gate numbered {number} to leave registered")\n'
+    )
+
+
 def copied_tree(tmp_path: Path, edit: str = "") -> Path:
     """Copy this repository's harness into ``tmp_path`` and return the copy's root.
 
@@ -196,9 +259,12 @@ def copied_tree(tmp_path: Path, edit: str = "") -> Path:
     tools from, and ``tools/``. A gate run in the copy scans the copy, because
     ``tools.gates.REPO_ROOT`` is derived from the running module's own location.
 
-    ``edit`` is appended to the copy's ``tools/verify.py`` when it is non-empty — the way
-    the failing-gate proof registers its gate, through the runner's one real registration
-    path rather than through a test-only door.
+    ``edit`` is written under ``REGISTRY_EDIT`` at the end of the copy's ``tools/verify.py``
+    — the way a copied-tree proof chooses what the copy registers, through the runner's one
+    real registration path rather than through a test-only door. Any edit already there is
+    **replaced**, not added to: the source being copied is ``REPO_ROOT``, which one level
+    down is itself an edited copy, and two stacked filters would leave a copy at depth 2
+    with no gates at all.
 
     ``__pycache__`` is not copied. It is not source, and a concurrent run writing bytecode
     into this checkout renames a temporary file into place, which ``shutil.copytree`` —
@@ -211,9 +277,11 @@ def copied_tree(tmp_path: Path, edit: str = "") -> Path:
     shutil.copytree(
         REPO_ROOT / "tools", copy / "tools", ignore=shutil.ignore_patterns("__pycache__")
     )
-    if edit:
-        with (copy / "tools" / "verify.py").open("a", encoding="utf-8") as runner:
-            runner.write(edit)
+    runner = copy / "tools" / "verify.py"
+    unedited, _, _ = runner.read_text(encoding="utf-8").partition(REGISTRY_EDIT)
+    runner.write_text(
+        f"{unedited}{REGISTRY_EDIT}\n{edit}" if edit else unedited, encoding="utf-8"
+    )
     return copy
 
 
