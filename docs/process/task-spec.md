@@ -89,6 +89,25 @@ are the integration surface.
 **Acceptance must be falsifiable by a machine.** If you cannot write the command, you do not
 yet know what the task produces, and the spec is not finished.
 
+**A Files list that forbids the file the work requires is a defect, and it has cost two
+sessions.** T-0007 was told to build a gate that spawns `pytest` while `tools/tests/conftest.py`
+— which owns the only recursion-safety mechanism — was withheld; it stopped and reported,
+correctly. T-0008 was told to add rejection proofs that spawn `make verify` while the same file
+was withheld, and the omission was not caught until a full run took eleven minutes and failed.
+
+Two concrete checks before dispatching, both cheap:
+
+- **Does the task add a test that spawns `make verify` or `pytest`?** Then it must list
+  `tools/tests/conftest.py`, because every such test has to be registered in
+  `SPAWNS_A_RE_ENTERING_PROCESS`. An unregistered spawning test is run by the very gate it
+  proves.
+- **Does the task's own acceptance require a file the Files list omits?** Read the Contract and
+  the Acceptance command back against the Files list, line by line. Both failures above were
+  visible that way and neither was noticed.
+
+The general form: the Files list is written from what the change *looks like*, and the omission
+is always a file the change *depends on* rather than one it edits for its own sake.
+
 **Name the invariants concretely.** "Uphold I4" is not actionable. "This module names
 properties; every name must carry its measurement convention, and the jurisdiction guard will
 reject a name containing a code reference" is.
