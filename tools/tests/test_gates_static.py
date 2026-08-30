@@ -23,12 +23,23 @@ one registration path and gains no test-only surface.
 this module again, so a probe path shared between a test here and a test that spawns
 ``make verify`` would be unlinked by the nested run while the outer test still holds it.
 Each test therefore plants at a path no other test uses.
+
+**Why every destination carries a process id.** The same collision happens between two
+independent runs — two agents, a CI matrix, or one ``diff <(make verify) <(make verify)``.
+Fixed destinations made those runs unlink each other's probes mid-test, which surfaced as
+``FileNotFoundError`` inside ``_planted``'s cleanup and as spurious gate failures.
+Deriving every destination from ``os.getpid()`` makes the plant private to the process
+that made it. This is test code and the pid is read here; ``tools/verify.py`` and
+``tools/gates/`` still read no environment and gain no surface.
+``test_concurrent_verify_runs_do_not_collide`` is the proof.
 """
 
 from __future__ import annotations
 
+import os
 import shutil
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -40,13 +51,17 @@ from tools.tests.conftest import NESTED, make_verify, outermost_run_only
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BAD_FIXTURES = Path(__file__).parent / "badfixtures"
 
+_PID = os.getpid()
+"""Read once, at import, so every destination below belongs to exactly this process."""
+
 # Where each bad input is planted. Every destination is a path the gate's tool scans and
-# a name the repository does not otherwise use — one per test, never shared.
-LINT_PROBE = REPO_ROOT / "tools" / "unused_import_probe.py"
-TYPES_PROBE = REPO_ROOT / "tools" / "mismatched_annotation_probe.py"
-TESTS_PROBE = REPO_ROOT / "tools" / "tests" / "test_failing_probe.py"
-VERIFY_LINT_PROBE = REPO_ROOT / "tools" / "unused_import_verify_probe.py"
-VERIFY_TYPES_PROBE = REPO_ROOT / "tools" / "mismatched_annotation_verify_probe.py"
+# a name the repository does not otherwise use — one per test, never shared, and suffixed
+# with the planting process's id so two concurrent runs cannot unlink each other's files.
+LINT_PROBE = REPO_ROOT / "tools" / f"unused_import_probe_{_PID}.py"
+TYPES_PROBE = REPO_ROOT / "tools" / f"mismatched_annotation_probe_{_PID}.py"
+TESTS_PROBE = REPO_ROOT / "tools" / "tests" / f"test_failing_probe_{_PID}.py"
+VERIFY_LINT_PROBE = REPO_ROOT / "tools" / f"unused_import_verify_probe_{_PID}.py"
+VERIFY_TYPES_PROBE = REPO_ROOT / "tools" / f"mismatched_annotation_verify_probe_{_PID}.py"
 
 
 @contextmanager
@@ -125,3 +140,24 @@ def test_make_verify_fails_and_names_gate_14() -> None:
     assert result.returncode != 0, result.stdout + result.stderr
     assert "FAIL  gate 14  tests" in result.stdout
     assert "test_the_probe_fails_on_purpose" in result.stdout
+
+
+@outermost_run_only
+def test_concurrent_verify_runs_do_not_collide() -> None:
+    """Two runs at once must not unlink each other's probes (T-0002b, H4).
+
+    Every destination above is suffixed with the planting process's id, so a probe
+    belongs to exactly one process. With fixed destinations these two runs deleted each
+    other's files mid-test: `FileNotFoundError` out of `_planted`'s cleanup, and every
+    plant-and-scan proof in this module failing for a reason that was not about the gate
+    it was proving.
+
+    Both children carry the nesting marker, so each one's gate 14 skips the tests that
+    spawn in turn and the descent still stops one level down.
+    """
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        runs = [pool.submit(make_verify, REPO_ROOT) for _ in range(2)]
+        results = [run.result() for run in runs]
+
+    for result in results:
+        assert result.returncode == 0, result.stdout + result.stderr

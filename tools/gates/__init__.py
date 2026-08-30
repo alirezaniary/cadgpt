@@ -30,9 +30,15 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 def _summary_line(output: str) -> str:
     """The last non-empty line of a tool's output — the line these tools summarise on.
 
-    ``ruff``, ``mypy`` and ``pytest`` each end on a count. That count is what tells a
-    reader how much was actually checked, so it is the one line worth keeping from a
-    command that succeeded. Empty when the tool printed nothing.
+    It is **not** reliably a count. ``mypy`` ends on ``Success: no issues found in N
+    source files`` and ``pytest`` on ``N passed``, both of which say how much was checked;
+    ``ruff check`` ends on ``All checks passed!``, which is identical over this repository
+    and over an empty directory and says nothing about how much it looked at. What this
+    line is good for is showing that a run differs from another run — a gate 14 that
+    skipped its proofs reports a different line from one that ran them (DEC-0024) — and
+    for ``ruff`` that difference has to come from the gate failing instead.
+
+    Empty when the tool printed nothing, so a silent tool contributes no line.
     """
     for line in reversed(output.splitlines()):
         if line.strip():
