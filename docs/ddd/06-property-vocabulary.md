@@ -173,3 +173,15 @@ authored whole.** The 13 authored convention segments are unchanged.
 which owns the closed set of convention segments — naming a suffix before that set exists is how
 a vocabulary acquires one-off names. S1.1.2 must resolve both explicitly and may not ship them
 bare by omission.
+
+## Amended again by DEC-0031
+
+`TreadLength` → **`TreadLength_AtWalkingLine`**, and `ExitWidth` → **`ExitWidth_Narrowest`**. The
+two names this audit flagged as bare-but-not-exempt are resolved rather than carried into S1.1.2:
+IFC ships `TreadLength`, `TreadLengthAtOffset` and `TreadLengthAtInnerSide` for one element, which
+is the ecosystem stating that where the going is measured changes the number, and `ExitWidth` is
+the same measurement kind as `ClearWidth_Narrowest` two rows above it.
+
+The convention-free set is therefore final at **12 names** — counts, ratios, and the
+single-reading dimensions justified individually above. Every other §5.3 name carries a
+convention segment, so S1.1.2's construction rule has no exception it cannot express.

@@ -101,12 +101,13 @@ A file that labels a stair as a fire stair records the designer's claim, not a d
 Pset_ACC_Site      CoveredArea_FootprintGross, FloorAreaRatio,
                    Setback_North/South/East/West
 Pset_ACC_Stair     ClearWidth_Narrowest, ClearWidth_BetweenHandrails,
-                   Headroom_Minimum, RiserHeight, TreadLength, NumberOfRiser
+                   Headroom_Minimum, RiserHeight, TreadLength_AtWalkingLine,
+                   NumberOfRiser
 Pset_ACC_Space     NetFloorArea_InsideFace, NetFloorArea_Centreline,
                    ClearHeight_Structural, ClearWidth_Narrowest
 Pset_ACC_Shaft     PlanArea_Net, MinPlanDimension, ServedHeight, ProportionRatio
 Pset_ACC_Parking   StallLength, StallWidth, ManeuveringClearance, StallCount
-Pset_ACC_Route     TravelDistance, ExitWidth, DeadEndLength
+Pset_ACC_Route     TravelDistance, ExitWidth_Narrowest, DeadEndLength
 ```
 
 Without this, an engine running a second jurisdiction is silently wrong rather than obviously wrong: not a crash, but a plausible number compared against the wrong limit — precisely the defect the product exists to eliminate, appearing inside the product. It also makes findings defensible. "84.2 m² measured inside-face against 80 m² required" is arguable with a reviewer; "84.2 m²" is not. The cost is small now and unpayable later, because retrofitting conventions means revisiting every rule, every stored quantity and every historical run to work out what was actually measured.

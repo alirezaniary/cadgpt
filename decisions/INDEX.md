@@ -56,6 +56,7 @@ Reopens if → Consequences accepted.
 | [0028](DEC-0028-import-contract-drift.md) | The layers contract names `packs` and `observation`; the dangling generator entry returns with the module | Lead | DECIDED |
 | [0029](DEC-0029-gate-15-classification.md) | Pre-existing tests are marked `integration` by what they do; the 40–60% band is not touched | Lead | DECIDED |
 | [0030](DEC-0030-vocabulary-respellings.md) | `RiserCount`→`NumberOfRiser`, `MinClearWidth_Narrowest`→`ClearWidth_Narrowest`; `TreadLength`/`ExitWidth` to S1.1.2 | Lead | DECIDED |
+| [0031](DEC-0031-tread-length-and-exit-width-conventions.md) | `TreadLength_AtWalkingLine` and `ExitWidth_Narrowest`; IFC's own distinction inherited | Lead | DECIDED |
 
 ## Direction
 
