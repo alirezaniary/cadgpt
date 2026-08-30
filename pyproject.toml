@@ -1,0 +1,74 @@
+# One repository, several distributions with disjoint dependency sets (DEC-0004).
+#
+# Each distribution in docs/architecture/module-map.md is a dependency group here, so an
+# environment can be resolved for one distribution alone. That is what makes I1 a fact
+# rather than a policy: the engine environment does not contain an inference client, so
+# the import is unresolvable and not merely forbidden.
+#
+# Adding a dependency is a decision record, never a task-level choice
+# (docs/architecture/stack.md).
+
+[project]
+name = "cadgpt"
+version = "0.0.0"
+description = "Jurisdiction-agnostic building-code checking over IFC models."
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv]
+# The repository root is not itself an installable package; the distributions below are
+# resolved as dependency groups. No src/ layout exists yet — a directory is created by
+# the task that first needs it (CLAUDE.md section 6).
+package = false
+
+[dependency-groups]
+# Tooling the harness itself needs. Gates bring their own tooling as they are registered.
+dev = ["pytest>=8.0"]
+
+# cadgpt-engine — src/engine. No inference SDK and no HTTP client, ever (I1, I2).
+# This absence is asserted by the isolation-proof gate (harness.md gate 4).
+engine = [
+    "ifcopenshell",
+    "ifcpatch",
+    "ifctester",
+    "topologicpy",
+    "shapely",
+    "pydantic>=2",
+]
+
+# cadgpt-presentation — src/presentation.
+presentation = [
+    { include-group = "engine" },
+    "weasyprint",
+    "arabic-reshaper",
+    "python-bidi",
+]
+
+# cadgpt-codification — src/codification. The only distribution permitted an inference
+# client; both inference planes sit behind one OpenAI-compatible port (DEC-0009).
+codification = [
+    { include-group = "engine" },
+    "openai",
+]
+
+# cadgpt-assistance — src/assistance. Strictly downstream; consumes, never produces.
+assistance = [
+    { include-group = "engine" },
+    { include-group = "presentation" },
+    "openai",
+    "mcp",
+]
+
+# cadgpt-connector — src/connector. The one distribution that ships to user machines.
+connector = ["mcp"]
+
+# cadgpt-api — src/api. Imports everything, is imported by nothing.
+api = [
+    { include-group = "assistance" },
+    { include-group = "codification" },
+    { include-group = "connector" },
+]
+
+[tool.pytest.ini_options]
+# Tests live beside the module they prove, so the repository root must be importable.
+pythonpath = ["."]
