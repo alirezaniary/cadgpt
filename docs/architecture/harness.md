@@ -42,7 +42,7 @@ Ordered cheapest-first so a broken change fails in seconds rather than minutes.
 | 13 | **Derivation promotion** | `tools/` | A derivation is in the shared set below 3 rules across 2 clauses | C1.3 |
 | 14 | Tests | `pytest` | Any test fails | P0 |
 | 15 | **Test balance** | `tools/` | A module's unit/integration split is outside 40–60% | P0 |
-| 16 | **Determinism** | `pytest` ×2, seeds varied | Two runs disagree | P0 |
+| 16 | **Determinism** | `pytest` ×2, seeds varied | Two runs disagree. Runs the suite **minus the eight `spawns_harness` tests**, and reports the deselected count (DEC-0027) | P0 |
 
 Gates 3–13 and 15–16 are the ones that make this repository different from a normal one.
 Each exists because a specific silent failure is possible without it, and each is named in
