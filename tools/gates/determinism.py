@@ -47,11 +47,13 @@ _DESELECTED_RE = re.compile(r"(\d+) deselected")
 @dataclass(frozen=True)
 class RunResult:
     """One pytest run's outcome: which tests passed, which failed, and how many were
-    deselected by the `spawns_harness` filter."""
+    deselected by the `spawns_harness` filter — `None` when the summary line that count
+    comes from did not match (M1, `REVIEW-harness-p0.md`), which is a different claim from
+    `0`: it means this run cannot say what it skipped, not that it skipped nothing."""
 
     passed: frozenset[str]
     failed: frozenset[str]
-    deselected: int
+    deselected: int | None
 
 
 def verdict(first: RunResult, second: RunResult, seeds: tuple[str, str]) -> GateResult:
@@ -73,7 +75,22 @@ def verdict(first: RunResult, second: RunResult, seeds: tuple[str, str]) -> Gate
                 f"disagreed between seeds {seeds[0]}/{seeds[1]}: " + ", ".join(disagreed)
             ),
         )
+
     total = len(first.passed) + len(first.failed)
+    if first.deselected is None or second.deselected is None:
+        # A run whose summary line did not match cannot say what it skipped, which is the
+        # strongest claim the gate can make ("nothing") rendered as the weakest ("unknown
+        # coverage"). M1: this must not read as "0 deselected" — that would be the honest
+        # report of the wrong thing.
+        return GateResult(
+            ok=False,
+            detail=(
+                f"{total} tests, 2 runs, seeds {seeds[0]}/{seeds[1]}, agreed; deselected "
+                f"unknown ({DESELECT_MARKER}) — the pytest summary line did not match, so "
+                f"this run cannot say what it skipped and has not established determinism "
+                f"over a known set"
+            ),
+        )
     return GateResult(
         ok=True,
         detail=(
@@ -99,9 +116,16 @@ def _outcomes(report: Path) -> tuple[frozenset[str], frozenset[str]]:
     return frozenset(passed), frozenset(failed)
 
 
-def _deselected_count(stdout: str) -> int:
+def _deselected_count(stdout: str) -> int | None:
+    """The deselected count from a pytest summary line, or `None` if it did not match.
+
+    `None` is not `0`: a match failure means this run cannot say what it skipped, not
+    that it skipped nothing (M1, `REVIEW-harness-p0.md`) — `pytest` changing its summary
+    wording is enough to trigger the miss, and rendering that as "0 deselected" would be
+    the strongest claim the gate can make about exactly the case where it knows the least.
+    """
     match = _DESELECTED_RE.search(stdout)
-    return int(match.group(1)) if match else 0
+    return int(match.group(1)) if match else None
 
 
 def execute(

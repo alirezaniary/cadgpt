@@ -46,6 +46,7 @@ import ast
 import io
 import re
 import tokenize
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -297,21 +298,78 @@ def _python_files_under(root: Path) -> list[Path]:
     )
 
 
-def run() -> GateResult:
-    """Gate 6. Scan every file under ``src/`` and ``tools/`` for the four placeholder
-    patterns, or an empty, passing result if none is found."""
+def _relative(path: Path) -> Path:
+    """``path`` relative to ``REPO_ROOT`` when it sits under it, or ``path`` unchanged.
+
+    A finding's own file always sits under ``REPO_ROOT`` in a real run; a proof of
+    ``verdict`` over roots it constructed itself does not, and must not raise trying to
+    print one.
+    """
+    try:
+        return path.relative_to(REPO_ROOT)
+    except ValueError:
+        return path
+
+
+def _scan(roots: Sequence[Path]) -> list[tuple[Path, list[Path]]]:
+    """Every ``root`` that exists, paired with the ``*.py`` files found under **that**
+    root alone — never aggregated across roots, so one healthy root cannot mask another
+    that exists and found nothing (a live ``tools/`` must not hide a dead ``src/``). A root
+    that does not exist contributes no pair at all: it is nothing to scan, never a root
+    that scanned zero subjects.
+    """
+    return [(root, _python_files_under(root)) for root in roots if root.exists()]
+
+
+def verdict(roots: Sequence[Path]) -> GateResult:
+    """Gate 6's whole rule, over explicit scan roots — a constructed pair of directories
+    proves the empty-scan and missing-root cases directly, independent of ``REPO_ROOT``.
+
+    Checked **per root**, not in aggregate: a root that **exists** but holds no ``*.py``
+    file fails closed on its own, naming only itself, even while a sibling root is full of
+    files — a scan that ran and found nothing is byte-identical to one that never ran,
+    unless it says so, and one healthy root must not launder a dead one (C1,
+    ``REVIEW-harness-p0.md``). A root that does not exist — ``src/`` at P0 — is not that
+    case and stays a clean pass.
+    """
     from tools.verify import GateResult
 
+    scanned = _scan(roots)
+    dead = [root for root, files in scanned if not files]
+    if dead:
+        names = ", ".join(f"{root.name}/" for root in dead)
+        return GateResult(
+            ok=False,
+            detail=(
+                f"0 files scanned under {names} — a scan root that exists but yields no "
+                f"files is a failed scan, not a clean pass"
+            ),
+        )
+
+    files = [path for _, root_files in scanned for path in root_files]
     findings: list[Finding] = []
-    for root_name in SCAN_ROOTS:
-        for path in _python_files_under(REPO_ROOT / root_name):
-            findings.extend(findings_in(path.read_text(encoding="utf-8"), path))
+    for path in files:
+        findings.extend(findings_in(path.read_text(encoding="utf-8"), path))
 
     if findings:
         detail = "\n".join(
-            f"{finding.path.relative_to(REPO_ROOT)}:{finding.line}: {finding.pattern} "
+            f"{_relative(finding.path)}:{finding.line}: {finding.pattern} "
             f"({finding.identifier})"
             for finding in findings
         )
         return GateResult(ok=False, detail=detail)
-    return GateResult(ok=True, detail="")
+
+    if not scanned:
+        names = ", ".join(f"{root.name}/" for root in roots)
+        return GateResult(
+            ok=True, detail=f"no scan root exists under {names} — nothing to scan"
+        )
+
+    names = ", ".join(f"{root.name}/" for root, _ in scanned)
+    return GateResult(ok=True, detail=f"{len(files)} files scanned under {names}")
+
+
+def run() -> GateResult:
+    """Gate 6. Scan every file under ``src/`` and ``tools/`` for the four placeholder
+    patterns, or a passing result naming how many files it scanned."""
+    return verdict([REPO_ROOT / root_name for root_name in SCAN_ROOTS])

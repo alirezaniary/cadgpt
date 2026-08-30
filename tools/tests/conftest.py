@@ -164,6 +164,7 @@ the only thing left that distinguishes their child from the run a person started
 
 _STATIC = "tools/tests/test_gates_static.py"
 _VERIFY = "tools/tests/test_verify.py"
+_DISCIPLINE = "tools/tests/test_gate_test_discipline.py"
 
 SPAWNS_A_RE_ENTERING_PROCESS = frozenset(
     {
@@ -175,14 +176,24 @@ SPAWNS_A_RE_ENTERING_PROCESS = frozenset(
         f"{_VERIFY}::test_nothing_is_skipped_without_the_nesting_marker",
         f"{_VERIFY}::test_only_the_spawning_tests_skip_one_level_down",
         f"{_VERIFY}::test_a_full_run_is_visibly_different_from_a_nested_one",
+        f"{_DISCIPLINE}::test_a_skewed_module_fails_gate_15_through_make_verify",
+        f"{_DISCIPLINE}::test_a_hash_seed_dependent_test_fails_gate_16_through_make_verify",
     }
 )
 """Exactly the tests skipped one level down, pinned by node id.
 
 Every one of them spawns ``make verify`` or ``pytest``, either of which runs this suite
-again, so each must be skipped in a child and no other test may be. The first six carry
-``outermost_run_only`` and the last two ``depth_zero_only``; one level down both conditions
-are true, so this is one set rather than two. Written out rather than derived from the
+again, so each must be skipped in a child and no other test may be. All but two carry
+``outermost_run_only``; ``test_nothing_is_skipped_without_the_nesting_marker`` and
+``test_a_full_run_is_visibly_different_from_a_nested_one`` carry ``depth_zero_only``
+instead. One level down both conditions are true, so this is one set rather than two.
+
+The two ``_DISCIPLINE`` entries are gate 15's and gate 16's rejection proofs (H1,
+``REVIEW-harness-p0.md``). Gate 16's is the one that makes membership load-bearing rather
+than tidy: the registered gate 16 *runs this suite*, so a rejection proof of it that were
+not deselected would be run by the gate it is proving, spawning a ``make verify`` from
+inside gate 16's own pytest run — which is what it did before it was listed here, taking a
+full run from 4 to 11 minutes. Written out rather than derived from the
 decorators: a set derived from the thing it is checking agrees with it by construction and
 proves nothing. ``test_only_the_spawning_tests_skip_one_level_down`` compares this literal
 against the node ids a marked run really skipped.

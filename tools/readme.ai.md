@@ -21,12 +21,17 @@ same string over this repository and over an empty directory and says nothing ab
 much was looked at; gate 1's coverage is not visible this way and is not claimed to be.
 Gate 4's line is the gate's own and carries both a count and an attribution — how many
 packages the `engine` group resolved to, that the inference SDKs raise `ImportError`
-there, and which HTTP-capable package arrives through which engine dependency. Gates 5, 6
-and 7 print nothing on a pass — there is no partial-coverage question for a full-tree
-`ast`/filesystem scan the way there is for a summarised external tool, so an empty detail
-is the honest report (`run_gates`, `tools/verify.py`). Gate 15's line is a per-module table,
-printed on pass and fail alike; gate 16's names the test count, both seeds and how many
-tests were deselected.
+there, and which HTTP-capable package arrives through which engine dependency. Gates 5 and
+6 name how many files they scanned and under which roots (`"<n> files scanned under
+tools/"`, `src/` named too once it exists); gate 7 names how many module directories it
+checked. There **is** a partial-coverage question for a full-tree `ast`/filesystem scan —
+`REVIEW-harness-p0.md` C1 found it by making gate 15's walk return nothing and watching
+`make verify` stay green with an unchanged `GateResult(ok=True, detail='')` — so each of
+gates 5, 6 and 7 fails closed instead: a scan root that **exists** but yields zero subjects
+is `ok=False`, not a silent pass; a scan root that does not exist (`src/` at P0) is nothing
+to scan and stays a clean pass. Gate 15's line is a per-module table, printed on pass and
+fail alike; gate 16's names the test count, both seeds and how many tests were deselected,
+`unknown` rather than a count when the summary line it comes from did not match (M1).
 
 Gates 1, 2 and 14 re-implement no check. Each wraps an inherited tool (`CLAUDE.md` §6) and
 returns the tool's own output unedited: the agent reading a failing `make verify` needs the

@@ -28,8 +28,14 @@ from pathlib import Path
 import pytest
 
 from tools.gates import determinism, test_balance
+from tools.gates.determinism import RunResult
 from tools.gates.test_balance import ModuleCounts
-from tools.tests.conftest import copied_tree
+from tools.tests.conftest import (
+    copied_tree,
+    make_verify,
+    only_gate,
+    outermost_run_only,
+)
 
 # --- unit: gate 15 -----------------------------------------------------------------
 
@@ -75,6 +81,33 @@ def test_the_per_module_table_is_produced_even_on_success() -> None:
     assert result.detail != ""
     assert "tools:" in result.detail
     assert "tools/gates:" in result.detail
+
+
+# --- unit: gate 16's M1 fix (REVIEW-harness-p0.md) ----------------------------------
+
+
+def test_an_unmatched_summary_line_is_deselected_count_none() -> None:
+    """A parse failure is not the same claim as `0 deselected` — it means this run cannot
+    say what it skipped, not that it skipped nothing."""
+    assert determinism._deselected_count("65 passed in 3s") is None
+
+
+def test_a_matched_summary_line_still_parses() -> None:
+    assert determinism._deselected_count("57 passed, 8 deselected in 9s") == 8
+
+
+def test_an_unknown_deselected_count_fails_and_says_unknown() -> None:
+    """`verdict` must not render an unparsed count as `0 deselected` — the strongest claim
+    the gate can make ("nothing was skipped") for exactly the case where it knows the
+    least. It renders `unknown` and fails instead (M1)."""
+    first = RunResult(passed=frozenset({"a"}), failed=frozenset(), deselected=None)
+    second = RunResult(passed=frozenset({"a"}), failed=frozenset(), deselected=3)
+
+    result = determinism.verdict(first, second, seeds=("1", "2"))
+
+    assert result.ok is False
+    assert "unknown" in result.detail
+    assert "0 deselected" not in result.detail
 
 
 # --- integration: gate 16 -----------------------------------------------------------
@@ -166,3 +199,61 @@ def test_a_fresh_copy_of_the_harness_lists_nine_gates(tmp_path: Path) -> None:
     assert "9 gates registered" in completed.stdout
     assert "gate 15  cost 1  test-balance" in completed.stdout
     assert "gate 16  cost 2  determinism" in completed.stdout
+
+
+# --- integration: H1 — gates 15 and 16 reject through the shipped registration path --
+
+
+@pytest.mark.integration
+@outermost_run_only
+def test_a_skewed_module_fails_gate_15_through_make_verify(tmp_path: Path) -> None:
+    """H1 (`REVIEW-harness-p0.md`): gate 15's rule was proven only by calling `verdict`
+    directly with constructed `ModuleCounts`. This plants a real, skewed module — five
+    unit tests, no integration tests, enough to be enforced — where the gate really
+    collects from, and proves the real `test_balance.run()` reaches it through `REGISTRY`
+    and fails a real `make verify`.
+    """
+    copy = copied_tree(tmp_path, only_gate(15))
+    module = copy / "src" / "skewed"
+    module.mkdir(parents=True)
+    (module / "__init__.py").write_text("", encoding="utf-8")
+    tests_dir = module / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "test_skewed.py").write_text(
+        "\n\n\n".join(f"def test_unit_{i}() -> None:\n    assert True" for i in range(5))
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = make_verify(copy)
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "FAIL  gate 15  test-balance" in result.stdout
+    assert "src/skewed" in result.stdout
+    assert "OUTSIDE 40-60% band" in result.stdout
+
+
+@pytest.mark.integration
+@outermost_run_only
+def test_a_hash_seed_dependent_test_fails_gate_16_through_make_verify(
+    tmp_path: Path,
+) -> None:
+    """H1 (`REVIEW-harness-p0.md`): gate 16's rule was proven only by calling
+    `execute`/`verdict` directly against a small fixture pointed at by `cwd`. This plants a
+    real, hash-seed-dependent test inside the copy's own `tools/tests/` — where the
+    registered gate, whose `cwd` defaults to its own tree, really collects from — and
+    proves the real `determinism.run()` reaches it through `REGISTRY` and fails a real
+    `make verify`.
+    """
+    copy = copied_tree(tmp_path, only_gate(16))
+    (copy / "tools" / "tests" / "test_hashy_probe.py").write_text(
+        "import os\n\n\ndef test_seed_dependent() -> None:\n"
+        '    assert os.environ.get("PYTHONHASHSEED") == "1"\n',
+        encoding="utf-8",
+    )
+
+    result = make_verify(copy)
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "FAIL  gate 16  determinism" in result.stdout
+    assert "test_seed_dependent" in result.stdout

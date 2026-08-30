@@ -119,9 +119,20 @@ appear in an **identifier** under `src/` or `tools/`; `packs/` is data and is ne
   single constructed snippet.
 - `Finding(path: Path, line: int, identifier: str, token: str)` — frozen dataclass. One
   offending identifier, where it was found and which token it names.
-- `run() -> GateResult` — walks every `*.py` file under `src/` and `tools/` (a missing
-  `src/` is nothing to scan, not a failure — it does not exist yet at P0) and reports every
-  finding as `path:line: identifier ... names jurisdiction token ...`.
+- `verdict(roots: Sequence[Path]) -> GateResult` — the whole of the gate's rule, over
+  explicit scan roots, so the coverage rule below is provable from two constructed
+  directories with no dependence on `REPO_ROOT`. A root that does not exist (`src/` at P0)
+  contributes nothing and is not named in the report. Checked **per root, never
+  aggregated**: a root that **exists** but yields no `*.py` file fails closed on its own —
+  `ok=False`, `"0 files scanned under <that root>"` — even while a sibling root is full of
+  files, because that scan ran and found nothing, which is byte-identical to a scan that
+  never ran unless it says so, and one healthy root must not launder a dead one (C1,
+  `REVIEW-harness-p0.md`; the first cut of this fix summed file counts across roots before
+  comparing to zero, so a live `tools/` silently hid a dead `src/` — exactly the tree the
+  moment `src/` is first created). Otherwise `detail` on `PASS` is `"<n> files scanned
+  under <roots>"` (DEC-0024), `"no scan root exists under <roots> — nothing to scan"` if
+  none of them exist, and on `FAIL` is every finding.
+- `run() -> GateResult` — `verdict([REPO_ROOT / name for name in SCAN_ROOTS])`.
 
 The public surface of `tools.gates.placeholder` — gate 6, the placeholder scan
 (`docs/process/definition-of-done.md` condition 4). Four patterns, under `src/` and
@@ -138,8 +149,16 @@ first statement (after an optional docstring) of its function body.
   raise shapes, `tokenize` for comments) rather than a regex over the whole file — a regex
   cannot tell a stub `pass` from one legitimately doing nothing inside an `except` clause.
 - `Finding(path: Path, line: int, identifier: str, pattern: str)` — frozen dataclass.
-- `run() -> GateResult` — walks every `*.py` file under `src/` and `tools/` and reports
-  every finding as `path:line: pattern (identifier)`.
+- `verdict(roots: Sequence[Path]) -> GateResult` — the whole of the gate's rule, over
+  explicit scan roots, so the coverage rule below is provable from two constructed
+  directories with no dependence on `REPO_ROOT`. A root that does not exist (`src/` at P0)
+  contributes nothing and is not named in the report. Checked **per root, never
+  aggregated** — the same rule as gate 5's, for the same reason (C1, one healthy root must
+  not launder a dead one): a root that **exists** but yields no `*.py` file fails closed on
+  its own — `ok=False`, `"0 files scanned under <that root>"`. Otherwise `detail` on `PASS`
+  is `"<n> files scanned under <roots>"` (DEC-0024), `"no scan root exists under <roots> —
+  nothing to scan"` if none of them exist, and on `FAIL` is every finding.
+- `run() -> GateResult` — `verdict([REPO_ROOT / name for name in SCAN_ROOTS])`.
 
 The public surface of `tools.gates.module_contract` — gate 7, the module contract checker
 (DEC-0011, `docs/process/readme-ai-convention.md`). Checks presence and conformance of
@@ -157,11 +176,20 @@ The public surface of `tools.gates.module_contract` — gate 7, the module contr
   all. A missing `root` is an empty list, not an error.
 - `EXCLUDE_DIR_NAMES: frozenset[str]` — `{"__pycache__", "tests"}`. A module's test tree is
   part of that module's contract, not a module with a contract of its own.
-- `run() -> GateResult` — checks every module directory under `src/` and `tools/`
-  (DEC-0026). Finding a package is **not** a reason to stop descending: a package nested
-  inside another is its own module and owes its own contract, which is what makes this gate
-  reach `src/engine/ingest`, `src/engine/derivation` and the five other contexts
-  `docs/architecture/module-map.md` names rather than stopping at `src/engine/`. `src/` does
+- `verdict(roots: Sequence[Path]) -> GateResult` — the whole of the gate's rule, over
+  explicit scan roots, so the coverage rule below is provable from two constructed
+  directories with no dependence on `REPO_ROOT`. Finding a package is **not** a reason to
+  stop descending: a package nested inside another is its own module and owes its own
+  contract, which is what makes this gate reach `src/engine/ingest`, `src/engine/derivation`
+  and the five other contexts `docs/architecture/module-map.md` names rather than stopping
+  at `src/engine/`. A root that does not exist (`src/` at P0) contributes nothing and is not
+  named in the report. Checked **per root, never aggregated** — the same rule as gates 5
+  and 6's, for the same reason (C1): a root that **exists** but yields no module directory
+  fails closed on its own — `ok=False`, `"0 module directories found under <that root>"`.
+  Otherwise `detail` on `PASS` is `"<n> module directories checked"` (DEC-0024), `"no scan
+  root exists under <roots> — nothing to scan"` if none of them exist, and on `FAIL` is
+  every conformance problem.
+- `run() -> GateResult` — `verdict([REPO_ROOT / name for name in SCAN_ROOTS])`. `src/` does
   not exist yet at P0, so the gate is proven by its fixtures rather than by its scan target
   (DEC-0016); what it finds in the real tree today is `tools/readme.ai.md` and this file.
 
@@ -198,11 +226,16 @@ this module does not import that frozenset, because a gate must not depend on th
 it checks.
 
 - `DESELECT_MARKER: str` — `"spawns_harness"`.
-- `RunResult(passed: frozenset[str], failed: frozenset[str], deselected: int)` — frozen
-  dataclass. One pytest run's outcome.
+- `RunResult(passed: frozenset[str], failed: frozenset[str], deselected: int | None)` —
+  frozen dataclass. One pytest run's outcome. `deselected` is `None`, never `0`, when the
+  summary line it comes from did not match (M1, `REVIEW-harness-p0.md`) — a parse failure
+  is not the same claim as "nothing was skipped".
 - `verdict(first: RunResult, second: RunResult, seeds: tuple[str, str]) -> GateResult` — the
   whole of the rule, over two already-computed runs. Pure, for the same reason
-  `test_balance.verdict` is. `detail` names every disagreeing test on FAIL, and reports the
+  `test_balance.verdict` is. `detail` names every disagreeing test on FAIL. If either run's
+  `deselected` is `None`, `verdict` fails and names the count `unknown` rather than
+  guessing `0` — a gate that cannot say what it skipped has not established determinism
+  over a known set. Otherwise it reports the
   test count, both seeds and the deselected count on PASS too (DEC-0024, DEC-0027 §4).
 - `execute(*, hash_seed: str, random_seed: int, report: Path, cwd: Path = REPO_ROOT) ->
   RunResult` — one real, unmocked `pytest` subprocess with `spawns_harness` deselected,
@@ -227,7 +260,7 @@ Two product invariants are *guarded* here, which is not the same as owned:
   `tools/` names a country, code body or clause reference. `packs/` is data and is never
   scanned, because a jurisdiction's rules are exactly where a jurisdiction's name belongs.
 
-Two invariants of the gate mechanism itself are enforced here and are not re-checked by
+Three invariants of the gate mechanism itself are enforced here and are not re-checked by
 `tools.verify`:
 
 - **A gate reports its tool verbatim.** `run_tools` — the failure detail is the tool's own
@@ -237,14 +270,28 @@ Two invariants of the gate mechanism itself are enforced here and are not re-che
 - **An isolation proof that could not run fails.** `isolation.run` — never a skip. A proof
   that did not execute has proved nothing, and `ok=False` is the only honest report of it.
   This is the single place gate 4's fail-closed behaviour lives.
+- **A scan that ran and found nothing fails closed, unless there was nothing to scan —
+  checked per root, never in aggregate.** `jurisdiction.verdict`, `placeholder.verdict`,
+  `module_contract.verdict` (gates 5, 6, 7) — a scan root that **exists** but yields zero
+  subjects is `ok=False`, on its own, even while a sibling root is full of subjects; a scan
+  root that does not exist (`src/` at P0) is not that case and stays a clean pass. Per root
+  matters: summing subjects across roots before comparing to zero lets one healthy root
+  launder a dead one, which is exactly the tree the moment `src/` is first created (C1.1) —
+  caught only once each gate checked its roots independently rather than in aggregate.
+  `REVIEW-harness-p0.md` C1 found the underlying gap by making gate 15's walk find nothing
+  and watching the suite stay green over an unchanged `GateResult(ok=True, detail='')`; the
+  fix is this rule, plus a non-empty coverage detail on every pass (DEC-0024).
+  `determinism.verdict` (gate 16) carries the same
+  principle for a different unknown: a deselected count it could not parse renders `unknown`
+  and fails rather than reading as `0` (M1).
 
 ## Depends on
 - `tools.verify` — for `GateResult` only, and **imported inside each function, never at module
   level**. `tools.verify` imports this package to build `REGISTRY`, so a module-level import
   here is a cycle. `TYPE_CHECKING` blocks carry the annotation.
 - `subprocess`, `pathlib`, `ast`, `tokenize`, `re`, `json`, `tempfile`, `os`,
-  `xml.etree.ElementTree` — the standard library does all of the scanning. No third-party
-  dependency is added for a gate.
+  `collections.abc`, `xml.etree.ElementTree` — the standard library does all of the
+  scanning. No third-party dependency is added for a gate.
 - `uv`, on `PATH` — every inherited tool is invoked as `uv run --group dev <tool>` so it
   resolves from the `dev` group in `pyproject.toml`. Gate 4 additionally drives `uv export`,
   `uv venv`, `uv pip install` and `uv tree`.
@@ -279,11 +326,11 @@ directory, per `docs/architecture/module-map.md`. Gate 7 does not treat it as a 
 | --- | --- |
 | `test_gates_static.py` | Gates 1, 2 and 14 reject: a lint error, a type error and a failing test each fail `make verify` in a copied tree. |
 | `test_gate_isolation.py` | Gate 4's rule (`verdict`) over a constructed `ResolvedEngineEnvironment`, and a real `resolve()` against this repository's `engine` group. |
-| `test_gate_jurisdiction.py` | Gate 5's matching rule over constructed snippets, and a planted jurisdiction-named identifier failing the real gate. |
-| `test_gate_placeholder.py` | Gate 6's four patterns, and each one planted in a copied tree. |
-| `test_gate_module_contract.py` | Gate 7's four conformance rules, the walk itself, and a bad package planted **beneath** a conforming one. |
+| `test_gate_jurisdiction.py` | Gate 5's matching rule over constructed snippets, and a planted jurisdiction-named identifier failing the real gate. `verdict` over constructed roots: an existing root with no `*.py` file fails closed and is named, a missing root stays a clean pass and is never named (C1, `REVIEW-harness-p0.md`). |
+| `test_gate_placeholder.py` | Gate 6's four patterns, and each one planted in a copied tree. `verdict` over constructed roots: the same existing-but-empty-fails, missing-stays-clean coverage rule as gate 5's (C1). |
+| `test_gate_module_contract.py` | Gate 7's four conformance rules, the walk itself, and a bad package planted **beneath** a conforming one. `verdict` over constructed roots: an existing root with no module directory fails closed and is named, a missing root stays a clean pass (C1). |
 | `test_verify.py` | The runner, not the gates — registration, cost order, a raising gate, the nesting guards. |
-| `test_gate_test_discipline.py` | Gate 15's `verdict` over constructed `ModuleCounts` (a skewed module fails, a balanced one passes, a too-small one is reported not failed, the table survives a pass); gate 16's `execute`/`verdict` over small real fixture directories (a `PYTHONHASHSEED`-dependent test disagrees and is named, a stable fixture with a `spawns_harness`-marked test passes and reports what it deselected); a fresh, unedited `conftest.copied_tree` lists nine registered gates. |
+| `test_gate_test_discipline.py` | Gate 15's `verdict` over constructed `ModuleCounts` (a skewed module fails, a balanced one passes, a too-small one is reported not failed, the table survives a pass), and — reaching it through the real registration path instead (H1, `REVIEW-harness-p0.md`) — a skewed module planted in a copy of the harness fails a real `make verify` through `test_balance.run()`; gate 16's `execute`/`verdict` over small real fixture directories (a `PYTHONHASHSEED`-dependent test disagrees and is named, a stable fixture with a `spawns_harness`-marked test passes and reports what it deselected, an unmatched deselected-count summary line renders `unknown` and fails rather than reading as `0` — M1), and — reaching it through the real registration path (H1) — a hash-seed-dependent test planted in a copy's own `tools/tests/` fails a real `make verify` through `determinism.run()`; a fresh, unedited `conftest.copied_tree` lists nine registered gates. |
 
 **Mocking: none.** Every gate is proven against real files, a real `Makefile` and real
 `ruff`/`mypy`/`pytest`. Gate 4 builds a real virtualenv. The only isolation is

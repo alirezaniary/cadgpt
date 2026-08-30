@@ -131,3 +131,60 @@ def test_a_missing_src_is_a_clean_pass(tmp_path: Path) -> None:
     result = gate_result_in(copy, "jurisdiction")
 
     assert result.ok is True, result.detail
+
+
+# --- unit: coverage (C1, REVIEW-harness-p0.md) --------------------------------------
+
+
+def test_an_existing_root_with_no_python_files_fails_closed(tmp_path: Path) -> None:
+    """A scan root that exists but yields zero subjects is not a clean pass — it is
+    indistinguishable from a scan that never ran unless it says so."""
+    empty_root = tmp_path / "tools"
+    empty_root.mkdir()
+
+    result = jurisdiction.verdict([empty_root])
+
+    assert result.ok is False
+    assert "0 files scanned under tools/" in result.detail
+
+
+def test_a_missing_root_stays_a_clean_pass_and_is_not_named(tmp_path: Path) -> None:
+    """The other half of the same rule: a root that does not exist is nothing to scan,
+    never zero subjects found — ``src/`` must stay green while it does not exist."""
+    missing_root = tmp_path / "src"
+    present_root = tmp_path / "tools"
+    present_root.mkdir()
+    (present_root / "ok.py").write_text("x = 1\n", encoding="utf-8")
+
+    result = jurisdiction.verdict([missing_root, present_root])
+
+    assert result.ok is True, result.detail
+    assert "1 files scanned under tools/" in result.detail
+    assert "src/" not in result.detail
+
+
+def test_a_dead_root_beside_a_live_one_still_fails_closed(tmp_path: Path) -> None:
+    """A healthy root must not launder a dead one: ``src/`` existing but empty beside a
+    ``tools/`` full of files is exactly the tree the moment ``src/`` is first created
+    (C1.1), and this is the case C1 was raised about — the per-root check, not an
+    aggregate across all roots, is what catches it."""
+    dead_root = tmp_path / "src"
+    dead_root.mkdir()
+    live_root = tmp_path / "tools"
+    live_root.mkdir()
+    (live_root / "ok.py").write_text("x = 1\n", encoding="utf-8")
+
+    result = jurisdiction.verdict([dead_root, live_root])
+
+    assert result.ok is False
+    assert "0 files scanned under src/" in result.detail
+    assert "tools/" not in result.detail
+
+
+def test_no_root_existing_at_all_says_so(tmp_path: Path) -> None:
+    """With nothing to scan at all, the detail must say what happened rather than trail
+    off after "under" — a coverage line that stops mid-sentence is not a coverage line."""
+    result = jurisdiction.verdict([tmp_path / "src", tmp_path / "tools"])
+
+    assert result.ok is True, result.detail
+    assert result.detail == "no scan root exists under src/, tools/ — nothing to scan"

@@ -30,6 +30,7 @@ target (DEC-0016) — what it finds in the real tree today is ``tools/readme.ai.
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -135,16 +136,58 @@ def module_directories(root: Path) -> list[Path]:
     return found
 
 
-def run() -> GateResult:
-    """Gate 7. Check every module directory under ``src/`` and ``tools/``, or an empty,
-    passing result if none has a problem."""
+def _scan(roots: Sequence[Path]) -> list[tuple[Path, list[Path]]]:
+    """Every ``root`` that exists, paired with the module directories found under **that**
+    root alone — never aggregated across roots, so one healthy root cannot mask another
+    that exists and found nothing (a live ``tools/`` must not hide a dead ``src/``). A root
+    that does not exist contributes no pair at all: it is nothing to scan, never a root
+    that scanned zero subjects.
+    """
+    return [(root, module_directories(root)) for root in roots if root.exists()]
+
+
+def verdict(roots: Sequence[Path]) -> GateResult:
+    """Gate 7's whole rule, over explicit scan roots — a constructed pair of directories
+    proves the empty-scan and missing-root cases directly, independent of ``REPO_ROOT``.
+
+    Checked **per root**, not in aggregate: a root that **exists** but holds no module
+    directory fails closed on its own, naming only itself, even while a sibling root is
+    full of packages — a scan that ran and found nothing is byte-identical to one that
+    never ran, unless it says so, and one healthy root must not launder a dead one (C1,
+    ``REVIEW-harness-p0.md``). A root that does not exist — ``src/`` at P0 — is not that
+    case and stays a clean pass.
+    """
     from tools.verify import GateResult
 
+    scanned = _scan(roots)
+    dead = [root for root, directories in scanned if not directories]
+    if dead:
+        names = ", ".join(f"{root.name}/" for root in dead)
+        return GateResult(
+            ok=False,
+            detail=(
+                f"0 module directories found under {names} — a scan root that exists but "
+                f"yields no module directories is a failed scan, not a clean pass"
+            ),
+        )
+
+    directories = [directory for _, root_dirs in scanned for directory in root_dirs]
     problems: list[str] = []
-    for root_name in SCAN_ROOTS:
-        for directory in module_directories(REPO_ROOT / root_name):
-            problems.extend(problems_in(directory))
+    for directory in directories:
+        problems.extend(problems_in(directory))
 
     if problems:
         return GateResult(ok=False, detail="\n".join(problems))
-    return GateResult(ok=True, detail="")
+
+    if not scanned:
+        names = ", ".join(f"{root.name}/" for root in roots)
+        return GateResult(
+            ok=True, detail=f"no scan root exists under {names} — nothing to scan"
+        )
+    return GateResult(ok=True, detail=f"{len(directories)} module directories checked")
+
+
+def run() -> GateResult:
+    """Gate 7. Check every module directory under ``src/`` and ``tools/``, or a passing
+    result naming how many it checked."""
+    return verdict([REPO_ROOT / root_name for root_name in SCAN_ROOTS])
