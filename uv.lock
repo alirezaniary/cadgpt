@@ -205,7 +205,7 @@ wheels = [
 [[package]]
 name = "cadgpt"
 version = "0.0.0"
-source = { virtual = "." }
+source = { editable = "." }
 
 [package.dev-dependencies]
 api = [

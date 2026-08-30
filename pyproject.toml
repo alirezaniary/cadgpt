@@ -15,11 +15,25 @@ description = "Jurisdiction-agnostic building-code checking over IFC models."
 requires-python = ">=3.12"
 dependencies = []
 
+[build-system]
+# hatchling is a build-time-only backend, not a runtime dependency of any distribution in
+# docs/architecture/module-map.md's table — it never resolves into the engine group's
+# closure gate 4 checks. Needed because src/ is now real: the project must be installed
+# (editable) for `engine` to be importable at all, by `uv run` or anyone else.
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# Each directory under src/ is a top-level importable package (`engine`, and its future
+# siblings from docs/architecture/module-map.md), never `cadgpt.engine` — the repository
+# root is not itself a package. Listed one at a time, as each is created
+# (CLAUDE.md section 6, no scaffolding): only src/engine exists today.
+packages = ["src/engine"]
+
 [tool.uv]
-# The repository root is not itself an installable package; the distributions below are
-# resolved as dependency groups. No src/ layout exists yet — a directory is created by
-# the task that first needs it (CLAUDE.md section 6).
-package = false
+# The repository root is now an installable (editable) package so that src/ is importable
+# as the package roots docs/architecture/module-map.md names.
+package = true
 
 [dependency-groups]
 # Tooling the harness itself needs. Gates bring their own tooling as they are registered.

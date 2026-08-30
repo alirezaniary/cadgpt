@@ -18,7 +18,6 @@ import pytest
 
 from tools.gates import jurisdiction
 from tools.tests.conftest import (
-    REPO_ROOT,
     copied_tree,
     gate_result_in,
     make_verify,
@@ -76,7 +75,7 @@ def test_iteration_variance_and_secant_pass() -> None:
 @pytest.mark.integration
 def test_make_verify_fails_and_names_gate_5(tmp_path: Path) -> None:
     copy = copied_tree(tmp_path, only_gate(5))
-    (copy / "src").mkdir()
+    (copy / "src").mkdir(exist_ok=True)
     (copy / "src" / "iran.py").write_text("x = 1\n", encoding="utf-8")
 
     result = make_verify(copy)
@@ -90,7 +89,7 @@ def test_make_verify_fails_and_names_gate_5(tmp_path: Path) -> None:
 @pytest.mark.integration
 def test_the_same_content_in_a_comment_passes(tmp_path: Path) -> None:
     copy = copied_tree(tmp_path)
-    (copy / "src").mkdir()
+    (copy / "src").mkdir(exist_ok=True)
     (copy / "src" / "notes.py").write_text(
         "# This module implements the rules of Iran, clause 5.3.2.\nx = 1\n",
         encoding="utf-8",
@@ -119,9 +118,15 @@ def test_the_real_tree_passes() -> None:
     assert result.ok is True, result.detail
 
 
-def test_python_files_under_a_missing_root_is_empty() -> None:
-    """``src/`` does not exist yet at P0; nothing to scan is not a failure."""
-    assert jurisdiction._python_files_under(REPO_ROOT / "src") == []
+def test_python_files_under_a_missing_root_is_empty(tmp_path: Path) -> None:
+    """A root that is not there is nothing to scan, not a failure.
+
+    Pointed at a genuinely absent directory rather than at ``src/``: this test asserted
+    ``src/`` was empty because ``src/`` did not exist when it was written, so it began
+    failing the moment the first module landed there — testing a fact about the calendar
+    rather than about the function.
+    """
+    assert jurisdiction._python_files_under(tmp_path / "not_here") == []
 
 
 @pytest.mark.integration

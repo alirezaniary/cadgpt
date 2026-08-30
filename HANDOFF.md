@@ -48,46 +48,52 @@ Gates still unbuilt: **3** (import contracts — next task, T-0011), 8–13 (O2,
 
 ---
 
-## 2. The one thing in flight — T-0010, uncommitted
+## 2. The one thing in flight — T-0010
 
-`src/` exists in the working tree and **is not committed**. Its session was stopped mid-report
-when the session budget ran out, not because anything was wrong.
+`src/` exists in the working tree. Its session was stopped mid-report when the session budget ran
+out, not because anything was wrong. Spec: `docs/roadmap/tasks/T-0010-property-name.md`.
 
-Spec: `docs/roadmap/tasks/T-0010-property-name.md`. Verified by hand before handoff:
+The module itself is complete and works:
 
 ```
-$ uv run --group dev pytest src/engine/observation/tests/ -q
-9 passed
-
 $ uv run --group dev python -c "from engine.observation.property_name import PropertyName; ..."
 NetFloorArea_InsideFace
 StallCount
 ConventionMissing
 
-gate 5:  ok=True  27 files scanned under src/, tools/
-gate 6:  ok=True  27 files scanned under src/, tools/
-gate 7:  ok=True  4 module directories checked
-gate 15: ok=True  src/engine/observation: 5 unit / 4 integration (44% integration, in band)
+gate 5:  27 files scanned under src/, tools/
+gate 6:  27 files scanned under src/, tools/
+gate 7:  4 module directories checked
+gate 15: src/engine/observation: 5 unit / 4 integration (44% integration, in band)
 ```
 
-**What is NOT established:** a full `make verify` over the tree with `src/` present. Gate 2's
-mypy paths, gate 1, gate 4, gate 14 and gate 16 have not been confirmed since `src/` appeared.
+**A full `make verify` then failed with 7 tests red, and the Lead fixed the causes by hand.**
+They are worth understanding, because all three are the same shape — *existing tests that
+encoded "`src/` does not exist" as a fact*:
 
-**Do this first:**
+1. `conftest.copied_tree` copied the `Makefile`, `pyproject.toml`, `uv.lock` and `tools/` — but
+   not `src/`. Gate 2 now runs `mypy --strict tools/ src/`, and mypy fails outright on a path
+   that is not there, so gate 2's own rejection proofs reported `Cannot read file 'src'` instead
+   of the type error they had planted. They failed for the wrong reason. `copied_tree` now copies
+   `src/` when it exists.
+2. `test_python_files_under_a_missing_root_is_empty` asserted that `src/` held no Python files.
+   That was a fact about the calendar, not about the function, and it began failing the moment
+   the first module landed. It now points at a genuinely absent directory.
+3. Eight tests plant fixtures into `copy / "src"` with a bare `mkdir()`, which raised
+   `FileExistsError` once `src/` was really copied. Now `exist_ok=True`.
+4. `copied_tree` did not copy `docs/` either, and T-0010's tests drive themselves from
+   `docs/ddd/06-property-vocabulary.md` rather than from a list retyped into the test — which is
+   the right call, and means the copy needs the document. Now copies `docs/` too. Proven: all 9
+   module tests pass inside a fresh `copied_tree`.
 
-```
-env -u CADGPT_NESTED_VERIFY -u CADGPT_VERIFY_DEPTH make verify
-```
+**Status at handoff:** `ruff` and `mypy --strict tools/ src/` clean; 45 gate tests pass; all 9
+module tests pass both in this checkout and inside a fresh `copied_tree`. The last full run
+before these four fixes was down to a **single** outer failure
+(`test_a_full_run_is_visibly_different_from_a_nested_one`), whose cause was #4 above. A
+confirming full `make verify` was still running when the session ended — **run it before you
+trust the tree**, and see §9.
 
-If it exits 0 with `9 gates registered, 0 failed`, commit `src/`, `pyproject.toml`,
-`tools/gates/types.py`, `tools/readme.ai.md`, `tools/gates/readme.ai.md`. If it does not, fix what
-it names — the spec's "Gates you must leave green" section lists exactly what changes when `src/`
-first exists, and that list is the bulk of T-0010.
-
-`.idea/cadgpt.iml` and `uv.lock` are also modified. `uv.lock` is real (packaging changed);
-`.idea/` is editor noise and should not be committed.
-
----
+`.idea/cadgpt.iml` is editor noise; do not commit it. `uv.lock` is real — packaging changed.
 
 ## 3. What to do next, in order
 
@@ -214,3 +220,33 @@ Recorded so they are not mistaken for oversights:
   enforcement and independent — but the source-level contract lands with T-0011.
 - `make verify` takes about five minutes. The lever, if it becomes painful, is that six tests are
   ~90% of the suite's runtime; all six spawn the harness.
+
+
+---
+
+## 9. The first thing to do
+
+```
+env -u CADGPT_NESTED_VERIFY -u CADGPT_VERIFY_DEPTH make verify
+```
+
+**If it exits 0** with `9 gates registered, 0 failed`, commit — the tree is T-0010 complete:
+
+```
+git add src pyproject.toml uv.lock tools/gates/types.py tools/readme.ai.md \
+        tools/gates/readme.ai.md tools/tests/conftest.py \
+        tools/tests/test_gate_jurisdiction.py tools/tests/test_gate_placeholder.py \
+        tools/tests/test_gate_module_contract.py
+```
+
+**If it does not**, the failures are the remainder of T-0010 and its spec's "Gates you must leave
+green" section is the checklist. Do not commit red without saying so in the message — there is
+precedent for that (`190c20a`) and the message says plainly that the tree is red and why.
+
+Then write T-0011's spec (gate 3) per §3.
+
+**One process note for whoever writes that spec:** the `conftest.py` omission in §2 is the *third*
+time a task spec has withheld a file the work required. `docs/process/task-spec.md` carries the
+rule and it was still missed here, because T-0010's Files list was written from what the change
+looked like — a new module — rather than from what it depended on. Read the Acceptance command
+back against the Files list before dispatching. Anything `make verify` touches is in scope.

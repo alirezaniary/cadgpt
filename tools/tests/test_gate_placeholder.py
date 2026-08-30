@@ -60,7 +60,7 @@ def test_a_raise_with_a_reason_on_the_first_line_passes() -> None:
 @pytest.mark.integration
 def test_make_verify_fails_and_names_gate_6(tmp_path: Path) -> None:
     copy = copied_tree(tmp_path, only_gate(6))
-    (copy / "src").mkdir()
+    (copy / "src").mkdir(exist_ok=True)
     (copy / "src" / "thing.py").write_text(
         "def handler() -> None:\n    pass\n", encoding="utf-8"
     )
@@ -76,7 +76,7 @@ def test_make_verify_fails_and_names_gate_6(tmp_path: Path) -> None:
 @pytest.mark.integration
 def test_a_pass_inside_except_passes(tmp_path: Path) -> None:
     copy = copied_tree(tmp_path)
-    (copy / "src").mkdir()
+    (copy / "src").mkdir(exist_ok=True)
     (copy / "src" / "thing.py").write_text(
         "def handler() -> None:\n"
         "    try:\n"
@@ -94,7 +94,7 @@ def test_a_pass_inside_except_passes(tmp_path: Path) -> None:
 @pytest.mark.integration
 def test_an_ellipsis_in_a_protocol_body_passes(tmp_path: Path) -> None:
     copy = copied_tree(tmp_path)
-    (copy / "src").mkdir()
+    (copy / "src").mkdir(exist_ok=True)
     (copy / "src" / "thing.py").write_text(
         "from typing import Protocol\n\n\n"
         "class Thing(Protocol):\n"
@@ -114,7 +114,7 @@ def test_an_ellipsis_in_a_stub_file_passes(tmp_path: Path) -> None:
     fails closed on (``REVIEW-harness-p0.md``), not the exemption this test is about. A
     real, unrelated companion file keeps ``src/`` a genuine, non-empty scan."""
     copy = copied_tree(tmp_path)
-    (copy / "src").mkdir()
+    (copy / "src").mkdir(exist_ok=True)
     (copy / "src" / "thing.pyi").write_text("def run() -> None: ...\n", encoding="utf-8")
     (copy / "src" / "ok.py").write_text("x = 1\n", encoding="utf-8")
 

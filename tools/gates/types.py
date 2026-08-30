@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 def run() -> GateResult:
     """Fail on any untyped boundary, under ``--strict`` and with no blanket ignores.
 
-    ``tools/`` is the whole of the Python in this repository today; the task that creates
-    the first ``src/`` package adds it here, in that same task.
+    ``tools/`` and ``src/`` are both checked, one command, since ``src/engine`` (T-0010)
+    became the first ``src/`` package.
     """
-    return run_tools([["mypy", "--strict", "tools/"]])
+    return run_tools([["mypy", "--strict", "tools/", "src/"]])

@@ -22,16 +22,19 @@ much was looked at; gate 1's coverage is not visible this way and is not claimed
 Gate 4's line is the gate's own and carries both a count and an attribution — how many
 packages the `engine` group resolved to, that the inference SDKs raise `ImportError`
 there, and which HTTP-capable package arrives through which engine dependency. Gates 5 and
-6 name how many files they scanned and under which roots (`"<n> files scanned under
-tools/"`, `src/` named too once it exists); gate 7 names how many module directories it
-checked. There **is** a partial-coverage question for a full-tree `ast`/filesystem scan —
-`REVIEW-harness-p0.md` C1 found it by making gate 15's walk return nothing and watching
-`make verify` stay green with an unchanged `GateResult(ok=True, detail='')` — so each of
-gates 5, 6 and 7 fails closed instead: a scan root that **exists** but yields zero subjects
-is `ok=False`, not a silent pass; a scan root that does not exist (`src/` at P0) is nothing
-to scan and stays a clean pass. Gate 15's line is a per-module table, printed on pass and
-fail alike; gate 16's names the test count, both seeds and how many tests were deselected,
-`unknown` rather than a count when the summary line it comes from did not match (M1).
+6 name how many files they scanned and under which roots (`"27 files scanned under src/,
+tools/"`, now that `src/` is real, T-0010); gate 7 names how many module directories it
+checked (`"4 module directories checked"` — `tools/`, `tools/gates/`, `src/engine`,
+`src/engine/observation`, T-0010). There **is** a partial-coverage question for a full-tree
+`ast`/filesystem scan — `REVIEW-harness-p0.md` C1 found it by making gate 15's walk return
+nothing and watching `make verify` stay green with an unchanged
+`GateResult(ok=True, detail='')` — so each of gates 5, 6 and 7 fails closed instead: a scan
+root that **exists** but yields zero subjects is `ok=False`, not a silent pass; a scan root
+that does not exist is nothing to scan and stays a clean pass — true of every distribution
+under `src/` besides `engine` today. Gate 15's line is a per-module table, printed on pass
+and fail alike; gate 16's names the test count, both seeds and how many tests were
+deselected, `unknown` rather than a count when the summary line it comes from did not match
+(M1).
 
 Gates 1, 2 and 14 re-implement no check. Each wraps an inherited tool (`CLAUDE.md` §6) and
 returns the tool's own output unedited: the agent reading a failing `make verify` needs the
@@ -507,10 +510,11 @@ FAIL  gate 2  types
   jurisdiction, no placeholder pattern is left in under `src/` or `tools/`, and every module
   directory under `src/` or `tools/` — every package, at any depth, outside a `tests/` tree —
   carries a conforming `readme.ai.md` — and nothing more.
-  `src/` still does not exist, so gates 5, 6 and 7 are proven by their fixtures rather than
-  by anything real found under `src/` today (DEC-0016); the one thing gate 7 finds in the
-  real tree is `tools/readme.ai.md` itself. `docs/architecture/harness.md` names all sixteen
-  gates and when each becomes real.
+  `src/engine` and `src/engine/observation` are real since T-0010, so gates 5, 6 and 7 are
+  proven by real findings under `src/` as well as by their fixtures (DEC-0016); gate 7 finds
+  four module directories in the real tree today — `tools/`, `tools/gates/`, `src/engine`,
+  `src/engine/observation`. `docs/architecture/harness.md` names all sixteen gates and when
+  each becomes real.
 - **`JURISDICTION_TOKENS` (gate 5) is a starting set, not an exhaustive one.** It covers the
   countries and code bodies named explicitly by T-0004 plus enough neighbours to be useful,
   deliberately without bare two-letter ISO codes (the false-positive guard in
@@ -522,9 +526,9 @@ FAIL  gate 2  types
   `docs/architecture/module-map.md` names. The narrowing came from the session building the
   gate, and was exactly what made that session's own tree pass — the failure mode this
   repository is built around. `tools/gates/` now carries its own `readme.ai.md` as a result.
-  What is still untested is `src/`: DEC-0026 expects `src/engine` to be reported as a module
-  directory in its own right if it carries an `__init__.py`, and the first `src/` task is
-  where that meets a real layout.
+  T-0010 is where DEC-0026 met a real `src/` layout: `src/engine` carries an `__init__.py`
+  and gate 7 does report it as a module directory in its own right, exactly as expected,
+  alongside `src/engine/observation`.
 - **DEC-0023 is closed**, not open, and gate 4 ships to its terms: it does **not** close the
   raw-HTTP path. `ifctester` is a forced inherited component and pulls `requests`, `urllib3`,
   `flask` and `bcf-client` into the engine closure, so gate 4 asserts instead that no
@@ -534,13 +538,13 @@ FAIL  gate 2  types
   gate 3 ships at **C1.1** — it cannot exist before there is an `src/` package to constrain.
   Until C1.1 that path is unguarded, and that is known and scheduled, not overlooked.
 - **Gate 4 reads the `engine` group's resolved closure, not what `src/engine` will import.**
-  A distribution boundary is only a proof for code that actually ships inside it, and no code
-  ships in `cadgpt-engine` yet. What the gate guarantees today is the environment; what makes
-  that guarantee load-bearing is `src/engine` existing and being packaged from this group,
-  which is C1.1's work.
-- Gate 2 checks `tools/` and gate 14 collects the whole repository. The first `src/` task
-  must extend gate 2's paths in that same task, or `src/` will be type-checked by nothing
-  while `make verify` stays green.
+  A distribution boundary is only a proof for code that actually ships inside it. `src/engine`
+  now exists and carries real code (`observation`, T-0010), the first slice of what
+  `cadgpt-engine` ships; what makes gate 4's guarantee load-bearing over the rest of it is
+  the remaining contexts landing, still C1.1's work.
+- **Gate 2 now checks `src/` too, in the task that created it (T-0010).** `types.run()`
+  runs `mypy --strict tools/ src/` as one command; `src/` was type-checked by nothing for
+  zero tasks in between.
 - **Two things this suite still touches in this checkout, neither of them content.**
   `test_make_verify_over_the_real_tree_exits_zero` runs a real `make verify` here on
   purpose, and the real `mypy` and `pytest` refresh `.mypy_cache/` and `.pytest_cache/` when

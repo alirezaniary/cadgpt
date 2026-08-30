@@ -7,7 +7,9 @@ is itself being run from. This module holds the three mechanisms that make both 
 one place so that both test modules use one spelling of each.
 
 **1. Nothing here writes into this checkout.** ``copied_tree`` copies the harness — the
-``Makefile``, ``pyproject.toml``, ``uv.lock`` and ``tools/`` — into a ``tmp_path`` and hands
+``Makefile``, ``pyproject.toml``, ``uv.lock``, ``tools/``, ``src/`` and ``docs/`` — into a
+``tmp_path``
+and hands
 back the copy's root. Every gate-rejection proof plants its bad input there and runs the
 gate, or the whole of ``make verify``, in the copy. It is still a real end-to-end proof: a
 real ``Makefile``, a real runner, a real ``ruff``/``mypy``/``pytest``, a real bad input. It
@@ -289,6 +291,16 @@ def only_gate(number: int) -> str:
 def copied_tree(tmp_path: Path, edit: str = "") -> Path:
     """Copy this repository's harness into ``tmp_path`` and return the copy's root.
 
+    ``docs/`` is copied because tests are allowed to read committed documents as data —
+    ``src/engine/observation``'s proofs drive themselves from
+    ``docs/ddd/06-property-vocabulary.md`` rather than from a list retyped into the test,
+    which is the right call and means the copy needs the document.
+
+    ``src/`` is copied when it exists and skipped when it does not, because gate 2 runs
+    ``mypy --strict tools/ src/`` and mypy fails outright on a path that is not there — a
+    copy without ``src/`` made gate 2 report "Cannot read file 'src'" instead of the type
+    error a proof had planted, so the proof failed for the wrong reason.
+
     The copy holds everything ``make verify`` needs and nothing else: the ``Makefile``, the
     ``pyproject.toml`` that configures every tool, the ``uv.lock`` the gates resolve their
     tools from, and ``tools/``. A gate run in the copy scans the copy, because
@@ -309,9 +321,12 @@ def copied_tree(tmp_path: Path, edit: str = "") -> Path:
     copy.mkdir()
     for name in ("Makefile", "pyproject.toml", "uv.lock"):
         shutil.copy2(REPO_ROOT / name, copy / name)
-    shutil.copytree(
-        REPO_ROOT / "tools", copy / "tools", ignore=shutil.ignore_patterns("__pycache__")
-    )
+    for tree in ("tools", "src", "docs"):
+        source = REPO_ROOT / tree
+        if source.is_dir():
+            shutil.copytree(
+                source, copy / tree, ignore=shutil.ignore_patterns("__pycache__")
+            )
     runner = copy / "tools" / "verify.py"
     unedited, _, _ = runner.read_text(encoding="utf-8").partition(REGISTRY_EDIT)
     runner.write_text(

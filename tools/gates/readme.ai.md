@@ -54,8 +54,8 @@ The public surface of `tools.gates`:
   silent. Gate 1 runs two commands and so reports two lines.
 - `lint.run() -> GateResult` — gate 1. `ruff check .` and `ruff format --check .`. A tree
   can satisfy either half while failing the other, so both run.
-- `types.run() -> GateResult` — gate 2. `mypy --strict tools/`. The task that creates the
-  first `src/` package extends the paths, in that same task.
+- `types.run() -> GateResult` — gate 2. `mypy --strict tools/ src/`, one command. Extended to
+  `src/` by T-0010, the task that created the first `src/` package, in that same task.
 - `tests.run() -> GateResult` — gate 14. `pytest` with no path, so it collects whatever the
   repository holds rather than a list that has to be remembered.
 
@@ -388,17 +388,18 @@ $ make verify
 - **`JURISDICTION_TOKENS` (gate 5) is a starting set, not an exhaustive one.** It covers the
   countries and code bodies T-0004 named plus enough neighbours to be useful, deliberately
   without bare two-letter ISO codes. Extending it is a one-line addition, not a design change.
-- **Gate 7 has never run against a real `src/` tree**, because there is none. DEC-0026 expects
-  every `src/engine/*` context to be reported as its own module directory, including
-  `src/engine` itself if it carries an `__init__.py`. The first `src/` task is where that
-  expectation meets a real layout; it should read DEC-0026's Reopens-if before assuming.
+- **Gate 7 now runs against a real `src/` tree (T-0010).** DEC-0026's expectation held: both
+  `src/engine` and `src/engine/observation` are reported as their own module directories,
+  `src/engine` included because it carries an `__init__.py` of its own, exactly as DEC-0026's
+  Reopens-if anticipated.
 - **Gate 3 (import contracts) is not here and cannot be**, until `src/` exists to constrain.
   Until then the raw-HTTP path out of the engine is unguarded — gate 4 proves no inference SDK
   resolves, not that nothing opens a socket. Known and scheduled at C1.1, not overlooked.
 - **Gates 8–13 are unwritten.** `docs/architecture/harness.md` names all sixteen and when each
   becomes real.
-- **Gate 15's only subject is `tools` itself.** It reports `32 unit / 33 integration (51%
-  integration, in band)`, from markers a person applied by reading each test (T-0007a,
-  DEC-0029). One module in band is not evidence the band is right; the first `src/` module is
-  the first independent test of that, and DEC-0029's Reopens-if is what to read if it lands
-  outside.
+- **Gate 15 now has a second subject.** `tools` reports `47 unit / 35 integration (43%
+  integration, in band)`; `src/engine/observation` reports `5 unit / 4 integration (44%
+  integration, in band)`, from markers T-0010 applied by reading each test, on the same
+  convention T-0007a used. Two modules in band is one more independent data point than one,
+  not proof the band is right in general — DEC-0029's Reopens-if is still what to read if a
+  future module lands outside it.

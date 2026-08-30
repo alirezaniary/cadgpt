@@ -188,7 +188,7 @@ def test_a_directory_without_init_is_skipped(tmp_path: Path) -> None:
     not the skip this test is about. A real, conforming companion package keeps ``src/`` a
     genuine, non-empty scan."""
     copy = copied_tree(tmp_path)
-    (copy / "src" / "notapackage").mkdir(parents=True)
+    (copy / "src" / "notapackage").mkdir(parents=True, exist_ok=True)
     (copy / "src" / "notapackage" / "scratch.py").write_text("x = 1\n", encoding="utf-8")
     _write_package(copy / "src" / "good", readme_body=_CONFORMING_SECTIONS)
 
