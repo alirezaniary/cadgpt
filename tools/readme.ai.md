@@ -113,11 +113,15 @@ callers:
   (`tools/verify.py`) prints a non-empty detail on `PASS`, and `run_tools`
   (`tools/gates/__init__.py`) makes a succeeding tool's own summary line that detail
   (DEC-0024). A `make verify` whose gate 14 skipped tests is therefore not byte-identical
-  to one that ran them. Both halves are proven, not asserted:
+  to one that ran them. Every link is proven, and so is the chain:
   `test_a_succeeding_command_reports_its_own_last_output_line` runs a real command through
-  the real `run_tools` and fails if the surviving line is ever dropped, which is the hole
-  T-0002b closed — one line of `_summary_line` restored the byte-identical silent green
-  while every other test stayed green.
+  the real `run_tools` and fails if the surviving line is ever dropped (the hole T-0002b
+  closed — one line of `_summary_line` restored the byte-identical silent green while every
+  other test stayed green), and
+  `test_a_full_run_is_visibly_different_from_a_nested_one` runs the real `make verify` over
+  one copied tree twice, plain and marked, and fails if the two printed outputs are the same
+  (the hole T-0002c closed — discarding gate 14's success detail in `tools/gates/tests.py`
+  left all nineteen tests, `ruff` and `mypy` green).
 
 ## Depends on
 `tools/verify.py` imports the Python standard library only: `argparse` (the CLI),
@@ -155,7 +159,7 @@ Tests additionally use `pytest` (dev group) and invoke `make` and the real runne
 `tools/tests/conftest.py`. Nineteen tests, 9 unit / 10 integration (47% unit, inside the
 40–60% band gate 15 will enforce at T-0007).
 
-Unit, over the runner's own logic (`test_verify.py`):
+Unit, over the runner's own logic (`test_verify.py`) — no process, no filesystem:
 - gates run cheapest-first, ties by number;
 - `--list` exits 0 and names every registered gate;
 - a `GateResult(ok=False)` with a blank detail is rejected at construction;
@@ -164,89 +168,122 @@ Unit, over the runner's own logic (`test_verify.py`):
 - a gate whose `run` raises is reported `FAIL` with the exception type, its message and its
   traceback in the detail, and the gates after it still run.
 
-Unit, over each gate's own `run()` (`test_gates_static.py`) — the bad input is planted, the
-real tool runs, and the gate must return `ok=False` carrying that tool's words:
+Unit, over one gate's own `run()` (`test_gates_static.py`) — the bad input is planted in a
+copied tree, the real tool runs over it, and that gate must return `ok=False` carrying the
+tool's words. One gate, one call, nothing of the runner or the `Makefile` involved:
 - gate 1 rejects an unused import and its detail contains `F401`;
 - gate 2 rejects a contradicted annotation and its detail contains
   `Incompatible types in assignment`;
 - gate 14 rejects a failing test and its detail names the failing test.
 
-Integration, through a real subprocess — the real `Makefile`, the real tools, the real
-runner:
-- a real succeeding command run through the real `run_tools` comes back `ok=True` with a
-  non-empty `detail` that is **that command's own last output line**. This is the only
-  test that touches the code building the detail; without it, `_summary_line` returning
-  `""` left the whole suite green and made a `make verify` that skipped every proof
-  byte-identical to one that ran them (DEC-0024);
+Integration, through the real `Makefile`, the real runner and the real tools:
 - `make verify` over this repository exits 0 and prints the registered count;
-- a copy of `Makefile`, `pyproject.toml` and `tools/` whose `REGISTRY` is reset to one
-  literal failing `Gate(...)` exits non-zero;
+- a copy of the harness whose `REGISTRY` is reset to one literal failing `Gate(...)` exits
+  non-zero;
 - that run names the failing gate and prints `"1 gates registered, 1 failed"`;
+- each of the three bad inputs, planted where the tool scans it, makes a real `make verify`
+  exit non-zero and print `FAIL  gate <n>` for exactly the gate it targets;
+- **a full `make verify` and a nested one print different output** — the same copied tree,
+  run twice, once plainly and once with `CADGPT_NESTED_VERIFY=1` in the child, with the full
+  run's gate 14 line required to carry a `pytest` summary reporting strictly more passes
+  than the nested one's. This is DEC-0024's whole reason for existing, asserted where a
+  person reads it. Until T-0002c it was proven only link by link, so discarding gate 14's
+  success detail in `tools/gates/tests.py` made a full run byte-identical to a nested one
+  again while all nineteen tests passed and `ruff` and `mypy` stayed clean;
 - with the nesting marker removed from the environment, the whole of `tools/tests/` runs in
-  a child process and reports **no skips at all** — the proof that the nesting guard below
-  does only what it claims (DEC-0016). That child deselects the test itself, and the
-  deselect is **verified at collection time before the child that executes anything is
-  started**: `--deselect` with an id matching nothing is silently ignored by `pytest` (exit
-  0, no warning), so a drifting id would let the child run that test, which would spawn its
-  own child, without bound — nested processes were observed climbing 8 to 18 over a minute.
-  A collection-only run executes nothing and so can spawn nothing, and its summary must
-  report exactly one deselected test, which fails a drifted id in hundredths of a second;
+  a child process and reports **no skips at all** — the proof that the nesting guard does
+  only what it claims (DEC-0016). That child deselects the two tests that cannot be their
+  own subject, and the deselect is **verified at collection time before the child that
+  executes anything is started**: `--deselect` with an id matching nothing is silently
+  ignored by `pytest` (exit 0, no warning), so a drifting id would let the child run one of
+  them, which would spawn its own child — nested processes were observed climbing 8 to 18
+  over a minute. A collection-only run executes nothing and so can spawn nothing, and its
+  summary must report exactly two deselected tests, matched on a word boundary so that
+  `12 deselected` cannot satisfy a check for `2 deselected`;
 - with the marker **set**, a child reports skips for exactly
-  `conftest.SPAWNS_A_RE_ENTERING_PROCESS` and nothing else, compared by node id through
-  the child's JUnit XML. This is the pin that makes the previous item mean something: that
-  child runs with the marker absent, so every `skipif` in the suite is False by
-  construction there and only an *unconditional* skip could ever be caught. Until T-0002b
-  the skip set could widen back to anything — `outermost_run_only` back on the `ruff` and
-  `mypy` tests left the suite green while a marked run skipped half of it;
-- two `make verify` runs started concurrently both exit 0. Probe destinations are
-  per-process, so neither run unlinks the other's files;
-- each of the three bad inputs, planted where the tool scans it, makes the real
-  `make verify` exit non-zero and print `FAIL  gate <n>` for exactly the gate it targets.
+  `conftest.SPAWNS_A_RE_ENTERING_PROCESS` and nothing else, compared by node id through the
+  child's JUnit XML. This is the pin that makes the previous item mean something: that child
+  runs with the marker absent, so `outermost_run_only` is False by construction there and
+  only an *unconditional* skip could ever be caught. Until T-0002b the skip set could widen
+  back to anything — `outermost_run_only` back on the `ruff` and `mypy` tests left the suite
+  green while a marked run skipped half of it.
 
-The failure proof deliberately goes through the **real registration path** — `REGISTRY` in
-a copied tree — because that is the only registration path the product has. Proving the
-runner fails via a mechanism nothing else uses proves the mechanism, not the runner.
+Integration, through a real subprocess but **not** through the `Makefile` or the runner:
+- a real succeeding command run through the real `run_tools` comes back `ok=True` with a
+  non-empty `detail` that is **that command's own last output line**. It enters at
+  `run_tools` and exits at a real `python` process, which is the layer it is about; the
+  outermost-entry-point version of the same property is the full-versus-nested test above.
+
+**No test writes into this checkout.** `conftest.copied_tree` copies the `Makefile`,
+`pyproject.toml`, `uv.lock` and `tools/` into the test's own `tmp_path` and returns the
+copy's root; every bad input is planted there, and the gate — or the whole of `make verify`
+— runs there. A gate resolves the tree it checks from its own module's location, so the
+copy's gate checks the copy; that is why the three `run()` proofs go through
+`conftest.gate_result_in`, a process rooted at the copy, rather than calling `run()` in this
+one. Nothing is lost: the gate scans its own root either way, and the `Makefile`, the
+runner, `ruff`, `mypy`, `pytest` and the bad input are all real. `__pycache__` is the one
+thing not copied — it is not source, and a concurrent run writing bytecode into this
+checkout renames a temporary file into place, which `shutil.copytree` (which enumerates a
+directory before copying it) can see vanish.
+
+Before T-0002c the probes were planted into the real `tools/` under a per-process name, and
+every symptom of that was blamed on something else. Three concurrent `make verify` runs
+failed six of twelve, *across* gates: one run's lint probe vanishing mid-walk made another
+run's gate 2 report `mypy: error: Cannot read file 'tools/unused_import_probe_1377906.py'`.
+The same shared tree forced an `ignore` argument onto `shutil.copytree`, left a concurrency
+test failing about one run in thirty, dropped probe files in `tools/` whenever a run was
+killed, and grew one `__pycache__` entry per run without bound. Planting into a copy removes
+the cause, so the per-process names and the `ignore` pattern for them are gone, and
+`test_concurrent_verify_runs_do_not_collide` is gone too: with no shared mutable state left
+there is nothing for it to detect, and `CLAUDE.md` §7 forbids keeping a test that passes on
+ordering luck. Concurrency is instead an acceptance check on the task that changes this
+suite — three `make verify` runs at once, all exiting 0.
 
 **The bad inputs live in `tools/tests/badfixtures/`** and are excluded from `ruff` and
 `mypy` in `pyproject.toml`; none of their names matches a pytest collection pattern. A
 deliberately bad file can therefore sit in the tree, reviewable in a diff, without the
-repository failing its own verify — and no gate is disabled to achieve it. Each test copies
-one into a scanned path for the duration of the test and removes it again, at **its own**
-destination: a nested `pytest` runs the un-skipped tests of `test_gates_static.py` again, so
-a destination shared between two tests would be unlinked by the nested run while the outer
-test still held it.
+repository failing its own verify — and no gate is disabled to achieve it.
 
-**Every destination is suffixed with the planting process's id.** The same collision happens
-between two independent runs — two agents, a CI matrix, one
-`diff <(make verify) <(make verify)`. With fixed destinations those runs deleted each other's
-probes mid-test: `FileNotFoundError` out of `_planted`'s cleanup, and plant-and-scan proofs
-failing for a reason that was nothing to do with the gate they prove. `os.getpid()` is read
-in `test_gates_static.py` only; `tools/verify.py` and `tools/gates/` still read no
-environment and gain no surface. For the same reason `_tree_with_one_failing_gate_registered`
-copies `tools/` with `ignore=TRANSIENT`: `shutil.copytree` enumerates before it copies, and a
-concurrent run's probe that vanishes in between makes it raise `shutil.Error`.
+**Nesting is bounded by two markers and capped by a counter, never by a production flag.**
+Gate 14 runs `pytest`, so a test that spawns `make verify` (or gate 14's `run()`) spawns
+something that runs that test again.
 
-**Nesting is bounded by a marker, not by a production flag.** Gate 14 runs `pytest`, so a
-test that spawns `make verify` (or `pytest`) spawns something that runs that test again.
-Every such test marks the processes it spawns with `CADGPT_NESTED_VERIFY=1`, and a marked
-run skips them. Recursion stops one level down; the proof still runs in full at the depth a
-person or CI invokes it from.
+- Most such tests mark the processes they spawn with `CADGPT_NESTED_VERIFY=1`, and a marked
+  run skips them (`outermost_run_only`). Recursion stops one level down and the proof still
+  runs in full at the depth a person or CI invokes it from.
+- Two tests cannot use that marker, because what they are proving is what an *unmarked* run
+  does: the full-versus-nested test and the nothing-is-skipped test. They are skipped by
+  depth instead (`depth_zero_only`), which is the only thing left that tells their child
+  apart from the run a person started.
+- Every spawn helper increments `CADGPT_VERIFY_DEPTH` in the child, and a session deeper
+  than `conftest.MAX_DEPTH` (2) raises at conftest import, before collecting anything.
+  Depth 2 is reached legitimately — an unmarked child at depth 1 runs the tests that spawn
+  marked children at depth 2 — and nothing correct goes further. This supersedes per-vector
+  fast-fails: removing a skip marker used to climb 7 processes to 35 in thirty seconds,
+  killable only by process group, and now names the depth and the missing marker in seconds.
+- A child also does not inherit `VIRTUAL_ENV`. A child rooted at a *copied* tree would
+  otherwise be pointed at this checkout's environment for that tree's project, and `uv`
+  prints `does not match the project environment path` on stderr; since `_summary_line`
+  takes a tool's **last** output line, that warning becomes the gate's summary in place of
+  `pytest`'s counts, hiding exactly the difference DEC-0024 exists to show. Observed while
+  writing the full-versus-nested test: both runs' gate 14 reported the warning and nothing
+  else.
 
-The marker name, the `outermost_run_only` decorator and the `make_verify(cwd)` spawn helper
-are defined **once**, in `tools/tests/conftest.py`, and nowhere in `tools/verify.py` or
-`tools/gates/`: the runner has exactly one registration path and gains no test-only surface,
-no flag and no env read. The decorator goes on only the eight tests that spawn a process
-re-entering the harness, and `SPAWNS_A_RE_ENTERING_PROCESS` in the same file names them by
-node id so that set is checked rather than remembered. The two tests that spawn `ruff` and
-`mypy` carry no marker — those tools are not this suite and cannot recurse, and a test
-skipped for a reason untrue about it is a proof silently lost.
+The marker names, the depth counter, both decorators and the `copied_tree`, `make_verify`,
+`run_pytest` and `gate_result_in` helpers are defined **once**, in `tools/tests/conftest.py`,
+and nowhere in `tools/verify.py` or `tools/gates/`: the runner has exactly one registration
+path and gains no test-only surface, no flag and no env read.
+`SPAWNS_A_RE_ENTERING_PROCESS` in the same file names, by node id, exactly the eight tests
+skipped one level down, so that set is checked rather than remembered. The two tests that
+drive `ruff` and `mypy` carry no marker — those tools are not this suite and cannot recurse,
+and a test skipped for a reason untrue about it is a proof silently lost.
 
 The guard is spoofable, and DEC-0024 accepts that and makes its effect visible instead:
-gate 14 reports `pytest`'s summary line, so
-`env CADGPT_NESTED_VERIFY=1 make verify` prints `11 passed, 8 skipped` where a full run
-prints `19 passed`. **`make verify` alone is therefore not evidence that this suite ran in
-full** — that is why every task also runs `uv run --group dev pytest tools/tests/ -q`
-directly, and why one test asserts the suite reports zero skips when the marker is absent.
+gate 14 reports `pytest`'s summary line, so `env CADGPT_NESTED_VERIFY=1 make verify` prints
+`13 passed, 6 skipped` where a full run prints `19 passed`. **`make verify` alone is
+therefore not evidence that this suite ran in full** — that is why every task also runs
+`uv run --group dev pytest tools/tests/ -q` directly, and why one test asserts the suite
+reports zero skips when the marker is absent.
 
 Both test modules import the shared pieces as `from tools.tests.conftest import ...`, not
 `from conftest import ...`. `tools/` is a package, so `mypy --strict tools/` names that file
@@ -266,11 +303,16 @@ PASS  gate 1  format-and-lint
 PASS  gate 2  types
         Success: no issues found in 9 source files
 PASS  gate 14  tests
-        ============================= 19 passed in 16.51s ==============================
+        ======================== 19 passed in 133.51s (0:02:13) ========================
 3 gates registered, 0 failed
 $ echo $?
 0
 ```
+
+Gate 14 takes minutes because this suite drives the whole harness, twice over, against
+copies of it: eleven of the nineteen tests run a real `make verify` or a real gate over a
+tree they copied first. That is its cost 3, and it is the price of proving the gates instead
+of asserting them.
 
 Each `PASS` carries its tool's own summary line, so a run that checked less than it should
 is visible as one (DEC-0024) — gate 14's line is a count, gate 1's `All checks passed!` is
@@ -286,9 +328,14 @@ PASS  gate 1  format-and-lint
 PASS  gate 2  types
         Success: no issues found in 9 source files
 PASS  gate 14  tests
-        ======================== 11 passed, 8 skipped in 0.58s =========================
+        =================== 13 passed, 6 skipped in 95.26s (0:01:35) ===================
 3 gates registered, 0 failed
 ```
+
+A genuine child skips eight, not six: it carries the depth counter as well as the marker, so
+the two `depth_zero_only` tests skip there too. Exporting the marker by hand, as above, only
+reaches the six that read it — and that is still visibly not a full run, which is all
+DEC-0024 asks of it.
 
 Listing without running anything:
 
@@ -307,7 +354,7 @@ produced it — the success lines above are summaries, a failure never is:
 FAIL  gate 2  types
         $ uv run --group dev mypy --strict tools/
         exited 1
-        tools/mismatched_annotation_probe_318041.py:14: error: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
+        tools/mismatched_annotation_probe.py:14: error: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
         Found 1 error in 1 file (checked 10 source files)
 ```
 
@@ -327,17 +374,16 @@ FAIL  gate 2  types
 - Gate 2 checks `tools/` and gate 14 collects the whole repository. The first `src/` task
   must extend gate 2's paths in that same task, or `src/` will be type-checked by nothing
   while `make verify` stays green.
-- **Concurrent runs no longer corrupt each other, but they are not fully isolated.**
-  Per-process probe destinations stop two runs unlinking each other's files, which is what
-  T-0002b §4 fixed and what `test_concurrent_verify_runs_do_not_collide` proves. A planted
-  probe still sits in the real tree, so while it exists another run's *same* gate can see
-  it: run A's `unused_import_probe_<pid>.py` would fail run B's gate 1 if B happened to be
-  inside `ruff check .` at that instant. It survives today because the two bad fixtures are
-  clean to each other's gate — `unused_import.py` passes `mypy --strict` and
-  `mismatched_annotation.py` passes `ruff check` and `ruff format --check` — so only a
-  same-gate overlap can bite, and the windows are tenths of a second at opposite ends of a
-  run. Measured: five consecutive `make verify` pairs started together, all ten exits 0.
-  That is a probability, not a guarantee, and the only real fix is planting into a copied
-  tree instead of this one — which would stop the proofs going through the real
-  `make verify`, so it has not been taken. A new bad fixture that is *not* clean to the
-  other gates would make this bite immediately.
+- **Two things this suite still touches in this checkout, neither of them content.**
+  `test_make_verify_over_the_real_tree_exits_zero` runs a real `make verify` here on
+  purpose, and the real `mypy` and `pytest` refresh `.mypy_cache/` and `.pytest_cache/` when
+  they run. Measured across a full `pytest tools/tests/ -q`: exactly three cache paths
+  change mtime and nothing else — no file is created, modified or deleted anywhere under
+  version control, and `git status --porcelain` is byte-identical before and after. Removing
+  even that would mean dropping the one test that runs the harness over this tree, which is
+  worth more than the last of the isolation.
+- **The depth cap is a backstop, not a design.** `MAX_DEPTH = 2` is derived from how this
+  suite nests today: an unmarked child at depth 1 runs the tests that spawn marked children
+  at depth 2. A future test that legitimately needs a third level will hit it, and the right
+  response is to re-derive the bound in `conftest.MAX_DEPTH`'s docstring — not to raise the
+  number until the suite stops complaining.

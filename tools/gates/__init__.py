@@ -38,6 +38,11 @@ def _summary_line(output: str) -> str:
     skipped its proofs reports a different line from one that ran them (DEC-0024) — and
     for ``ruff`` that difference has to come from the gate failing instead.
 
+    That difference is proven where it is read, not only here:
+    ``test_verify.test_a_full_run_is_visibly_different_from_a_nested_one`` runs the real
+    ``make verify`` over one tree twice, plain and marked, and fails if the two printed
+    outputs are the same.
+
     Empty when the tool printed nothing, so a silent tool contributes no line.
     """
     for line in reversed(output.splitlines()):
@@ -57,7 +62,9 @@ def run_tools(commands: Sequence[Sequence[str]]) -> GateResult:
     unedited. The detail of a success is one line per command — that command's own summary
     line (DEC-0024). Discarding it made a run that checked nothing print exactly what a run
     that checked everything prints, which is the silent green this repository is built to
-    prevent. A command that printed nothing contributes no line.
+    prevent; ``test_verify.test_a_full_run_is_visibly_different_from_a_nested_one`` fails on
+    that edit from outside, through the real ``make verify``. A command that printed nothing
+    contributes no line.
 
     ``GateResult`` is imported inside the function on purpose. ``tools.verify`` imports
     this package to build its registry, so importing it at module level would be a cycle.
