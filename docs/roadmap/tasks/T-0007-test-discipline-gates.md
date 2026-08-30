@@ -42,6 +42,14 @@ or name means the gate silently miscounts the moment someone names a file differ
   wider band.
 - Determinism runs the suite twice. cost tier 3, and it must be last in cost order.
 
+**Classification is load-bearing, and `tools/` is already borderline.** Review of T-0002c found
+that `tools/tests/` reports 9 unit / 10 integration = 47% only because three tests in
+`test_gates_static.py` are counted as unit while each copies a tree to disk and spawns real
+ruff/mypy/pytest. Under `CLAUDE.md` §7's "behaviour crosses layers" reading they are integration,
+which gives 6/19 = 32% and puts the module **below** the band on the day this gate ships. Decide
+the rule by what the marker says, not by what keeps the existing tree green, and if `tools/`
+fails on arrival then report that as the gate working — do not tune the rule until it passes.
+
 ## Files
 Create: `tools/gates/test_balance.py`, `tools/gates/determinism.py`,
 `tools/tests/test_gate_test_discipline.py`
