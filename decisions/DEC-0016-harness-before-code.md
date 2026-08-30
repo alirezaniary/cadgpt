@@ -1,6 +1,6 @@
 # DEC-0016 — The harness is built before the code it guards, and every guard ships with a proof it fails
 
-**Status:** DECIDED
+**Status:** DECIDED — amended by DEC-0022
 **Date:** 2026-08-30
 **Decided by:** Lead
 **Affects:** `Makefile`, `tools/`, P0
@@ -29,9 +29,14 @@ as green forever.
    input**.
 
 ## Decision
-Option 3. P0 is the first task after this framework: `make verify` runs all sixteen gates over
-an empty repository and passes, and each gate has a companion test feeding it a violation and
-asserting a non-zero exit.
+Option 3. P0 is the first work after this framework, and each gate has a companion test feeding
+it a violation and asserting a non-zero exit.
+
+> **Amended by DEC-0022.** This record originally said all sixteen gates ship at P0. Seven of
+> them guard artefacts whose schema does not exist yet, so writing them at P0 would mean writing
+> against an assumption — forbidden by DEC-0013. P0 ships the registry plus the nine gates whose
+> inputs exist; every other gate ships with the task that introduces the artefact it guards. The
+> principle below is unchanged: a guard precedes the code it guards, measured per artefact type.
 
 The jurisdiction guard gets a file with a code reference in an identifier. The quote linter gets
 a record whose bound disagrees with its quote. The placeholder scan gets a `TODO`. The

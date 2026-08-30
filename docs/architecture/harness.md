@@ -11,6 +11,13 @@ check it deterministically.
 make verify
 ```
 
+The harness is a **gate registry**, not a fixed list (DEC-0022). Nine gates ship at P0 — the ones
+whose inputs already exist. Every other gate is added by the task that introduces the artefact
+type it guards, in that same task, with its failure proof. The runner prints how many gates are
+registered, so the harness's own coverage is visible rather than assumed.
+
+The table below is the full intended set; the "Ships with" column says when each becomes real.
+
 If it passes, the change is admissible. If it fails, the task is not done. There is no
 third state, and no reviewer judgement in the loop.
 
@@ -18,24 +25,24 @@ third state, and no reviewer judgement in the loop.
 
 Ordered cheapest-first so a broken change fails in seconds rather than minutes.
 
-| # | Gate | Tool | Fails when |
-| --- | --- | --- | --- |
-| 1 | Format & lint | `ruff` | Style drift, unused imports, common defects |
-| 2 | Types | `mypy --strict` | Any untyped boundary; `Any` crossing a module edge |
-| 3 | **Import contracts** | `import-linter` | I1/I2 violated; layering violated (`docs/ddd/05-import-contracts.md`) |
-| 4 | **Isolation proof** | `uv` + import probe | The engine environment resolves an inference SDK |
-| 5 | **Jurisdiction guard** | `tools/` | A country, code, jurisdiction or clause reference appears in any identifier under `src/` (I4) |
-| 6 | **Placeholder scan** | `tools/` | `TODO`, `FIXME`, `pass  # stub`, `"placeholder"`, or an unraised `NotImplementedError` |
-| 7 | **Module contract** | `tools/` | A `src/` module directory lacks a conforming `readme.ai.md` |
-| 8 | **Quote linter** | `tools/` | An encoded parameter disagrees with its stored source quote, under numeral and unit normalisation |
-| 9 | **IDS audit** | IDS-Audit-tool | A compiled `.ids` is not valid IDS 1.0 |
-| 10 | **Compile drift** | `tools/` | Regenerating compiled output from source does not reproduce the committed artefact |
-| 11 | **Fixture gate** | `tools/` | A rule lacks a passing and a failing fixture, or a pack's fixtures do not run |
-| 12 | **Missing derivation** | `tools/` | A rule requires an observation type no registered derivation can produce |
-| 13 | **Derivation promotion** | `tools/` | A derivation is in the shared set below 3 rules across 2 clauses |
-| 14 | Tests | `pytest` | Any test fails |
-| 15 | **Test balance** | `tools/` | A module's unit/integration split is outside 40–60% |
-| 16 | **Determinism** | `pytest` ×2, seeds varied | Two runs disagree |
+| # | Gate | Tool | Fails when | Ships with |
+| --- | --- | --- | --- | --- |
+| 1 | Format & lint | `ruff` | Style drift, unused imports, common defects | P0 |
+| 2 | Types | `mypy --strict` | Any untyped boundary; `Any` crossing a module edge | P0 |
+| 3 | **Import contracts** | `import-linter` | I1/I2 violated; layering violated (`docs/ddd/05-import-contracts.md`) | C1.1 |
+| 4 | **Isolation proof** | `uv` + import probe | The engine environment resolves an inference SDK | P0 |
+| 5 | **Jurisdiction guard** | `tools/` | A country, code, jurisdiction or clause reference appears in any identifier under `src/` (I4) | P0 |
+| 6 | **Placeholder scan** | `tools/` | `TODO`, `FIXME`, `pass  # stub`, `"placeholder"`, or an unraised `NotImplementedError` | P0 |
+| 7 | **Module contract** | `tools/` | A `src/` module directory lacks a conforming `readme.ai.md` | P0 |
+| 8 | **Quote linter** | `tools/` | An encoded parameter disagrees with its stored source quote, under numeral and unit normalisation | O2 |
+| 9 | **IDS audit** | IDS-Audit-tool | A compiled `.ids` is not valid IDS 1.0 | O2 |
+| 10 | **Compile drift** | `tools/` | Regenerating compiled output from source does not reproduce the committed artefact | O2 |
+| 11 | **Fixture gate** | `tools/` | A rule lacks a passing and a failing fixture, or a pack's fixtures do not run | O2 |
+| 12 | **Missing derivation** | `tools/` | A rule requires an observation type no registered derivation can produce | C1.5 |
+| 13 | **Derivation promotion** | `tools/` | A derivation is in the shared set below 3 rules across 2 clauses | C1.3 |
+| 14 | Tests | `pytest` | Any test fails | P0 |
+| 15 | **Test balance** | `tools/` | A module's unit/integration split is outside 40–60% | P0 |
+| 16 | **Determinism** | `pytest` ×2, seeds varied | Two runs disagree | P0 |
 
 Gates 3–13 and 15–16 are the ones that make this repository different from a normal one.
 Each exists because a specific silent failure is possible without it, and each is named in

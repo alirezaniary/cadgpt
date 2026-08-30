@@ -47,6 +47,7 @@ Reopens if → Consequences accepted.
 | [0017](DEC-0017-fixtures-as-code.md) | Fixture models are generator scripts, never committed binaries | Lead | DECIDED |
 | [0018](DEC-0018-escalation-is-a-file.md) | A subagent never decides; escalation is a file and a stop | Lead | DECIDED |
 | [0021](DEC-0021-licence-not-tracked.md) | Licence and legal questions are out of engineering scope | Stakeholder | DECIDED |
+| [0022](DEC-0022-gates-ship-with-their-artifact.md) | A gate ships with the artifact type it guards, not all at P0 | Lead | DECIDED |
 
 ## Direction
 
