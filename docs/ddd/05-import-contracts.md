@@ -65,15 +65,23 @@ forbidden_modules = ["assistance"]
 [[tool.importlinter.contracts]]
 name = "Context layering"
 type = "layers"
-layers = ["presentation", "findings", "evaluation", "resolution", "compilation", "derivation", "ingest"]
+layers = ["presentation", "findings", "evaluation", "resolution", "packs", "derivation", "observation", "ingest"]
 containers = ["engine"]
 
 [[tool.importlinter.contracts]]
 name = "I2 — geometry is authored only by typed generators"
 type = "forbidden"
 source_modules = ["assistance"]
-forbidden_modules = ["engine.derivation", "generators.internals"]
+forbidden_modules = ["engine.derivation"]
 ```
+
+Three names in this block were corrected by **DEC-0028** before the contracts were ever run:
+the layer is `engine.packs`, not `compilation` (`import-linter` resolves modules, and context 4's
+module is `packs`); `observation` was missing from the layering entirely, which left the shared
+kernel C1.1 builds as the one layer the contract did not constrain; and `generators.internals`
+was removed because no such module exists at O1 and an unresolvable `forbidden_modules` entry
+makes `import-linter` error rather than pass. That last one is a loosening with a promissory
+note: the entry returns in the task that creates the generator module, under DEC-0022.
 
 `httpx` appears in the engine's forbidden list deliberately. An inference client reached
 over raw HTTP is still an inference client, and forbidding only the SDK names invites

@@ -68,6 +68,13 @@ statically enforced over *source*; gate 4 only proves it of the *environment*.
 **Evidence:** every §5.3 name parses and round-trips; a bare name is rejected; gate 3 registered
 and demonstrated failing on an `import anthropic` planted in `src/engine`.
 
+**DEC-0028 cleared three defects out of gate 3's way before this slice was specified.**
+`docs/ddd/05-import-contracts.md` named a layer `compilation` that is not a module, omitted
+`observation` — the very layer this capability builds — from the layering entirely, and forbade
+`generators.internals`, which does not exist and would have made `import-linter` error rather
+than pass. The contracts in that file now resolve. Read the record before registering gate 3;
+its §3 is a promissory note a later task owes back.
+
 **Watch for:** the "convenience" constructor taking a bare number, named in L2 as the beginning
 of the end of I4. It will look reasonable. It is not in this slice and is not in any later one.
 
