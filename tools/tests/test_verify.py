@@ -7,13 +7,22 @@ runner whose failure path has never run.
 The failure proof goes through the **real registration path**. There is no plugin loader
 and no injection flag — registering a gate is one ``REGISTRY`` entry plus one module, with
 no exception — so the integration tests copy the repository's `Makefile`, `pyproject.toml`
-and `tools/` into a temporary tree, append one literal ``REGISTRY.append(Gate(...))`` block
-to the copied runner, and run the real `make verify` there.
+and `tools/` into a temporary tree, reset and re-register the copied runner's ``REGISTRY``
+through that same list, and run the real `make verify` there.
+
+The copy's registry is **reset** rather than added to. Gate 14 runs `pytest`, so a copied
+tree that kept the real gates would run this file, which would make another copy and run
+`make verify` in it, without bound. Clearing the copied ``REGISTRY`` leaves exactly the one
+deliberately failing gate this test is about, and the reset lives here rather than as a
+flag in `tools/verify.py`: the runner has one registration path and gains no test-only
+surface. `test_make_verify_over_the_real_tree_exits_zero` runs the real registry, so it
+carries the same nesting marker `test_gates_static.py` uses and is skipped one level down.
 """
 
 from __future__ import annotations
 
 import io
+import os
 import shutil
 import subprocess
 import sys
@@ -25,8 +34,20 @@ from tools.verify import REGISTRY, Gate, GateResult, main, run_gates
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
+NESTED = "CADGPT_NESTED_VERIFY"
+"""Marks a process this suite spawned. Also spelled in ``test_gates_static.py``."""
+
+outermost_run_only = pytest.mark.skipif(
+    os.environ.get(NESTED) == "1",
+    reason=(
+        "already inside a process this suite spawned: gate 14 runs pytest over the real "
+        "registry, so this test would spawn itself without bound"
+    ),
+)
+
 FAILING_GATE_REGISTRATION = """
 
+REGISTRY.clear()
 REGISTRY.append(
     Gate(
         number=99,
@@ -109,12 +130,14 @@ def test_a_raising_gate_fails_and_the_gates_after_it_still_run() -> None:
 
 
 def _make_verify(cwd: Path) -> subprocess.CompletedProcess[str]:
+    """Run the real `make verify`, marked so that what it runs does not spawn in turn."""
     return subprocess.run(
         ["make", "verify", f"PYTHON={sys.executable}"],
         cwd=cwd,
         capture_output=True,
         text=True,
         check=False,
+        env={**os.environ, NESTED: "1"},
     )
 
 
@@ -130,6 +153,7 @@ def _tree_with_one_failing_gate_registered(tmp_path: Path) -> Path:
     return copy
 
 
+@outermost_run_only
 def test_make_verify_over_the_real_tree_exits_zero() -> None:
     result = _make_verify(REPO_ROOT)
     assert result.returncode == 0, result.stdout + result.stderr
@@ -149,4 +173,4 @@ def test_failing_run_names_the_gate_and_prints_the_registered_count(
     result = _make_verify(_tree_with_one_failing_gate_registered(tmp_path))
     assert "deliberately-failing-gate" in result.stdout
     assert "this gate fails on purpose" in result.stdout
-    assert f"{len(REGISTRY) + 1} gates registered, 1 failed" in result.stdout
+    assert "1 gates registered, 1 failed" in result.stdout

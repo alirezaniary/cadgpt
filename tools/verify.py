@@ -26,6 +26,8 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TextIO
 
+from tools.gates import lint, tests, types
+
 
 @dataclass(frozen=True)
 class GateResult:
@@ -60,11 +62,20 @@ class Gate:
     run: Callable[[], GateResult]
 
 
-REGISTRY: list[Gate] = []
+REGISTRY: list[Gate] = [
+    Gate(number=1, name="format-and-lint", cost=1, run=lint.run),
+    Gate(number=2, name="types", cost=2, run=types.run),
+    Gate(number=14, name="tests", cost=3, run=tests.run),
+]
 """The single place a gate is registered.
 
-Empty at P0: this task built the mechanism, and every gate is added by the task that
-introduces the artefact type it guards (DEC-0022).
+A gate is one module under ``tools/gates/`` exposing ``run() -> GateResult`` plus one
+entry here. There is no other registration path, no plugin loader and no injection flag:
+the failure proof in ``tools/tests/test_verify.py`` goes through this list, because a
+mechanism nothing else uses proves nothing about the one that ships.
+
+Every gate is added by the task that introduces the artefact type it guards (DEC-0022);
+gate numbers are stable and match ``docs/architecture/harness.md``.
 """
 
 
@@ -100,9 +111,7 @@ def run_gates(gates: Sequence[Gate], out: TextIO) -> bool:
             # without re-running. KeyboardInterrupt and SystemExit still propagate: those
             # are the operator stopping the run, not a gate reporting a defect.
             result = GateResult(ok=False, detail=traceback.format_exc())
-        out.write(
-            f"{'PASS' if result.ok else 'FAIL'}  gate {gate.number}  {gate.name}\n"
-        )
+        out.write(f"{'PASS' if result.ok else 'FAIL'}  gate {gate.number}  {gate.name}\n")
         if not result.ok:
             failed.append(gate)
             out.writelines(f"        {line}\n" for line in result.detail.splitlines())

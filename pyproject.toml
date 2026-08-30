@@ -23,7 +23,7 @@ package = false
 
 [dependency-groups]
 # Tooling the harness itself needs. Gates bring their own tooling as they are registered.
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "ruff>=0.6", "mypy>=1.11"]
 
 # cadgpt-engine — src/engine. No inference SDK and no HTTP client, ever (I1, I2).
 # This absence is asserted by the isolation-proof gate (harness.md gate 4).
@@ -68,6 +68,46 @@ api = [
     { include-group = "codification" },
     { include-group = "connector" },
 ]
+
+[tool.ruff]
+# Gate 1 (docs/architecture/harness.md). Configured here and nowhere else: one place,
+# per T-0002.
+#
+# `include` is stated rather than defaulted because ruff also formats Python inside
+# Markdown fences, and the task specs under docs/ are prose whose fences are illustrative
+# — reformatting them would make the gate rewrite documentation.
+include = ["*.py", "*.pyi", "pyproject.toml"]
+# Deliberately bad inputs used to prove gates 1, 2 and 14 can fail (DEC-0016). They are
+# copied into a scanned path by tools/tests/test_gates_static.py and are excluded at rest,
+# so the repository can pass its own verify while still holding a proof of failure.
+extend-exclude = ["tools/tests/badfixtures"]
+# The prose and code in this repository wrap at 92; 88 would reformat the existing corpus.
+line-length = 92
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # import order
+    "UP",     # pyupgrade
+    "B",      # bugbear
+    "BLE",    # blind except — CLAUDE.md forbids swallowing an error
+    "RUF",    # ruff's own rules, including RUF100 below
+    "RUF100", # unused `noqa`; listed explicitly because CLAUDE.md forbids suppressing a
+              # warning, so every surviving `noqa` must be load-bearing. RUF100 only works
+              # alongside the real selection: on its own it reports every other rule as
+              # non-enabled and calls live suppressions dead.
+]
+
+[tool.mypy]
+# Gate 2 (docs/architecture/harness.md). Configured here and nowhere else: one place, per
+# T-0002. The gate passes --strict on the command line; no blanket ignore is configured,
+# and a needed ignore is narrow, inline and carries a reason.
+#
+# The deliberately bad inputs proving the gates can fail (DEC-0016) are excluded at rest,
+# for the reason given beside the same exclusion under [tool.ruff].
+exclude = ["^tools/tests/badfixtures/"]
 
 [tool.pytest.ini_options]
 # Tests live beside the module they prove, so the repository root must be importable.

@@ -49,6 +49,7 @@ Reopens if → Consequences accepted.
 | [0018](DEC-0018-escalation-is-a-file.md) | A subagent never decides; escalation is a file and a stop | Lead | DECIDED |
 | [0021](DEC-0021-licence-not-tracked.md) | Licence and legal questions are out of engineering scope | Stakeholder | DECIDED |
 | [0022](DEC-0022-gates-ship-with-their-artifact.md) | A gate ships with the artifact type it guards, not all at P0 | Lead | DECIDED |
+| [0024](DEC-0024-harness-tests-itself.md) | A harness whose tests invoke it must report what it did not run | Lead | DECIDED |
 
 ## Direction
 
