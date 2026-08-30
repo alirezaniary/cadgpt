@@ -12,7 +12,8 @@ that same task (DEC-0022), with a test proving it can reject (DEC-0016).
 
 Three of the sixteen gates in `docs/architecture/harness.md` are registered today —
 1 (lint), 2 (types) and 14 (tests). `make verify` prints how many, so the harness's own
-coverage is visible rather than assumed.
+coverage is visible rather than assumed — and each gate prints its own count of what it
+checked, so coverage *inside* a gate is visible on the same terms (DEC-0024).
 
 No gate re-implements a check. Each wraps an inherited tool (`CLAUDE.md` §6) and returns
 the tool's own output unedited: the agent reading a failing `make verify` needs the real
@@ -52,7 +53,8 @@ The public surface of `tools.verify`. Anything not listed here is internal.
 - `write_listing(gates: Sequence[Gate], out: TextIO) -> None` — prints one line per gate and
   then `"<n> gates registered"`, running nothing.
 - `run_gates(gates: Sequence[Gate], out: TextIO) -> bool` — runs every gate in cost order,
-  prints `PASS`/`FAIL` plus the indented detail of each failure, then
+  prints `PASS`/`FAIL` and then, indented by eight spaces, the gate's `detail` whenever that
+  detail is non-empty — **on `PASS` as well as `FAIL`** (DEC-0024) — then
   `"<n> gates registered, <m> failed"`. Returns `True` only if every gate passed. Raises
   nothing: a gate that raises is reported `FAIL` with its traceback as the detail, and the
   remaining gates still run. `KeyboardInterrupt` and `SystemExit` propagate — those are the
@@ -66,7 +68,11 @@ The public surface of `tools.gates`:
 - `run_tools(commands: Sequence[Sequence[str]]) -> GateResult` — runs each command through
   `uv run --group dev` from the repository root and fails if any exited non-zero. Every
   command runs even after one has failed. The detail of a failure is the invocation, the
-  exit code and the tool's own stdout and stderr, unedited.
+  exit code and the tool's own stdout and stderr, unedited. The detail of a success is one
+  line per command: that command's **last non-empty output line**, which for `ruff`, `mypy`
+  and `pytest` is the line carrying the count of what was checked. A command that printed
+  nothing contributes no line, so a gate with nothing to report stays silent. Gate 1 runs
+  two commands and so reports two lines.
 - `lint.run() -> GateResult` — gate 1. `ruff check .` and `ruff format --check .`. A tree
   can satisfy either half while failing the other, so both run.
 - `types.run() -> GateResult` — gate 2. `mypy --strict tools/`. The task that creates the
@@ -95,6 +101,11 @@ callers:
   gate cannot hide how much else is broken.
 - **A gate reports its tool verbatim.** `run_tools` (`tools/gates/__init__.py`) — the
   failure detail is the tool's own stdout and stderr, never a summary of them.
+- **A gate that checked less than it was asked to says so.** `run_gates`
+  (`tools/verify.py`) prints a non-empty detail on `PASS`, and `run_tools`
+  (`tools/gates/__init__.py`) makes a succeeding tool's own count that detail (DEC-0024).
+  A `make verify` whose gate 14 skipped tests is therefore not byte-identical to one that
+  ran them.
 
 ## Depends on
 `tools/verify.py` imports the Python standard library only: `argparse` (the CLI),
@@ -128,13 +139,16 @@ Tests additionally use `pytest` (dev group) and invoke `make` and the real runne
 - **Any inference client or model SDK** (I1, I2) — as for every module in this repository.
 
 ## Tests
-`tools/tests/test_verify.py` and `tools/tests/test_gates_static.py`. Thirteen tests,
-7 unit / 6 integration (54%, inside the 40–60% band gate 15 will enforce at T-0007).
+`tools/tests/test_verify.py`, `tools/tests/test_gates_static.py` and
+`tools/tests/conftest.py`. Sixteen tests, 9 unit / 7 integration (56%, inside the 40–60%
+band gate 15 will enforce at T-0007).
 
 Unit, over the runner's own logic (`test_verify.py`):
 - gates run cheapest-first, ties by number;
 - `--list` exits 0 and names every registered gate;
 - a `GateResult(ok=False)` with a blank detail is rejected at construction;
+- a passing gate whose detail is non-empty has that detail printed under its `PASS` line;
+- a passing gate whose detail is empty prints its own line and nothing else;
 - a gate whose `run` raises is reported `FAIL` with the exception type, its message and its
   traceback in the detail, and the gates after it still run.
 
@@ -150,6 +164,9 @@ Integration, through the real `Makefile` and a real subprocess:
 - a copy of `Makefile`, `pyproject.toml` and `tools/` whose `REGISTRY` is reset to one
   literal failing `Gate(...)` exits non-zero;
 - that run names the failing gate and prints `"1 gates registered, 1 failed"`;
+- with the nesting marker removed from the environment, the whole of `tools/tests/` runs in
+  a child process and reports **no skips at all** — the proof that the nesting guard below
+  does only what it claims (DEC-0016);
 - each of the three bad inputs, planted where the tool scans it, makes the real
   `make verify` exit non-zero and print `FAIL  gate <n>` for exactly the gate it targets.
 
@@ -161,15 +178,36 @@ runner fails via a mechanism nothing else uses proves the mechanism, not the run
 `mypy` in `pyproject.toml`; none of their names matches a pytest collection pattern. A
 deliberately bad file can therefore sit in the tree, reviewable in a diff, without the
 repository failing its own verify — and no gate is disabled to achieve it. Each test copies
-one into a scanned path for the duration of the test and removes it again.
+one into a scanned path for the duration of the test and removes it again, at **its own**
+destination: a nested `pytest` runs the un-skipped tests of `test_gates_static.py` again, so
+a destination shared between two tests would be unlinked by the nested run while the outer
+test still held it.
 
 **Nesting is bounded by a marker, not by a production flag.** Gate 14 runs `pytest`, so a
 test that spawns `make verify` (or `pytest`) spawns something that runs that test again.
 Every such test marks the processes it spawns with `CADGPT_NESTED_VERIFY=1`, and a marked
 run skips them. Recursion stops one level down; the proof still runs in full at the depth a
-person or CI invokes it from. The marker is spelled in the two test modules and nowhere in
-`tools/verify.py`: the runner has exactly one registration path and gains no test-only
-surface.
+person or CI invokes it from.
+
+The marker name, the `outermost_run_only` decorator and the `make_verify(cwd)` spawn helper
+are defined **once**, in `tools/tests/conftest.py`, and nowhere in `tools/verify.py` or
+`tools/gates/`: the runner has exactly one registration path and gains no test-only surface,
+no flag and no env read. The decorator goes on only the six tests that spawn a process
+re-entering the harness. The two tests that spawn `ruff` and `mypy` carry no marker — those
+tools are not this suite and cannot recurse, and a test skipped for a reason untrue about it
+is a proof silently lost.
+
+The guard is spoofable, and DEC-0024 accepts that and makes its effect visible instead:
+gate 14 reports `pytest`'s summary line, so
+`env CADGPT_NESTED_VERIFY=1 make verify` prints `10 passed, 6 skipped` where a full run
+prints `16 passed`. **`make verify` alone is therefore not evidence that this suite ran in
+full** — that is why every task also runs `uv run --group dev pytest tools/tests/ -q`
+directly, and why one test asserts the suite reports zero skips when the marker is absent.
+
+Both test modules import the shared pieces as `from tools.tests.conftest import ...`, not
+`from conftest import ...`. `tools/` is a package, so `mypy --strict tools/` names that file
+`tools.tests.conftest`; the bare spelling works under `pytest` and fails gate 2 with
+`Cannot find implementation or library stub for module named "conftest"`.
 
 **Mocking: none.** No fake gate module is imported, no filesystem is faked, `make` is
 invoked as `make`, and `ruff`, `mypy` and `pytest` are the real tools over real files.
@@ -179,11 +217,32 @@ invoked as `make`, and `ruff`, `mypy` and `pytest` are the real tools over real 
 $ make verify
 python3 -m tools.verify
 PASS  gate 1  format-and-lint
+        All checks passed!
+        9 files already formatted
 PASS  gate 2  types
+        Success: no issues found in 9 source files
 PASS  gate 14  tests
+        ============================= 16 passed in 11.21s ==============================
 3 gates registered, 0 failed
 $ echo $?
 0
+```
+
+Each `PASS` carries the gate's own count of what it checked, so a run that checked less
+than it should is visible as one (DEC-0024). One level down, inside a process this suite
+spawned, the same command reports the difference:
+
+```
+$ env CADGPT_NESTED_VERIFY=1 make verify
+python3 -m tools.verify
+PASS  gate 1  format-and-lint
+        All checks passed!
+        9 files already formatted
+PASS  gate 2  types
+        Success: no issues found in 9 source files
+PASS  gate 14  tests
+        ======================== 10 passed, 6 skipped in 0.45s =========================
+3 gates registered, 0 failed
 ```
 
 Listing without running anything:
@@ -196,7 +255,8 @@ gate 14  cost 3  tests
 3 gates registered
 ```
 
-A failure prints the tool's own message, indented under the gate that produced it:
+A failure prints the tool's own message, in full and unedited, indented under the gate that
+produced it — the success lines above are summaries, a failure never is:
 
 ```
 FAIL  gate 2  types

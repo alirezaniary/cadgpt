@@ -98,6 +98,14 @@ def run_gates(gates: Sequence[Gate], out: TextIO) -> bool:
 
     A gate that raises is a failing gate, not a crashed run: its traceback becomes the
     detail. A runner that dies on the first broken gate hides how much else is broken.
+
+    A non-empty detail is printed on **PASS as well as FAIL** (DEC-0024). A gate that
+    skipped part of what it was asked to check has something to say about its own
+    coverage, and a run that says nothing about it is indistinguishable from a run that
+    checked everything — the silent green this repository exists to make impossible. A
+    gate with nothing to report returns an empty detail and prints nothing, so clean runs
+    stay readable; a gate that is noisy on success is a defect in that gate, not a reason
+    for the runner to hide it.
     """
     ordered = in_cost_order(gates)
     failed: list[Gate] = []
@@ -114,6 +122,7 @@ def run_gates(gates: Sequence[Gate], out: TextIO) -> bool:
         out.write(f"{'PASS' if result.ok else 'FAIL'}  gate {gate.number}  {gate.name}\n")
         if not result.ok:
             failed.append(gate)
+        if result.detail:
             out.writelines(f"        {line}\n" for line in result.detail.splitlines())
     out.write(f"{len(ordered)} gates registered, {len(failed)} failed\n")
     return not failed
