@@ -47,11 +47,11 @@ One row per §5.3 name, 27 rows.
 | `Headroom_Minimum` | Pset_ACC_Stair | `Headroom` | `Pset_StairFlightCommon` (also: `Pset_RampFlightCommon`) | `Minimum` | |
 | `RiserHeight` | Pset_ACC_Stair | `RiserHeight` | `Pset_StairCommon` (also: `Pset_StairFlightCommon`) | — | |
 | `TreadLength` | Pset_ACC_Stair | `TreadLength` | `Pset_StairCommon` (also: `Pset_StairFlightCommon`) | — | |
-| `RiserCount` | Pset_ACC_Stair | — | authored | — | No IFC template uses the compound `RiserCount`. The nearest concept, `NumberOfRiser` (`Pset_StairCommon` / `Pset_StairFlightCommon`), is spelled differently — see proposed respellings below. |
+| `NumberOfRiser` | Pset_ACC_Stair | `NumberOfRiser` | `Pset_StairCommon` (also: `Pset_StairFlightCommon`) | — | No IFC template uses the compound `RiserCount`. The nearest concept, `NumberOfRiser` (`Pset_StairCommon` / `Pset_StairFlightCommon`), is spelled differently — see proposed respellings below. |
 | `NetFloorArea_InsideFace` | Pset_ACC_Space | `NetFloorArea` | `Qto_SpaceBaseQuantities` (also: `Qto_BuildingBaseQuantities`, `Qto_BuildingStoreyBaseQuantities`) | `InsideFace` | |
 | `NetFloorArea_Centreline` | Pset_ACC_Space | `NetFloorArea` | `Qto_SpaceBaseQuantities` (also: `Qto_BuildingBaseQuantities`, `Qto_BuildingStoreyBaseQuantities`) | `Centreline` | |
 | `ClearHeight_Structural` | Pset_ACC_Space | `ClearHeight` | `Pset_TransportElementElevator` — the only IFC template using this exact name, and for an elevator car interior, not a space under structure; flagged, not a semantic match, only a spelling one | `Structural` | |
-| `MinClearWidth_Narrowest` | Pset_ACC_Space | — | authored | `Narrowest` | No IFC template prefixes `ClearWidth` with `Min`; IFC's own `ClearWidth` carries no min/max qualifier, and this document's own Stair row above already spells the identical measurement `ClearWidth_Narrowest` without the prefix — see proposed respellings below. |
+| `ClearWidth_Narrowest` (Space) | Pset_ACC_Space | `ClearWidth` | `Pset_RampFlightCommon` | `Narrowest` | No IFC template prefixes `ClearWidth` with `Min`; IFC's own `ClearWidth` carries no min/max qualifier, and this document's own Stair row above already spells the identical measurement `ClearWidth_Narrowest` without the prefix — see proposed respellings below. |
 | `PlanArea_Net` | Pset_ACC_Shaft | — | authored | `Net` | No IFC quantity template names a vertical void's horizontal cross-sectional area. `Qto_SpaceBaseQuantities.NetFloorArea` presumes an occupiable floor, not a shaft void, so it is not treated as the same quantity. |
 | `MinPlanDimension` | Pset_ACC_Shaft | — | authored | — | No IFC quantity template represents the minimum in-plan dimension of a void; IFC's `Width`/`Depth` quantities are single axis-aligned dimensions, not a minimum-across-any-direction measure. |
 | `ServedHeight` | Pset_ACC_Shaft | — | authored | — | No IFC quantity template names the vertical extent of storeys a shaft serves; IFC's various `Height` quantities measure a single element's own height, not a shaft's span across storeys. |
@@ -151,3 +151,25 @@ No name, base quantity, pset, or sentence in this document contains a jurisdicti
 body or clause reference (I4). Every `authored` row states what was searched, and every
 `inherited` row's IFC source was confirmed by the query in Method above before it was written —
 run again per row while drafting this table.
+
+
+---
+
+## Amended by DEC-0030
+
+Two rows above were changed after this audit was written, by the decision it prompted:
+
+- **`RiserCount` → `NumberOfRiser`**, now inherited from `Pset_StairCommon`. The audit found
+  §5.3 respelling a quantity IFC already ships — an I3 violation in the product's own source of
+  truth — and `prd.md` §5.3 was amended to IFC's spelling.
+- **`MinClearWidth_Narrowest` → `ClearWidth_Narrowest`**, now inherited from `ClearWidth`. Both
+  `Pset_ACC_Stair` and `Pset_ACC_Space` carry that name; the pset qualifies the subject, so the
+  name does not need to.
+
+The counts above are therefore superseded: **10 of 27 names inherit a base quantity, 17 are
+authored whole.** The 13 authored convention segments are unchanged.
+
+`TreadLength` and `ExitWidth` remain bare and remain flagged. DEC-0030 §3 sends both to S1.1.2,
+which owns the closed set of convention segments — naming a suffix before that set exists is how
+a vocabulary acquires one-off names. S1.1.2 must resolve both explicitly and may not ship them
+bare by omission.

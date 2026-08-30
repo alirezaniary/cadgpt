@@ -101,9 +101,9 @@ A file that labels a stair as a fire stair records the designer's claim, not a d
 Pset_ACC_Site      CoveredArea_FootprintGross, FloorAreaRatio,
                    Setback_North/South/East/West
 Pset_ACC_Stair     ClearWidth_Narrowest, ClearWidth_BetweenHandrails,
-                   Headroom_Minimum, RiserHeight, TreadLength, RiserCount
+                   Headroom_Minimum, RiserHeight, TreadLength, NumberOfRiser
 Pset_ACC_Space     NetFloorArea_InsideFace, NetFloorArea_Centreline,
-                   ClearHeight_Structural, MinClearWidth_Narrowest
+                   ClearHeight_Structural, ClearWidth_Narrowest
 Pset_ACC_Shaft     PlanArea_Net, MinPlanDimension, ServedHeight, ProportionRatio
 Pset_ACC_Parking   StallLength, StallWidth, ManeuveringClearance, StallCount
 Pset_ACC_Route     TravelDistance, ExitWidth, DeadEndLength
