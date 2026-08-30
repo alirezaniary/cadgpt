@@ -52,6 +52,7 @@ Reopens if → Consequences accepted.
 | [0024](DEC-0024-harness-tests-itself.md) | A harness whose tests invoke it must report what it did not run | Lead | DECIDED |
 | [0025](DEC-0025-throughput-over-recursive-self-proof.md) | Harness findings are recorded not recursed on; Sonnet builds; siblings ship together | Stakeholder | DECIDED |
 | [0026](DEC-0026-module-contract-scope.md) | A module, for gate 7, is every package directory except a `tests/` tree | Lead | DECIDED |
+| [0027](DEC-0027-gate-16-scope.md) | Gate 16 varies seed and order over the suite minus the eight harness-spawning tests | Lead | DECIDED |
 
 ## Direction
 
