@@ -3,71 +3,82 @@
 Written at the end of the first build session. A cold session should be able to resume from
 this file plus `CLAUDE.md` and `decisions/INDEX.md`, without reading any transcript.
 
-## Done, on `main`
+## Where this is
 
-| Commit | What |
-| --- | --- |
-| `f371b96` | T-0001 — gate registry, `make verify` |
-| `9a1e0e7` | Lead — DEC-0023 closed, gate 4 overclaim corrected in `harness.md`, T-0001 spec defects fixed |
-| `55acdec` | T-0001a — single registration path, runner survives a raising gate, `tools/readme.ai.md` |
-| `7ff744a` | T-0002 — gates 1, 2, 14 (ruff, mypy --strict, pytest) |
-| `e493c03` | T-0002a — a gate reports what it did not run (DEC-0024) |
-| `1811d91` | T-0002b — the harness's guards demonstrated failing, not asserted |
-| `c6cc194` | T-0002c — tests plant into a copied tree; DEC-0024 proven end to end |
-| `519067f` | T-0002d — summary from stdout; copied-tree proofs register only the gate under test |
-| `709ea58` | T-0003 — gate 4, the isolation proof; I1 is a fact |
-| `dec0025` | DEC-0025 — stop recursing on harness self-proof; Sonnet builds; siblings ship together |
+**P0 is complete, reviewed, and its review findings are closed.** `make verify` exits 0 with
+nine gates and 0 failed, 82 tests, none skipped, in about 4m50s. Every gate reports what it
+scanned, and every gate has a committed proof it can fail.
 
-**Five gates registered**: 1 format-and-lint, 2 types, 4 isolation-proof, 14 tests.
-`make verify` ≈ 2.5 min, exit 0. 25 tests, 0 skipped. `git status` is byte-identical across a
-full suite run — no test writes into this checkout.
+```
+PASS  gate 1   format-and-lint   All checks passed! / 20 files already formatted
+PASS  gate 5   jurisdiction-guard  23 files scanned under tools/
+PASS  gate 6   placeholder-scan    23 files scanned under tools/
+PASS  gate 7   module-contract     2 module directories checked
+PASS  gate 15  test-balance        tools: 47 unit / 35 integration (43% integration, in band)
+PASS  gate 2   types               Success: no issues found in 20 source files
+PASS  gate 16  determinism         72 tests, 2 runs, seeds 1/2, agreed; 10 deselected
+PASS  gate 4   isolation-proof     51 packages resolved; anthropic, openai raise ImportError
+PASS  gate 14  tests               82 passed in 293.69s
+9 gates registered, 0 failed
+```
 
-## Landed after the state file was first written
-T-0004/5/6 shipped together as one session (DEC-0025 §4) — gates 5 jurisdiction-guard,
-6 placeholder-scan, 7 module-contract. **Seven gates registered**, `make verify` exits 0 in
-~5m23s, 53 tests, tree byte-identical across a full run (after DEC-0026: 5m31s, 58 tests). Each gate observed rejecting for real in
-a copied tree. Verified by the Lead independently, not only reported.
+Gates still unbuilt: 3 (ships with the first `src/` package, S1.1.2), 8–13 (O2, C1.3, C1.5).
+`docs/architecture/harness.md` says which and when.
 
-**`make verify` is now 5m31s.** That is the number to attack if the loop gets painful; the lever
-is the same one T-0002d used — copied-tree proofs registering only the gate under test.
-
-## DEC-0026 is closed
-Gate 7 shipped at T-0006 checking only the *topmost* `__init__.py`-bearing directory on a path.
-Under that rule it checked `src/engine/` and skipped all seven `src/engine/*` contexts
-`module-map.md` names — green while enforcing nothing on the code it exists to guard.
-
-Closed the other way by the Lead: **a module directory is every package under `src/` or `tools/`,
-at any depth, excluding a `tests/` tree.** `tools/gates/` is therefore a module and now carries
-`tools/gates/readme.ai.md`; the gate-module contracts moved there out of `tools/readme.ai.md`,
-which now stops at the runner. The regression is pinned by
-`test_gate_module_contract.py::test_a_package_nested_inside_a_module_is_checked_too`, and it was
-observed failing under the old rule before the fix landed: `make verify` printed
-`PASS  gate 7  module-contract` over a tree with a module carrying no contract at all.
-
-Still untested: `src/`. DEC-0026's Reopens-if is the thing the first `src/` task should read —
-`src/engine` will be reported as a module directory in its own right if it carries an
-`__init__.py`, which is correct, not an exception to carve out.
-
-**Watch for this failure mode generally: a session narrowing a rule so its own tree passes.** The
-review question that catches it is in DEC-0026's last section.
+## In flight
+**T-0009** — the property vocabulary audit, S1.1.1, the first slice of C1.1. Writes no code:
+one table in `docs/ddd/06-property-vocabulary.md` resolving every `prd.md` §5.3 name to an
+inherited IFC quantity or an authored-here reason.
 
 ## Next, in order
-1. **T-0007** — `docs/roadmap/tasks/T-0007-test-discipline-gates.md`, gates 15 (test balance) and
-   16 (determinism). Last P0 task. Its spec carries a warning: under a strict reading of the
-   unit/integration rule `tools/` sits at 32%, **below** the 40–60% band, so the gate may fail on
-   arrival. That is the gate working — report it, do not tune the rule to pass.
-2. **P0 complete** → run `/adversarial-review` over the whole harness, then the first `src/` slice.
-   `docs/roadmap/L3-P0-slices.md` and `docs/roadmap/dependency-order.md` are the schedule.
+1. Review and integrate T-0009.
+2. **S1.1.2** — the property name carries its convention, or it does not exist. This creates the
+   first `src/` package, and **gate 3 (import contracts) ships in the same task** (DEC-0022).
+   Read DEC-0026's Reopens-if before creating `src/engine`: if it needs an `__init__.py`, it
+   becomes a module directory owing a `readme.ai.md`, which is correct, not an exception.
+3. S1.1.3 the `Observation` atom, S1.1.4 corroboration conflict. See
+   `docs/roadmap/L3-C11-slices.md`.
+
+## Decisions taken this session
+- **DEC-0026** — a module, for gate 7, is every package except a `tests/` tree. The record was
+  first written DECIDED and signed "Lead" *by the subagent that raised it*; reopened and closed
+  the other way. Under the shipped rule gate 7 checked `src/engine/` and skipped all five
+  `engine/*` modules `module-map.md` names.
+- **DEC-0027** — gate 16 deselects the harness-spawning tests. Six tests were 234 of the suite's
+  258 seconds; including them would have put `make verify` past fourteen minutes.
+- **DEC-0028** — `docs/ddd/05-import-contracts.md` named a layer `compilation` that is not a
+  module, omitted `observation` entirely, and forbade a module that does not exist. Gate 3's
+  contracts would not have loaded. Fixed before S1.1.2 meets them.
+- **DEC-0029** — pre-existing tests are marked `integration` by what they do; the 40–60% band was
+  not moved.
+
+## What actually finds defects here
+Three of the four real defects this session were found by **probing a boundary, not reading a
+diff**, and each had passing tests over it:
+
+- gate 7 skipping five modules — found by reading `module-map.md` against the rule;
+- gates 5 and 6 masking a dead scan root while reporting it as scanned — found by constructing
+  a dead root beside a live one;
+- gate 15 returning `ok=True, detail=''` over an empty scan with the whole suite still green —
+  found by neutering its walk in a copied tree.
+
+The review that found the last one is `REVIEW-harness-p0.md`. Its M3 (JUnit node ids break for
+class-based tests) is recorded and unfixed; no such test exists yet.
 
 ## Standing corrections a new session should not rediscover
-- `pytest` is not on the system interpreter. Every acceptance command is
-  `uv run --group dev pytest ...`. Bare `uvx mypy` cannot see the dev group either; use
-  `uvx --with pytest mypy --strict tools/`.
-- `ruff check --select RUF100` alone reports every *unselected* rule as non-enabled and so calls
-  live suppressions dead. The `# noqa: BLE001` in `tools/verify.py` is load-bearing.
-- Gate 4 needs a warm `uv` cache or a reachable index. It fails closed when it has neither, which
-  is correct and has been observed for real.
-- Known and deliberately not fixed (DEC-0025 §1): the gate 1 and gate 2 rejection proofs no longer
-  spawn `pytest`, so they cannot re-enter the harness, yet they still carry `outermost_run_only`.
-  Two proofs are skipped in a depth-1 child for a reason no longer true of them. Depth-0 runs are
-  unaffected.
+- `pytest` is not on the system interpreter. Every command is `uv run --group dev pytest ...`.
+- **Run `make verify` as `env -u CADGPT_NESTED_VERIFY -u CADGPT_VERIFY_DEPTH make verify`.** With
+  either set, gate 14 silently skips the ten spawning proofs and the evidence is from a nested
+  run. A real depth-0 run reports 82 tests, none skipped. One session's completion evidence was
+  quietly nested; the printed skip count is the only reason it was catchable.
+- **A task that adds a test spawning `make verify` or `pytest` must list `tools/tests/conftest.py`
+  in its Files section**, so the test can be registered in `SPAWNS_A_RE_ENTERING_PROCESS`. Omitting
+  it has now cost two sessions; `docs/process/task-spec.md` carries the rule.
+- `ruff check --select RUF100` alone calls live suppressions dead. The `# noqa: BLE001` in
+  `tools/verify.py` is load-bearing.
+- Gate 4 needs a warm `uv` cache or a reachable index, and fails closed without either.
+- bSDD's `TextSearch/v2` returns zero for everything — including `IfcWall` — when given a
+  `DictionaryUris` filter. Without the filter it works. A zero from a filtered query is a broken
+  query, not an absent term.
+- Known and deliberately not fixed (DEC-0025 §1): the gate 1 and gate 2 rejection proofs no
+  longer spawn `pytest` yet still carry `outermost_run_only`.
