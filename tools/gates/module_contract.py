@@ -8,22 +8,23 @@ headings are all there, in order, and none of them is empty. An empty heading is
 concrete, common way this convention decays, which is why it is the one content check worth
 making.
 
-**Module, not directory.** ``docs/architecture/module-map.md`` treats ``tools/`` as a
-single module even though ``tools/gates/`` and ``tools/tests/`` are separate Python
-packages beneath it — one ``readme.ai.md`` already documents ``tools.verify``,
-``tools.gates`` and ``tools.gates.isolation`` together. So a *module directory*, for this
-gate, is the **topmost** package found walking down from ``src/`` or ``tools/`` — the first
-directory on a given path that carries an ``__init__.py`` — and its own nested packages are
-not walked past: they are internal to the module root's contract, not modules of their own.
-This is what keeps ``tools/gates/`` from needing a ``readme.ai.md`` of its own that would
-duplicate the one at ``tools/readme.ai.md``, and it generalises to ``src/``: a distribution
-root such as ``src/engine`` is itself the module-map's namespace, and the *context*
-directories beneath it (``src/engine/ingest``, ``src/engine/derivation``, ...) are each the
-first ``__init__.py`` this walk finds on the way down to them.
+**What counts as a module** (DEC-0026): any directory under ``src/`` or ``tools/`` that
+carries an ``__init__.py``, at any depth. The walk does not stop when it finds a package —
+``docs/architecture/module-map.md`` §Per-module obligations reads "Every directory under
+``src/`` carries ``readme.ai.md``", and it names ``engine/ingest``, ``engine/observation``,
+``engine/derivation``, ``engine/packs``, ``engine/resolution``, ``engine/evaluation`` and
+``engine/findings`` as distinct modules with distinct responsibilities. A walk that stopped
+at the topmost package would check ``src/engine/`` and skip all seven, which is a gate that
+looks green while enforcing nothing on the code it exists to guard.
+
+A ``tests/`` tree is the one exclusion, and it is not an exception to the rule so much as a
+consequence of it: the same section puts ``tests/`` *inside* a module, so a module's tests
+are covered by that module's contract and are not a module themselves. ``tests`` is not
+descended into at all, so a package nested under one needs no ``readme.ai.md`` either.
 
 ``src/`` does not exist yet at P0, so this gate is proven by its fixtures, not by its scan
-target (DEC-0016) — the one thing it can and must find in the real tree today is
-``tools/readme.ai.md`` itself.
+target (DEC-0016) — what it finds in the real tree today is ``tools/readme.ai.md`` and
+``tools/gates/readme.ai.md``.
 """
 
 from __future__ import annotations
@@ -54,7 +55,9 @@ a change to the convention and a decision record, not a task-level choice."""
 
 SCAN_ROOTS: tuple[str, ...] = ("src", "tools")
 
-EXCLUDE_DIR_NAMES: frozenset[str] = frozenset({"__pycache__"})
+EXCLUDE_DIR_NAMES: frozenset[str] = frozenset({"__pycache__", "tests"})
+"""Directory names the walk does not enter. ``tests`` is a module's own test tree
+(DEC-0026), not a module; ``__pycache__`` is not source at all."""
 
 _HEADING_RE = re.compile(r"^##[ \t]+(.+?)[ \t]*$", re.MULTILINE)
 
@@ -110,9 +113,12 @@ def problems_in(directory: Path) -> list[str]:
     ]
 
 
-def _module_roots(root: Path) -> list[Path]:
-    """The topmost package directories under ``root`` — see the module docstring for why
-    a package's own subpackages are not walked past."""
+def module_directories(root: Path) -> list[Path]:
+    """Every package directory under ``root``, at any depth, ``tests/`` trees excluded.
+
+    Finding a package is not a reason to stop descending (DEC-0026): a package nested inside
+    another is its own module and owes its own contract.
+    """
     if not root.exists():
         return []
 
@@ -121,7 +127,6 @@ def _module_roots(root: Path) -> list[Path]:
     def walk(directory: Path) -> None:
         if (directory / "__init__.py").exists():
             found.append(directory)
-            return
         for child in sorted(p for p in directory.iterdir() if p.is_dir()):
             if child.name not in EXCLUDE_DIR_NAMES:
                 walk(child)
@@ -131,13 +136,13 @@ def _module_roots(root: Path) -> list[Path]:
 
 
 def run() -> GateResult:
-    """Gate 7. Check every module root under ``src/`` and ``tools/``, or an empty, passing
-    result if none has a problem."""
+    """Gate 7. Check every module directory under ``src/`` and ``tools/``, or an empty,
+    passing result if none has a problem."""
     from tools.verify import GateResult
 
     problems: list[str] = []
     for root_name in SCAN_ROOTS:
-        for directory in _module_roots(REPO_ROOT / root_name):
+        for directory in module_directories(REPO_ROOT / root_name):
             problems.extend(problems_in(directory))
 
     if problems:

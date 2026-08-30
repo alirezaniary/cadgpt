@@ -33,7 +33,7 @@ Ordered cheapest-first so a broken change fails in seconds rather than minutes.
 | 4 | **Isolation proof** | `uv` + import probe | The engine environment resolves an inference SDK | P0 |
 | 5 | **Jurisdiction guard** | `tools/` | A country, code, jurisdiction or clause reference appears in any identifier under `src/` (I4) | P0 |
 | 6 | **Placeholder scan** | `tools/` | `TODO`, `FIXME`, `pass  # stub`, `"placeholder"`, or an unraised `NotImplementedError` | P0 |
-| 7 | **Module contract** | `tools/` | A `src/` module directory lacks a conforming `readme.ai.md` | P0 |
+| 7 | **Module contract** | `tools/` | A module directory — any package under `src/` or `tools/` outside a `tests/` tree (DEC-0026) — lacks a conforming `readme.ai.md` | P0 |
 | 8 | **Quote linter** | `tools/` | An encoded parameter disagrees with its stored source quote, under numeral and unit normalisation | O2 |
 | 9 | **IDS audit** | IDS-Audit-tool | A compiled `.ids` is not valid IDS 1.0 | O2 |
 | 10 | **Compile drift** | `tools/` | Regenerating compiled output from source does not reproduce the committed artefact | O2 |

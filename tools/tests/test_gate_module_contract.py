@@ -1,10 +1,17 @@
 """Proof that gate 7 (the module contract checker, DEC-0011) matches and rejects correctly.
 
-Unit tests call ``module_contract.problems_in`` directly over a constructed package
-directory under ``tmp_path`` — pure filesystem reads, no registry — to prove each
-conformance rule. Integration tests plant a bad package into a copy of the harness
-(``conftest.copied_tree``) and run the real gate over it, proving the wiring, including
-that ``src/`` not existing yet is a clean pass rather than a failure.
+Unit tests call ``module_contract.problems_in`` and ``module_contract.module_directories``
+directly over a constructed tree under ``tmp_path`` — pure filesystem reads, no registry —
+to prove each conformance rule and the walk's scope. Integration tests plant a bad package
+into a copy of the harness (``conftest.copied_tree``) and run the real gate over it, proving
+the wiring, including that ``src/`` not existing yet is a clean pass rather than a failure.
+
+The walk's scope is DEC-0026 and is the thing most worth testing here: the gate shipped at
+T-0006 stopping at the topmost package on a path, which would have checked ``src/engine/``
+and skipped every context beneath it.
+``test_a_package_nested_inside_a_module_is_checked_too`` is that regression, planted through
+the real ``make verify``; ``test_the_walk_finds_every_package_but_a_tests_tree`` is the same
+rule stated directly over a constructed tree.
 
 **Mocking: none.** Real files, real ``tools/readme.ai.md``, and — for the ``make verify``
 proof — the real ``Makefile`` and runner.
@@ -91,7 +98,71 @@ def test_a_package_with_an_empty_open_questions_fails(tmp_path: Path) -> None:
     assert any("'Open questions'" in problem and "empty" in problem for problem in problems)
 
 
+# --- unit: the walk's scope (DEC-0026) ----------------------------------------------
+
+
+def test_the_walk_finds_every_package_but_a_tests_tree(tmp_path: Path) -> None:
+    """Every package at any depth; a ``tests/`` tree and what is under it, never."""
+    for relative in (
+        "outer",
+        "outer/inner",
+        "outer/inner/deeper",
+        "outer/tests",
+        "outer/tests/data",
+    ):
+        _write_package(tmp_path / relative, readme_body=_CONFORMING_SECTIONS)
+    (tmp_path / "notapackage").mkdir()
+    _write_package(tmp_path / "notapackage" / "under_it", readme_body=_CONFORMING_SECTIONS)
+
+    found = module_contract.module_directories(tmp_path)
+
+    assert found == [
+        tmp_path / "notapackage" / "under_it",
+        tmp_path / "outer",
+        tmp_path / "outer" / "inner",
+        tmp_path / "outer" / "inner" / "deeper",
+    ]
+
+
+def test_the_walk_of_a_missing_root_is_empty(tmp_path: Path) -> None:
+    assert module_contract.module_directories(tmp_path / "nothing_here") == []
+
+
 # --- integration -------------------------------------------------------------------
+
+
+def test_a_package_nested_inside_a_module_is_checked_too(tmp_path: Path) -> None:
+    """DEC-0026's regression: a bad package *beneath* a conforming one must still fail.
+
+    Under the topmost-only rule this gate shipped with, ``src/good`` was the module root and
+    ``src/good/nested`` was never looked at, so ``make verify`` passed over a tree with a
+    module carrying no contract at all.
+    """
+    copy = copied_tree(tmp_path, only_gate(7))
+    _write_package(copy / "src" / "good", readme_body=_CONFORMING_SECTIONS)
+    _write_package(copy / "src" / "good" / "nested", readme_body=None)
+
+    result = make_verify(copy)
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "FAIL  gate 7  module-contract" in result.stdout
+    assert "nested" in result.stdout
+
+
+def test_a_tests_tree_inside_a_module_is_not_a_module(tmp_path: Path) -> None:
+    """The other half of DEC-0026: a module's own ``tests/`` owes no ``readme.ai.md``."""
+    copy = copied_tree(tmp_path)
+    _write_package(copy / "src" / "good", readme_body=_CONFORMING_SECTIONS)
+    _write_package(copy / "src" / "good" / "tests", readme_body=None)
+
+    result = gate_result_in(copy, "module_contract")
+
+    assert result.ok is True, result.detail
+
+
+def test_the_gates_package_carries_its_own_contract() -> None:
+    """``tools/gates/`` is a module under DEC-0026, and owes a conforming contract."""
+    assert module_contract.problems_in(REPO_ROOT / "tools" / "gates") == []
 
 
 def test_make_verify_fails_and_names_gate_7(tmp_path: Path) -> None:

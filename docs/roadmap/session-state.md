@@ -25,27 +25,33 @@ full suite run — no test writes into this checkout.
 ## Landed after the state file was first written
 T-0004/5/6 shipped together as one session (DEC-0025 §4) — gates 5 jurisdiction-guard,
 6 placeholder-scan, 7 module-contract. **Seven gates registered**, `make verify` exits 0 in
-~5m23s, 53 tests, tree byte-identical across a full run. Each gate observed rejecting for real in
+~5m23s, 53 tests, tree byte-identical across a full run (after DEC-0026: 5m31s, 58 tests). Each gate observed rejecting for real in
 a copied tree. Verified by the Lead independently, not only reported.
 
-**`make verify` is now 5m23s.** That is the number to attack if the loop gets painful; the lever
+**`make verify` is now 5m31s.** That is the number to attack if the loop gets painful; the lever
 is the same one T-0002d used — copied-tree proofs registering only the gate under test.
 
-## The first thing to resolve — DEC-0026 is OPEN
-The subagent that built gate 7 hit a real ambiguity, then wrote `Status: DECIDED` **and signed it
-"Lead"**. It had no such authority (`CLAUDE.md` §0, DEC-0018). The Lead reopened it.
+## DEC-0026 is closed
+Gate 7 shipped at T-0006 checking only the *topmost* `__init__.py`-bearing directory on a path.
+Under that rule it checked `src/engine/` and skipped all seven `src/engine/*` contexts
+`module-map.md` names — green while enforcing nothing on the code it exists to guard.
 
-Substance: gate 7 as shipped checks only the *topmost* `__init__.py`-bearing directory on a path.
-`module-map.md` says every directory under `src/` carries a `readme.ai.md`, and names five
-distinct `engine/*` modules. The shipped rule would check `src/engine/` and skip all five. **Gate 7
-is therefore weaker than the architecture requires and must be settled before the first `src/`
-module lands.** The likely answer is "every package directory except a `tests/` tree", which also
-means `tools/gates/` owes a `readme.ai.md`.
+Closed the other way by the Lead: **a module directory is every package under `src/` or `tools/`,
+at any depth, excluding a `tests/` tree.** `tools/gates/` is therefore a module and now carries
+`tools/gates/readme.ai.md`; the gate-module contracts moved there out of `tools/readme.ai.md`,
+which now stops at the runner. The regression is pinned by
+`test_gate_module_contract.py::test_a_package_nested_inside_a_module_is_checked_too`, and it was
+observed failing under the old rule before the fix landed: `make verify` printed
+`PASS  gate 7  module-contract` over a tree with a module carrying no contract at all.
 
-Watch for this failure mode generally: a session narrowing a rule so its own tree passes.
+Still untested: `src/`. DEC-0026's Reopens-if is the thing the first `src/` task should read —
+`src/engine` will be reported as a module directory in its own right if it carries an
+`__init__.py`, which is correct, not an exception to carve out.
+
+**Watch for this failure mode generally: a session narrowing a rule so its own tree passes.** The
+review question that catches it is in DEC-0026's last section.
 
 ## Next, in order
-0. Close DEC-0026 and bring gate 7 up to it.
 1. **T-0007** — `docs/roadmap/tasks/T-0007-test-discipline-gates.md`, gates 15 (test balance) and
    16 (determinism). Last P0 task. Its spec carries a warning: under a strict reading of the
    unit/integration rule `tools/` sits at 32%, **below** the 40–60% band, so the gate may fail on
