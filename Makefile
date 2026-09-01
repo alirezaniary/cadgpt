@@ -1,12 +1,18 @@
-# The whole interface of this repository.
-#
-# `verify` runs the gate registry in tools/verify.py. It is stdlib-only on purpose:
-# the runner has to be able to run before and without the rest of the toolchain,
-# and every gate brings its own tooling when it is registered (DEC-0022).
+PYTHON ?= uv run --group dev
 
-PYTHON ?= python3
+.PHONY: verify lint types test contracts
 
-.PHONY: verify
+verify: lint types contracts test
 
-verify:
-	$(PYTHON) -m tools.verify
+lint:
+	$(PYTHON) ruff check .
+	$(PYTHON) ruff format --check .
+
+types:
+	$(PYTHON) mypy --strict engine/
+
+contracts:
+	$(PYTHON) lint-imports --no-cache
+
+test:
+	$(PYTHON) pytest -q

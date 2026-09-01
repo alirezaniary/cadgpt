@@ -1,143 +1,71 @@
-# One repository, several distributions with disjoint dependency sets (DEC-0004).
-#
-# Each distribution in docs/architecture/module-map.md is a dependency group here, so an
-# environment can be resolved for one distribution alone. That is what makes I1 a fact
-# rather than a policy: the engine environment does not contain an inference client, so
-# the import is unresolvable and not merely forbidden.
-#
-# Adding a dependency is a decision record, never a task-level choice
-# (docs/architecture/stack.md).
-
 [project]
 name = "cadgpt"
 version = "0.0.0"
-description = "Jurisdiction-agnostic building-code checking over IFC models."
+description = "Check IFC models against IDS rule sets and report what passes, fails, and cannot be determined."
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "ifcopenshell==0.8.5",
+    "ifctester==0.8.5",
+]
 
 [build-system]
-# hatchling is a build-time-only backend, not a runtime dependency of any distribution in
-# docs/architecture/module-map.md's table — it never resolves into the engine group's
-# closure gate 4 checks. Needed because src/ is now real: the project must be installed
-# (editable) for `engine` to be importable at all, by `uv run` or anyone else.
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-# Each directory under src/ is a top-level importable package (`engine`, and its future
-# siblings from docs/architecture/module-map.md), never `cadgpt.engine` — the repository
-# root is not itself a package. Listed one at a time, as each is created
-# (CLAUDE.md section 6, no scaffolding): only src/engine exists today.
-packages = ["src/engine"]
+packages = ["engine"]
 
 [tool.uv]
-# The repository root is now an installable (editable) package so that src/ is importable
-# as the package roots docs/architecture/module-map.md names.
 package = true
 
 [dependency-groups]
-# Tooling the harness itself needs. Gates bring their own tooling as they are registered.
-# pytest-randomly is gate 16's (DEC-0027 §3): it is the only caller that re-enables it,
-# with -p randomly and two different seeds; every other run carries -p no:randomly below.
-dev = ["pytest>=8.0", "ruff>=0.6", "mypy>=1.11", "pytest-randomly>=3.15"]
-
-# cadgpt-engine — src/engine. No inference SDK and no HTTP client, ever (I1, I2).
-# This absence is asserted by the isolation-proof gate (harness.md gate 4).
-engine = [
-    "ifcopenshell",
-    "ifcpatch",
-    "ifctester",
-    "topologicpy",
-    "shapely",
-    "pydantic>=2",
-]
-
-# cadgpt-presentation — src/presentation.
-presentation = [
-    { include-group = "engine" },
-    "weasyprint",
-    "arabic-reshaper",
-    "python-bidi",
-]
-
-# cadgpt-codification — src/codification. The only distribution permitted an inference
-# client; both inference planes sit behind one OpenAI-compatible port (DEC-0009).
-codification = [
-    { include-group = "engine" },
-    "openai",
-]
-
-# cadgpt-assistance — src/assistance. Strictly downstream; consumes, never produces.
-assistance = [
-    { include-group = "engine" },
-    { include-group = "presentation" },
-    "openai",
-    "mcp",
-]
-
-# cadgpt-connector — src/connector. The one distribution that ships to user machines.
-connector = ["mcp"]
-
-# cadgpt-api — src/api. Imports everything, is imported by nothing.
-api = [
-    { include-group = "assistance" },
-    { include-group = "codification" },
-    { include-group = "connector" },
-]
+dev = ["pytest>=8.0", "ruff>=0.6", "mypy>=1.11", "import-linter>=2.14"]
 
 [tool.ruff]
-# Gate 1 (docs/architecture/harness.md). Configured here and nowhere else: one place,
-# per T-0002.
-#
-# `include` is stated rather than defaulted because ruff also formats Python inside
-# Markdown fences, and the task specs under docs/ are prose whose fences are illustrative
-# — reformatting them would make the gate rewrite documentation.
-include = ["*.py", "*.pyi", "pyproject.toml"]
-# Deliberately bad inputs used to prove gates 1, 2 and 14 can fail (DEC-0016). They are
-# copied into a scanned path by tools/tests/test_gates_static.py and are excluded at rest,
-# so the repository can pass its own verify while still holding a proof of failure.
-extend-exclude = ["tools/tests/badfixtures"]
-# The prose and code in this repository wrap at 92; 88 would reformat the existing corpus.
 line-length = 92
 
 [tool.ruff.lint]
 select = [
-    "E",      # pycodestyle errors
-    "W",      # pycodestyle warnings
-    "F",      # pyflakes
-    "I",      # import order
-    "UP",     # pyupgrade
-    "B",      # bugbear
-    "BLE",    # blind except — CLAUDE.md forbids swallowing an error
-    "RUF",    # ruff's own rules, including RUF100 below
-    "RUF100", # unused `noqa`; listed explicitly because CLAUDE.md forbids suppressing a
-              # warning, so every surviving `noqa` must be load-bearing. RUF100 only works
-              # alongside the real selection: on its own it reports every other rule as
-              # non-enabled and calls live suppressions dead.
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # import order
+    "UP",  # pyupgrade
+    "B",   # bugbear
+    "BLE", # blind except - CLAUDE.md forbids swallowing an error
+    "RUF",
 ]
 
 [tool.mypy]
-# Gate 2 (docs/architecture/harness.md). Configured here and nowhere else: one place, per
-# T-0002. The gate passes --strict on the command line; no blanket ignore is configured,
-# and a needed ignore is narrow, inline and carries a reason.
-#
-# The deliberately bad inputs proving the gates can fail (DEC-0016) are excluded at rest,
-# for the reason given beside the same exclusion under [tool.ruff].
-exclude = ["^tools/tests/badfixtures/"]
+python_version = "3.12"
+
+# ifctester ships no py.typed marker. Scoped to that package alone: our own code stays
+# strict, and anything crossing this boundary is typed by hand in engine/check.py.
+[[tool.mypy.overrides]]
+module = ["ifctester.*"]
+ignore_missing_imports = true
+
+[tool.importlinter]
+root_packages = ["engine"]
+include_external_packages = true
+
+# I1: rule evaluation is deterministic code. The engine cannot reach an inference client,
+# and cannot reach a web framework. This is the one guard that has teeth.
+[[tool.importlinter.contracts]]
+name = "I1 - no inference client or web framework reaches the checking engine"
+type = "forbidden"
+source_modules = ["engine"]
+forbidden_modules = [
+    "anthropic",
+    "openai",
+    "httpx",
+    "aiohttp",
+    "socket",
+    "django",
+]
 
 [tool.pytest.ini_options]
-# Tests live beside the module they prove, so the repository root must be importable.
 pythonpath = ["."]
-# Gate 15 (docs/architecture/harness.md): classification of unit vs integration is
-# explicit, never inferred from a file's path or name. spawns_harness is gate 16's
-# deselection marker (DEC-0027 §1) — exactly the eight tests
-# tools/tests/conftest.SPAWNS_A_RE_ENTERING_PROCESS names, pinned there rather than here.
 markers = [
-    "integration: a test that enters at a real outer boundary and exits at a real output",
-    "spawns_harness: spawns a process that re-enters this suite; gate 16 deselects it",
+    "integration: enters at a real entry point over real files and exits at a real output",
 ]
-# pytest-randomly is installed for gate 16 (DEC-0027 §3) but must not change any other
-# run's collection order — gate 14, a developer's plain `pytest`, every copied-tree proof
-# in tools/tests/ all stay exactly as order-stable as before it was added. Gate 16 is the
-# only caller that passes -p randomly back, with two different seeds.
-addopts = ["-p", "no:randomly"]
