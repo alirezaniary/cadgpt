@@ -1,9 +1,16 @@
 """Check an IFC model against an IDS rule set and report three-valued results.
 
-`ifctester` does the evaluation. This module does the one thing it does not: it separates
-"the model violates this rule" from "the model does not carry the data this rule needs".
-`ifctester` reports both as a failure. Telling an architect they have 113 code violations
-when they have 12 violations and 101 unknowns is the difference this module exists to make.
+`ifctester` does the evaluation. This module does the two things it does not.
+
+**It separates "violates the rule" from "lacks the data the rule needs."** `ifctester`
+reports both as a failure. Telling an architect they have 113 code violations when they
+have 12 violations and 101 unknowns is the difference this module exists to make.
+
+**It refuses to pass a rule that checked nothing.** A specification whose applicability
+matched zero elements has established no compliance, and `ifctester` reports it as a pass.
+Whether a specification applies is a separate three-valued question from whether it passed,
+and it is answered from the matched-subject count and the IDS cardinality — never from
+`ifctester`'s own status alone.
 """
 
 from __future__ import annotations
@@ -24,6 +31,14 @@ class Status(StrEnum):
     PASS = "PASS"
     FAIL = "FAIL"
     INDETERMINATE = "INDETERMINATE"
+
+
+class Applicability(StrEnum):
+    """Whether the rule had anything to say about this model at all."""
+
+    APPLIES = "APPLIES"
+    DOES_NOT_APPLY = "DOES_NOT_APPLY"
+    UNDETERMINED = "UNDETERMINED_APPLICABILITY"
 
 
 # ifctester discards its structured `reason` dict at ids.py:312, keeping only the rendered
@@ -112,7 +127,11 @@ class RequirementOutcome:
 class SpecificationOutcome:
     name: str
     description: str
+    applicability: Applicability
     status: Status
+    cardinality: str
+    matched: int
+    reason: str
     passed: int
     failed: int
     indeterminate: int
@@ -124,6 +143,9 @@ class Report:
     ifc_filename: str
     ids_title: str
     status: Status
+    specifications_passed: int
+    specifications_failed: int
+    specifications_indeterminate: int
     passed: int
     failed: int
     indeterminate: int
@@ -152,27 +174,84 @@ def _requirement(facet: Any) -> RequirementOutcome:
     entities = tuple(_outcome(f["element"], f["reason"]) for f in facet.failures)
     failed = sum(1 for e in entities if e.status is Status.FAIL)
     indeterminate = sum(1 for e in entities if e.status is Status.INDETERMINATE)
-    passed = len(facet.passed_entities)
     return RequirementOutcome(
         description=str(facet),
         status=_aggregate(failed, indeterminate),
-        passed=passed,
+        passed=len(facet.passed_entities),
         failed=failed,
         indeterminate=indeterminate,
         entities=entities,
     )
 
 
+def _judge(
+    cardinality: str, matched: int, schema_matches: bool, failed: int, indeterminate: int
+) -> tuple[Applicability, Status, str]:
+    """Decide applicability and status from subjects and cardinality, not evidence alone.
+
+    The zero-subject cases are the ones `ifctester` gets wrong for our purposes: it reports
+    a specification that matched nothing as a pass.
+    """
+    if not schema_matches:
+        return (
+            Applicability.UNDETERMINED,
+            Status.INDETERMINATE,
+            "The rule is written for a different IFC schema than this model uses, "
+            "so whether it applies could not be established.",
+        )
+
+    if matched == 0:
+        if cardinality == "required":
+            return (
+                Applicability.APPLIES,
+                Status.FAIL,
+                "The rule requires matching elements and the model contains none.",
+            )
+        if cardinality == "prohibited":
+            return (
+                Applicability.APPLIES,
+                Status.PASS,
+                "The rule prohibits such elements and the model contains none.",
+            )
+        return (
+            Applicability.DOES_NOT_APPLY,
+            Status.INDETERMINATE,
+            "No element matched this rule, so nothing was checked. The model may contain "
+            "none, or may not describe them the way the rule expects.",
+        )
+
+    if cardinality == "prohibited":
+        return (
+            Applicability.APPLIES,
+            Status.FAIL,
+            f"The rule prohibits these elements and the model contains {matched}.",
+        )
+
+    return Applicability.APPLIES, _aggregate(failed, indeterminate), ""
+
+
 def _specification(spec: Any) -> SpecificationOutcome:
     requirements = tuple(_requirement(f) for f in spec.requirements)
     failed = sum(r.failed for r in requirements)
     indeterminate = sum(r.indeterminate for r in requirements)
-    passed = sum(r.passed for r in requirements)
+    matched = len(spec.applicable_entities)
+
+    # is_ifc_version is None when no version filter applies, False on a real mismatch.
+    schema_matches = spec.is_ifc_version is not False
+    cardinality = str(spec.get_usage())
+    applicability, status, reason = _judge(
+        cardinality, matched, schema_matches, failed, indeterminate
+    )
+
     return SpecificationOutcome(
         name=spec.name or "",
         description=spec.description or "",
-        status=_aggregate(failed, indeterminate),
-        passed=passed,
+        applicability=applicability,
+        status=status,
+        cardinality=cardinality,
+        matched=matched,
+        reason=reason,
+        passed=sum(r.passed for r in requirements),
         failed=failed,
         indeterminate=indeterminate,
         requirements=requirements,
@@ -189,16 +268,19 @@ def run_check(ifc_path: Path, ids_path: Path) -> Report:
     specs.validate(model)
 
     specifications = tuple(_specification(s) for s in specs.specifications)
-    failed = sum(s.failed for s in specifications)
-    indeterminate = sum(s.indeterminate for s in specifications)
-    passed = sum(s.passed for s in specifications)
+    by_status = [s.status for s in specifications]
+    specs_failed = by_status.count(Status.FAIL)
+    specs_indeterminate = by_status.count(Status.INDETERMINATE)
 
     return Report(
         ifc_filename=Path(ifc_path).name,
         ids_title=str(specs.info.get("title", "")),
-        status=_aggregate(failed, indeterminate),
-        passed=passed,
-        failed=failed,
-        indeterminate=indeterminate,
+        status=_aggregate(specs_failed, specs_indeterminate),
+        specifications_passed=by_status.count(Status.PASS),
+        specifications_failed=specs_failed,
+        specifications_indeterminate=specs_indeterminate,
+        passed=sum(s.passed for s in specifications),
+        failed=sum(s.failed for s in specifications),
+        indeterminate=sum(s.indeterminate for s in specifications),
         specifications=specifications,
     )

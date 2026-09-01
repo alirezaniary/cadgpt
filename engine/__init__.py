@@ -5,6 +5,7 @@ pyproject.toml, which is enforced by `make verify`.
 """
 
 from engine.check import (
+    Applicability,
     EntityOutcome,
     Report,
     RequirementOutcome,
@@ -16,6 +17,7 @@ from engine.check import (
 )
 
 __all__ = [
+    "Applicability",
     "EntityOutcome",
     "Report",
     "RequirementOutcome",

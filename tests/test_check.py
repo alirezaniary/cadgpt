@@ -9,7 +9,8 @@ from pathlib import Path
 import ifctester.facet
 import pytest
 
-from engine import Status, classify, is_recognised, run_check
+from engine import Applicability, Status, classify, is_recognised, run_check
+from engine.check import _judge
 
 FIXTURES = Path(__file__).parent / "fixtures"
 IFC = FIXTURES / "three_doors.ifc"
@@ -65,6 +66,50 @@ def test_an_unrecognised_reason_is_never_a_silent_violation() -> None:
     """We do not assert a violation we cannot justify."""
     assert classify("Some reason a future ifctester invents") is Status.INDETERMINATE
     assert not is_recognised("Some reason a future ifctester invents")
+
+
+# Applicability is a separate question from status, decided by how many elements the rule
+# matched and what the IDS cardinality says about that - never by ifctester's own status.
+# The zero-match rows are the ones ifctester gets wrong for our purposes: it passes them.
+
+JUDGEMENTS = (
+    # cardinality,   matched, schema, failed, indet, applicability,             status
+    ("required", 0, True, 0, 0, Applicability.APPLIES, Status.FAIL),
+    ("prohibited", 0, True, 0, 0, Applicability.APPLIES, Status.PASS),
+    ("optional", 0, True, 0, 0, Applicability.DOES_NOT_APPLY, Status.INDETERMINATE),
+    ("prohibited", 3, True, 0, 0, Applicability.APPLIES, Status.FAIL),
+    ("required", 3, True, 1, 0, Applicability.APPLIES, Status.FAIL),
+    ("required", 3, True, 0, 2, Applicability.APPLIES, Status.INDETERMINATE),
+    ("required", 3, True, 1, 2, Applicability.APPLIES, Status.FAIL),
+    ("required", 3, True, 0, 0, Applicability.APPLIES, Status.PASS),
+    ("required", 3, False, 0, 0, Applicability.UNDETERMINED, Status.INDETERMINATE),
+)
+
+
+@pytest.mark.parametrize(
+    ("cardinality", "matched", "schema", "failed", "indet", "expect_appl", "expect_status"),
+    JUDGEMENTS,
+)
+def test_applicability_and_status_come_from_subjects_and_cardinality(
+    cardinality: str,
+    matched: int,
+    schema: bool,
+    failed: int,
+    indet: int,
+    expect_appl: Applicability,
+    expect_status: Status,
+) -> None:
+    applicability, status, reason = _judge(cardinality, matched, schema, failed, indet)
+    assert (applicability, status) == (expect_appl, expect_status)
+    if matched == 0 or not schema or cardinality == "prohibited":
+        assert reason, "a result reached without checking elements must say why"
+
+
+def test_a_rule_that_matched_nothing_never_passes() -> None:
+    """The whole point: checking nothing is not evidence of compliance (I7)."""
+    for cardinality in ("required", "optional"):
+        _, status, _ = _judge(cardinality, 0, True, 0, 0)
+        assert status is not Status.PASS
 
 
 def ifctester_reason_templates() -> set[str]:
@@ -126,6 +171,8 @@ def test_the_real_path_separates_a_violation_from_missing_data() -> None:
     assert report.ifc_filename == "three_doors.ifc"
     assert (report.passed, report.failed, report.indeterminate) == (1, 1, 1)
     assert report.status is Status.FAIL
+    assert report.specifications[0].applicability is Applicability.APPLIES
+    assert report.specifications[0].matched == 3
 
     outcomes = {
         e.global_id: e

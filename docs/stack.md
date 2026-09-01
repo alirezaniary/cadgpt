@@ -48,6 +48,12 @@ synthetic fixtures wherever possible:
   `Duplex_A_20110907.ifc` (2.3MB) is a good fast fixture; `IFC Schependomlaan.ifc` (47MB) is the
   realistic load case.
 
+Schependomlaan pinned, for when this becomes a fetched CI fixture rather than a manual download:
+upstream `jakob-beetz/DataSetSchependomlaan` commit
+`8e3f95ec7157004d906afbaf3cf2566bba65016f`, path `Design model IFC/IFC Schependomlaan.ifc`,
+SHA-256 `2c3565ca1904f2aa61adab92024cf3755b2c5b21a498144d3094d7cb58cebec7`, 49,286,967 bytes.
+It is IFC2X3 — useful, because rule sets written for IFC4 behave differently against it.
+
 ## Deliberately not chosen
 
 | Rejected | Why |

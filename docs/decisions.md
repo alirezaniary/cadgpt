@@ -70,6 +70,61 @@ Forced by the inherited toolchain, which is Python. One lockfile.
 
 **Reopens if:** never, while the evaluation stack is `ifcopenshell`.
 
+## A rule that checked nothing never passes
+
+Status and applicability are two separate three-valued questions. Applicability is decided by
+how many elements the rule matched and what the IDS cardinality says — `required`, `optional`,
+or `prohibited` — and never by `ifctester`'s own specification status.
+
+`ifctester` reports a specification that matched zero elements as a pass. Two specifications in
+the Wooden Windows rule set matched nothing in the Duplex model and came back green; nothing had
+been checked. Reporting that as compliance is the exact failure I7 exists to prevent. The rules:
+
+| Matched | Cardinality | Applicability | Status |
+| --- | --- | --- | --- |
+| 0 | required | APPLIES | FAIL — the model must contain these and does not |
+| 0 | prohibited | APPLIES | PASS — none present, which is what was required |
+| 0 | optional | DOES_NOT_APPLY | INDETERMINATE, with a stated reason |
+| ≥1 | prohibited | APPLIES | FAIL |
+| ≥1 | required/optional | APPLIES | evidence decides: any known failure → FAIL, all known-pass → PASS, otherwise INDETERMINATE |
+
+A rule whose declared `ifcVersion` excludes the model's schema is `UNDETERMINED_APPLICABILITY`.
+This is not hypothetical: the BIM Basis ILS set declares IFC4 on one specification, and against
+the IFC2X3 Schependomlaan model that specification produced 3,343 confident failures. They are
+not trustworthy — the rule was written for a different schema.
+
+**Reopens if:** never. This is I7.
+
+## An IDS entity selector matches the exact class, not its subtypes
+
+`entity="IFCWALL"` matches `IfcWall` and **not** `IfcWallStandardCase`. In Schependomlaan that is
+652 matched and 282 silently excluded — 30% of the walls in the model. This is inherited IFC and
+`ifctester` behaviour, not a bug, but it makes a report quietly incomplete: a rule can show a
+clean pass over a third of the elements a reader assumes it covered.
+
+Nothing in the product warns about this yet. When the report is built, it should say how many
+elements a rule matched and, where subtypes of the selected class exist and were excluded, say
+so. Under-matching must not look like compliance.
+
+**Reopens if:** IDS gains subtype-inclusive selection and the rule sets we care about use it.
+
+## Validate an uploaded IDS before evaluating it
+
+Users supply arbitrary IDS files, so a malformed one must be rejected rather than silently
+under-evaluated. `ifctester.ids.open(validate=True)` checks against the bundled schema; the
+stricter check is buildingSMART's official IDS-Audit-tool, `ids-tool.CommandLine` 1.0.124 under
+.NET 8, invoked as `audit <file.ids>`.
+
+**The trap, recorded because it was found the hard way:** that tool can exit with upstream status
+256, which truncates to shell exit code **0**. Checking the exit code alone silently accepts a
+failing audit. Assert the literal output lines `Auditing: Ids structure, Ids content.` and
+`Completed with status: Ok.` as well. Do not substitute `--omitContent`, which is structure-only.
+
+Not wired up yet — it belongs with the upload path, not the current local-file entry point.
+
+**Reopens if:** the .NET dependency proves unacceptable for deployment, in which case the
+fallback is schema validation only, with the weakening recorded in the UI.
+
 ---
 
 ## 2026-09-01 — Reset the repository to the MVP path
@@ -91,6 +146,13 @@ by itself and belongs to the deferred derivation branch; it returns when that br
 
 **Kept:** the product thinking in `prd.md`, the invariants that survived contact with reality,
 and the one guard with teeth — the import contract keeping inference out of the engine.
+
+**Corrected afterwards.** The first pass of this review judged seven of the nine commits from
+file names and diff sizes rather than content, and threw away three real findings with the
+ceremony: the zero-subject classification rules, the entity-subtype trap, and the IDS-Audit-tool
+exit-code truncation. All three are recovered above; the first was already reimplemented as a
+bug before it was noticed. The lesson is cheap to state and was not free to learn: judge
+discarded work by reading it, not by measuring it.
 
 **Recovery:** `git checkout backup/pre-reset-20260901`.
 
