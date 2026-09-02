@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import stat
 import sys
 from pathlib import Path
 from typing import cast
 
+from cadgpt_regulations.acquisition import acquire_corpus, check_acquisition_health
 from cadgpt_regulations.catalog import load_catalog
-from cadgpt_regulations.errors import RegulationsError
+from cadgpt_regulations.errors import AcquisitionError, RegulationsError
 from cadgpt_regulations.inventory import (
     build_inventory,
     ensure_output_outside_source,
@@ -32,6 +34,19 @@ def _parser() -> argparse.ArgumentParser:
     inventory.add_argument("--output", type=Path, required=True)
     inventory.add_argument("--catalog", type=Path)
 
+    acquire = subcommands.add_parser(
+        "acquire", help="acquire and attest every configured official source"
+    )
+    acquire.add_argument("--output-root", type=Path, required=True)
+    acquire.add_argument("--catalog", type=Path)
+
+    acquisition_check = subcommands.add_parser(
+        "acquisition-check", help="fail unless an acquisition receipt and storage are sound"
+    )
+    acquisition_check.add_argument("receipt", type=Path)
+    acquisition_check.add_argument("--root", type=Path, required=True)
+    acquisition_check.add_argument("--catalog", type=Path)
+
     validate = subcommands.add_parser("validate", help="validate a generated manifest")
     validate.add_argument("manifest", type=Path)
     validate.add_argument("--catalog", type=Path)
@@ -44,17 +59,62 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(
+    argv: list[str] | None = None,
+    *,
+    _testing_allowed_origins: frozenset[str] | None = None,
+) -> int:
     args = _parser().parse_args(argv)
     try:
         if args.command == "inventory":
             ensure_output_outside_source(args.source, args.output)
             catalog = load_catalog(args.catalog)
             manifest = build_inventory(args.source, catalog=catalog)
-            validate_manifest(manifest)
+            validate_manifest(manifest, catalog=catalog)
             write_inventory(manifest, args.output)
             _print_inventory_summary(manifest, args.output)
             return 0
+        if args.command == "acquire":
+            catalog = load_catalog(args.catalog)
+            receipt = acquire_corpus(
+                args.output_root,
+                catalog=catalog,
+                _testing_allowed_origins=_testing_allowed_origins,
+            )
+            _print_acquisition_summary(receipt, args.output_root / "acquisition.json")
+            summary = cast(JsonObject, receipt["summary"])
+            return int(
+                summary["metadata_quarantined"] > 0 or summary["artifacts_quarantined"] > 0
+            )
+        if args.command == "acquisition-check":
+            receipt = _load_receipt(args.receipt)
+            catalog = load_catalog(args.catalog)
+            acquisition_blockers = check_acquisition_health(
+                receipt,
+                catalog=catalog,
+                root=args.root,
+                _testing_allowed_origins=_testing_allowed_origins,
+            )
+            if not acquisition_blockers:
+                summary = cast(JsonObject, receipt["summary"])
+                print(
+                    "valid acquisition: "
+                    f"{summary['metadata_ready']}/{summary['metadata_expected']} metadata, "
+                    f"{summary['artifacts_ready']}/{summary['artifacts_expected']} PDFs, "
+                    f"{summary['pdf_pages']} pages, {summary['bytes']} bytes"
+                )
+                return 0
+            print(
+                f"invalid acquisition: {len(acquisition_blockers)} blocker(s)",
+                file=sys.stderr,
+            )
+            for acquisition_blocker in acquisition_blockers:
+                print(
+                    f"- {acquisition_blocker.subject}: {acquisition_blocker.code}: "
+                    f"{acquisition_blocker.diagnostic}",
+                    file=sys.stderr,
+                )
+            return 1
         manifest = load_object(args.manifest, description="manifest")
         catalog = load_catalog(args.catalog)
         if args.command == "validate":
@@ -68,14 +128,15 @@ def main(argv: list[str] | None = None) -> int:
                 f"{summary['quarantined']} quarantined"
             )
             return 0
-        blockers = check_publishable(manifest, catalog=catalog)
-        if not blockers:
+        publish_blockers = check_publishable(manifest, catalog=catalog)
+        if not publish_blockers:
             print("publishable: all expected artifacts are ready and reviewed")
             return 0
-        print(f"not publishable: {len(blockers)} blocker(s)", file=sys.stderr)
-        for blocker in blockers:
+        print(f"not publishable: {len(publish_blockers)} blocker(s)", file=sys.stderr)
+        for publish_blocker in publish_blockers:
             print(
-                f"- {blocker.filename}: {blocker.code}: {blocker.diagnostic}",
+                f"- {publish_blocker.local_path}: {publish_blocker.code}: "
+                f"{publish_blocker.diagnostic}",
                 file=sys.stderr,
             )
         return 1
@@ -96,6 +157,30 @@ def _print_inventory_summary(manifest: JsonObject, output: Path) -> None:
         f"quarantined {summary['quarantined']}; missing {summary['missing']}; "
         f"unaccounted {summary['unaccounted']}"
     )
+
+
+def _print_acquisition_summary(receipt: JsonObject, output: Path) -> None:
+    summary = cast(JsonObject, receipt["summary"])
+    print(f"wrote deterministic acquisition receipt: {output}")
+    print(
+        f"metadata {summary['metadata_ready']}/{summary['metadata_expected']} ready; "
+        f"PDFs {summary['artifacts_ready']}/{summary['artifacts_expected']} ready"
+    )
+    print(
+        f"acquired {summary['artifacts_acquired']}; reused {summary['artifacts_reused']}; "
+        f"pages {summary['pdf_pages']}; bytes {summary['bytes']}; "
+        f"quarantined {summary['artifacts_quarantined']}"
+    )
+
+
+def _load_receipt(path: Path) -> JsonObject:
+    try:
+        mode = path.lstat().st_mode
+    except OSError as exc:
+        raise AcquisitionError(f"cannot inspect acquisition receipt {path}: {exc}") from exc
+    if stat.S_ISLNK(mode) or not stat.S_ISREG(mode):
+        raise AcquisitionError(f"acquisition receipt is not a regular file: {path}")
+    return load_object(path, description="acquisition receipt")
 
 
 if __name__ == "__main__":

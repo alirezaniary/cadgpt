@@ -19,6 +19,7 @@ services/api/staticfiles/
 # Local source corpus and generated payloads; curated metadata and schemas stay tracked.
 /docs/inbr/
 /packages/regulations/artifacts/
+/packages/regulations/acquisition/
 
 # Node
 node_modules/

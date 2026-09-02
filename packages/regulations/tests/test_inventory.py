@@ -46,7 +46,7 @@ def test_known_persian_filename_with_wrong_valid_pdf_is_quarantined(
     record = _record(build_inventory(source), filename)
 
     assert record["catalog_key"] == "volume-17-amendment-01"
-    assert record["original_filename"] == filename
+    assert record["local_path"] == filename
     assert record["artifact_state"] == "quarantined"
     assert cast(JsonObject, record["error"])["code"] == "SOURCE_HASH_MISMATCH"
     assert record["pdf_page_count"] is None
@@ -55,13 +55,14 @@ def test_known_persian_filename_with_wrong_valid_pdf_is_quarantined(
 def test_html_with_pdf_suffix_is_quarantined_by_content(tmp_path: Path) -> None:
     source = tmp_path / "corpus"
     source.mkdir()
-    filename = "راهنمای-طراحی-دیوارهای-بنایی-محوطه.pdf"
+    filename = "guide-masonry-perimeter-walls-v3-1404.pdf"
     payload = b"<!doctype html><html><title>official landing page</title></html>"
     (source / filename).write_bytes(payload)
     catalog = load_catalog()
     _catalog_artifact(catalog, filename)["expected_sha256"] = hashlib.sha256(
         payload
     ).hexdigest()
+    _catalog_artifact(catalog, filename)["expected_bytes"] = len(payload)
 
     record = _record(build_inventory(source, catalog=catalog), filename)
 
@@ -80,6 +81,7 @@ def test_pdfinfo_failure_is_terminal_and_does_not_abort_inventory(tmp_path: Path
     _catalog_artifact(catalog, "mabhas-1.pdf")["expected_sha256"] = hashlib.sha256(
         payload
     ).hexdigest()
+    _catalog_artifact(catalog, "mabhas-1.pdf")["expected_bytes"] = len(payload)
 
     manifest = build_inventory(source, catalog=catalog)
     record = _record(manifest, "mabhas-1.pdf")
@@ -189,22 +191,23 @@ def test_arbitrary_pdfs_with_expected_names_fail_closed_across_complete_coverage
     catalog = load_catalog()
     expected = cast(list[JsonObject], catalog["artifacts"])
     for artifact in expected:
-        filename = cast(str, artifact["original_filename"])
+        filename = cast(str, artifact["local_path"])
         write_pdf(source / filename)
 
     manifest = build_inventory(source, catalog=catalog)
     summary = cast(JsonObject, manifest["summary"])
 
     assert summary == {
-        "expected_artifacts": 42,
-        "files_discovered": 42,
-        "artifacts_accounted": 42,
+        "expected_artifacts": 43,
+        "files_discovered": 43,
+        "artifacts_accounted": 43,
         "valid_pdfs": 0,
-        "quarantined": 42,
+        "quarantined": 43,
         "missing": 0,
         "unaccounted": 0,
-        "needs_review": 1,
+        "needs_review": 3,
         "pdf_pages": 0,
+        "bytes": 0,
     }
     errors = {
         cast(JsonObject, artifact["error"])["code"]
@@ -215,11 +218,9 @@ def test_arbitrary_pdfs_with_expected_names_fail_closed_across_complete_coverage
 
 def _record(manifest: JsonObject, filename: str) -> JsonObject:
     records = cast(list[JsonObject], manifest["artifacts"])
-    return next(record for record in records if record["original_filename"] == filename)
+    return next(record for record in records if record["local_path"] == filename)
 
 
 def _catalog_artifact(catalog: JsonObject, filename: str) -> JsonObject:
     artifacts = cast(list[JsonObject], catalog["artifacts"])
-    return next(
-        artifact for artifact in artifacts if artifact["original_filename"] == filename
-    )
+    return next(artifact for artifact in artifacts if artifact["local_path"] == filename)

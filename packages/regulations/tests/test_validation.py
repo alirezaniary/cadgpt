@@ -18,23 +18,24 @@ def test_schema_valid_quarantine_is_inventory_valid_but_not_publishable(
 ) -> None:
     source = tmp_path / "corpus"
     source.mkdir()
-    filename = "راهنمای-طراحی-دیوارهای-بنایی-محوطه.pdf"
+    filename = "guide-masonry-perimeter-walls-v3-1404.pdf"
     payload = b"<!doctype html><html></html>"
     (source / filename).write_bytes(payload)
     catalog = load_catalog()
     artifact = next(
         artifact
         for artifact in cast(list[JsonObject], catalog["artifacts"])
-        if artifact["original_filename"] == filename
+        if artifact["local_path"] == filename
     )
     artifact["expected_sha256"] = hashlib.sha256(payload).hexdigest()
+    artifact["expected_bytes"] = len(payload)
     manifest = build_inventory(source, catalog=catalog)
 
     validate_manifest(manifest, catalog=catalog)
     blockers = check_publishable(manifest, catalog=catalog)
 
     assert any(
-        blocker.filename == filename and blocker.code == "MEDIA_TYPE_MISMATCH"
+        blocker.local_path == filename and blocker.code == "MEDIA_TYPE_MISMATCH"
         for blocker in blockers
     )
     assert any(blocker.code == "EXPECTED_ARTIFACT_MISSING" for blocker in blockers)
@@ -114,6 +115,8 @@ def test_ready_state_requires_real_pdf_metadata(
     catalog = load_catalog()
     first_catalog = cast(list[JsonObject], catalog["artifacts"])[0]
     first_catalog["expected_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    first_catalog["expected_bytes"] = path.stat().st_size
+    first_catalog["expected_pdf_pages"] = 1
     manifest = build_inventory(source, catalog=catalog)
     first = cast(list[JsonObject], manifest["artifacts"])[0]
     first["pdf_page_count"] = None
@@ -147,7 +150,7 @@ def test_complete_arbitrary_inventory_cannot_pass_publication(
     catalog = load_catalog()
     artifacts = cast(list[JsonObject], catalog["artifacts"])
     for artifact in artifacts:
-        write_pdf(source / cast(str, artifact["original_filename"]))
+        write_pdf(source / cast(str, artifact["local_path"]))
         artifact["review_status"] = "accepted"
         artifact["review_flags"] = []
 
@@ -155,5 +158,5 @@ def test_complete_arbitrary_inventory_cannot_pass_publication(
 
     validate_manifest(manifest, catalog=catalog)
     blockers = check_publishable(manifest, catalog=catalog)
-    assert len(blockers) == 42
+    assert len(blockers) == 43
     assert {blocker.code for blocker in blockers} == {"SOURCE_HASH_MISMATCH"}

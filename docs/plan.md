@@ -121,21 +121,26 @@ logic into the checking engine. It converts the official INBR publications into 
 anchored semantic corpus; compiling accepted semantics into buildingSMART IDS remains a later
 and separate step.
 
+All commits for this workstream remain on `feat/inbr-regulations-pipeline`; downloaded PDFs,
+page renders, OCR data, model inputs, and inference outputs remain outside Git.
+
 1. **Corpus contract and inventory — DONE 2026-09-02.** Immutable hashes, MIME checks, canonical Persian and
    English titles, official ordering, editions, relationships, coverage, and quarantine.
-2. **Page transcription.** Native positioned text where trustworthy; Persian/English OCR for
+2. **Official acquisition and metadata snapshots — DONE 2026-09-03.** Reproducible official-only downloads,
+   inert remote identities, safe local paths, content-addressed evidence, and drift detection.
+3. **Page transcription.** Native positioned text where trustworthy; Persian/English OCR for
    scans, photographs, and watermarks; raw and normalized forms retained together.
-3. **Document structure.** Ordered hierarchy, clauses, definitions, tables, figures,
+4. **Document structure.** Ordered hierarchy, clauses, definitions, tables, figures,
    equations, symbols, units, printed page labels, and exact source spans.
-4. **Model extraction.** Section-aware chunks capped near ten pages, two blind Luna
+5. **Model extraction.** Section-aware chunks capped near ten pages, two blind Luna
    extractions, strict Structured Outputs, and raw-response retention.
-5. **Validation.** Deterministic anchor/reference/formula checks, independent Luna validation,
+6. **Validation.** Deterministic anchor/reference/formula checks, independent Luna validation,
    official-web corroboration, conflict reconciliation, and quarantine.
-6. **Publication.** Immutable JSON/JSONL plus a complete coverage and deferred-human-review
+7. **Publication.** Immutable JSON/JSONL plus a complete coverage and deferred-human-review
    report. Processing runs to terminal states without waiting for a reviewer; flagged content
    cannot enter the publishable corpus until reviewed later.
 
-The active task is `docs/tasks/T-0024-regulation-corpus-contract.md`.
+The active task is `docs/tasks/T-0026-lossless-page-transcription.md`.
 
 ---
 

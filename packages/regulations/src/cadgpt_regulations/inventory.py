@@ -15,7 +15,7 @@ from cadgpt_regulations.errors import InventoryError
 from cadgpt_regulations.jsonio import JsonObject, canonical_bytes, sha256_json
 from cadgpt_regulations.pdf import detect_media_type, inspect_pdf
 
-MANIFEST_SCHEMA_VERSION = "1.0.0"
+MANIFEST_SCHEMA_VERSION = "2.0.0"
 _READ_CHUNK_SIZE = 1024 * 1024
 _PROBE_SIZE = 4096
 
@@ -57,16 +57,16 @@ def build_inventory(
         path.relative_to(source_directory).as_posix(): path for path in discovered
     }
     catalog_artifacts = cast(list[JsonObject], curated["artifacts"])
-    expected_filenames = {
-        cast(str, artifact["original_filename"]) for artifact in catalog_artifacts
+    expected_local_paths = {
+        cast(str, artifact["local_path"]) for artifact in catalog_artifacts
     }
 
     records: list[JsonObject] = []
     for catalog_artifact in sorted(
         catalog_artifacts, key=lambda artifact: cast(int, artifact["catalog_order"])
     ):
-        filename = cast(str, catalog_artifact["original_filename"])
-        path = by_filename.get(filename)
+        local_path = cast(str, catalog_artifact["local_path"])
+        path = by_filename.get(local_path)
         if path is None:
             records.append(_missing_record(catalog_artifact))
         else:
@@ -80,7 +80,7 @@ def build_inventory(
         (
             path
             for path in discovered
-            if path.relative_to(source_directory).as_posix() not in expected_filenames
+            if path.relative_to(source_directory).as_posix() not in expected_local_paths
         ),
         start=1,
     ):
@@ -167,6 +167,8 @@ def _inspect_expected(path: Path, catalog_artifact: JsonObject) -> JsonObject:
         path,
         cast(str, catalog_artifact["expected_media_type"]),
         cast(str, catalog_artifact["expected_sha256"]),
+        cast(int, catalog_artifact["expected_bytes"]),
+        cast(int, catalog_artifact["expected_pdf_pages"]),
     )
     return _catalog_record(catalog_artifact) | runtime
 
@@ -187,7 +189,9 @@ def _inspect_unaccounted(path: Path, relative_name: str, catalog_order: int) -> 
     return {
         "catalog_key": None,
         "catalog_order": catalog_order,
-        "original_filename": relative_name,
+        "download_url": None,
+        "remote_filename": None,
+        "local_path": relative_name,
         "document_kind": "unclassified",
         "volume": None,
         "title_fa": None,
@@ -202,11 +206,17 @@ def _inspect_unaccounted(path: Path, relative_name: str, catalog_order: int) -> 
         "review_flags": ["UNACCOUNTED_ARTIFACT"],
         "expected_media_type": None,
         "expected_sha256": None,
+        "expected_bytes": None,
+        "expected_pdf_pages": None,
     } | runtime
 
 
 def _inspect_file(
-    path: Path, expected_media_type: str | None, expected_sha256: str | None = None
+    path: Path,
+    expected_media_type: str | None,
+    expected_sha256: str | None = None,
+    expected_bytes: int | None = None,
+    expected_pdf_pages: int | None = None,
 ) -> JsonObject:
     if path.is_symlink():
         return {
@@ -274,6 +284,15 @@ def _inspect_file(
             ),
         }
         return base
+    if expected_bytes is not None and snapshot.byte_size != expected_bytes:
+        base["artifact_state"] = "quarantined"
+        base["error"] = {
+            "code": "SOURCE_SIZE_MISMATCH",
+            "diagnostic": (
+                f"expected {expected_bytes} bytes, calculated {snapshot.byte_size}"
+            ),
+        }
+        return base
     if expected_media_type is not None and media_type != expected_media_type:
         base["artifact_state"] = "quarantined"
         base["error"] = {
@@ -301,6 +320,14 @@ def _inspect_file(
             "code": probe.error_code,
             "diagnostic": probe.diagnostic,
         }
+    elif expected_pdf_pages is not None and probe.page_count != expected_pdf_pages:
+        base["artifact_state"] = "quarantined"
+        base["error"] = {
+            "code": "PDF_PAGE_COUNT_MISMATCH",
+            "diagnostic": (
+                f"expected {expected_pdf_pages} PDF pages, found {probe.page_count}"
+            ),
+        }
     return base
 
 
@@ -323,7 +350,9 @@ def _catalog_record(catalog_artifact: JsonObject) -> JsonObject:
     return {
         "catalog_key": catalog_artifact["catalog_key"],
         "catalog_order": catalog_artifact["catalog_order"],
-        "original_filename": catalog_artifact["original_filename"],
+        "download_url": catalog_artifact["download_url"],
+        "remote_filename": catalog_artifact["remote_filename"],
+        "local_path": catalog_artifact["local_path"],
         "document_kind": catalog_artifact["document_kind"],
         "volume": catalog_artifact["volume"],
         "title_fa": catalog_artifact["title_fa"],
@@ -338,6 +367,8 @@ def _catalog_record(catalog_artifact: JsonObject) -> JsonObject:
         "review_flags": catalog_artifact["review_flags"],
         "expected_media_type": catalog_artifact["expected_media_type"],
         "expected_sha256": catalog_artifact["expected_sha256"],
+        "expected_bytes": catalog_artifact["expected_bytes"],
+        "expected_pdf_pages": catalog_artifact["expected_pdf_pages"],
     }
 
 
@@ -381,6 +412,7 @@ def _summarize(records: list[JsonObject], *, expected_count: int) -> JsonObject:
             record["review_status"] == "needs_review" for record in records
         ),
         "pdf_pages": sum(cast(int, record["pdf_page_count"]) for record in ready_pdfs),
+        "bytes": sum(cast(int, record["bytes"]) for record in ready_pdfs),
     }
 
 

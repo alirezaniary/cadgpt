@@ -13,7 +13,7 @@ from cadgpt_regulations.resources import load_packaged_json
 
 @dataclass(frozen=True)
 class PublishBlocker:
-    filename: str
+    local_path: str
     code: str
     diagnostic: str
 
@@ -37,9 +37,9 @@ def validate_manifest(manifest: JsonObject, *, catalog: JsonObject | None = None
         )
 
     artifacts = cast(list[JsonObject], manifest["artifacts"])
-    filenames = [cast(str, artifact["original_filename"]) for artifact in artifacts]
-    if len(filenames) != len(set(filenames)):
-        raise ManifestError("manifest artifact filenames must be unique")
+    local_paths = [cast(str, artifact["local_path"]) for artifact in artifacts]
+    if len(local_paths) != len(set(local_paths)):
+        raise ManifestError("manifest artifact local paths must be unique")
 
     catalog_orders = [cast(int, artifact["catalog_order"]) for artifact in artifacts]
     if len(catalog_orders) != len(set(catalog_orders)):
@@ -68,9 +68,13 @@ def validate_manifest(manifest: JsonObject, *, catalog: JsonObject | None = None
 
     copied_fields = (
         "catalog_order",
-        "original_filename",
+        "download_url",
+        "remote_filename",
+        "local_path",
         "expected_media_type",
         "expected_sha256",
+        "expected_bytes",
+        "expected_pdf_pages",
         "document_kind",
         "volume",
         "title_fa",
@@ -100,7 +104,7 @@ def validate_manifest(manifest: JsonObject, *, catalog: JsonObject | None = None
                     )
         elif artifact["artifact_state"] == "ready":
             raise ManifestError(
-                f"unaccounted artifact {artifact['original_filename']} cannot be ready"
+                f"unaccounted artifact {artifact['local_path']} cannot be ready"
             )
         _validate_artifact_state(artifact)
 
@@ -109,12 +113,12 @@ def validate_manifest(manifest: JsonObject, *, catalog: JsonObject | None = None
             target = cast(str, relationship["target"])
             if target not in keys | family_keys:
                 raise ManifestError(
-                    f"relationship from {artifact['original_filename']} has "
+                    f"relationship from {artifact['local_path']} has "
                     f"unknown artifact target {target}"
                 )
             if target == key_value:
                 raise ManifestError(
-                    f"relationship from {artifact['original_filename']} targets itself"
+                    f"relationship from {artifact['local_path']} targets itself"
                 )
             identity = (
                 cast(str, relationship["type"]),
@@ -123,7 +127,7 @@ def validate_manifest(manifest: JsonObject, *, catalog: JsonObject | None = None
             )
             if identity in relation_identities:
                 raise ManifestError(
-                    f"relationship from {artifact['original_filename']} is duplicated"
+                    f"relationship from {artifact['local_path']} is duplicated"
                 )
             relation_identities.add(identity)
 
@@ -144,13 +148,13 @@ def check_publishable(
     validate_manifest(manifest, catalog=catalog)
     blockers: list[PublishBlocker] = []
     for artifact in cast(list[JsonObject], manifest["artifacts"]):
-        filename = cast(str, artifact["original_filename"])
+        local_path = cast(str, artifact["local_path"])
         state = cast(str, artifact["artifact_state"])
         error = cast(JsonObject | None, artifact["error"])
         if state != "ready":
             blockers.append(
                 PublishBlocker(
-                    filename=filename,
+                    local_path=local_path,
                     code=cast(str, error["code"])
                     if error is not None
                     else "NONTERMINAL_STATE",
@@ -165,7 +169,7 @@ def check_publishable(
             flags = cast(list[str], artifact["review_flags"])
             blockers.append(
                 PublishBlocker(
-                    filename=filename,
+                    local_path=local_path,
                     code="NEEDS_REVIEW",
                     diagnostic=", ".join(flags) or "catalog metadata needs review",
                 )
@@ -207,6 +211,7 @@ def _recalculate_summary(artifacts: list[JsonObject]) -> JsonObject:
             artifact["review_status"] == "needs_review" for artifact in artifacts
         ),
         "pdf_pages": sum(cast(int, artifact["pdf_page_count"]) for artifact in ready_pdfs),
+        "bytes": sum(cast(int, artifact["bytes"]) for artifact in ready_pdfs),
     }
 
 
@@ -216,7 +221,7 @@ def _error_code(artifact: JsonObject) -> str | None:
 
 
 def _validate_artifact_state(artifact: JsonObject) -> None:
-    filename = cast(str, artifact["original_filename"])
+    local_path = cast(str, artifact["local_path"])
     state = cast(str, artifact["artifact_state"])
     error = cast(JsonObject | None, artifact["error"])
     present = cast(bool, artifact["present"])
@@ -225,34 +230,45 @@ def _validate_artifact_state(artifact: JsonObject) -> None:
     digest = cast(str | None, artifact["sha256"])
     expected_digest = cast(str | None, artifact["expected_sha256"])
     byte_size = cast(int | None, artifact["bytes"])
+    expected_bytes = cast(int | None, artifact["expected_bytes"])
+    expected_pages = cast(int | None, artifact["expected_pdf_pages"])
 
     if state == "ready":
         if error is not None:
-            raise ManifestError(f"ready artifact {filename} cannot carry an error")
+            raise ManifestError(f"ready artifact {local_path} cannot carry an error")
         if not present or media_type != "application/pdf":
-            raise ManifestError(f"ready artifact {filename} must be a present PDF")
+            raise ManifestError(f"ready artifact {local_path} must be a present PDF")
         if page_count is None or digest is None or byte_size is None:
             raise ManifestError(
-                f"ready artifact {filename} needs hash, size, and authoritative page count"
+                f"ready artifact {local_path} needs hash, size, and authoritative "
+                "page count"
             )
         if expected_digest is None or digest != expected_digest:
             raise ManifestError(
-                f"ready artifact {filename} does not match its approved source bytes"
+                f"ready artifact {local_path} does not match its approved source bytes"
+            )
+        if expected_bytes is None or byte_size != expected_bytes:
+            raise ManifestError(
+                f"ready artifact {local_path} does not match its approved byte count"
+            )
+        if expected_pages is None or page_count != expected_pages:
+            raise ManifestError(
+                f"ready artifact {local_path} does not match its approved page count"
             )
     elif state == "quarantined" and error is None:
-        raise ManifestError(f"quarantined artifact {filename} must carry an error")
+        raise ManifestError(f"quarantined artifact {local_path} must carry an error")
     elif state == "pending" and error is not None:
-        raise ManifestError(f"pending artifact {filename} cannot carry a terminal error")
+        raise ManifestError(f"pending artifact {local_path} cannot carry a terminal error")
 
     if not present:
         if _error_code(artifact) != "EXPECTED_ARTIFACT_MISSING":
             raise ManifestError(
-                f"absent artifact {filename} needs EXPECTED_ARTIFACT_MISSING"
+                f"absent artifact {local_path} needs EXPECTED_ARTIFACT_MISSING"
             )
         if any(value is not None for value in (media_type, page_count, digest, byte_size)):
-            raise ManifestError(f"absent artifact {filename} cannot carry file metadata")
+            raise ManifestError(f"absent artifact {local_path} cannot carry file metadata")
     if media_type != "application/pdf" and page_count is not None:
-        raise ManifestError(f"non-PDF artifact {filename} cannot carry a PDF page count")
+        raise ManifestError(f"non-PDF artifact {local_path} cannot carry a PDF page count")
     if (
         present
         and digest is not None
@@ -261,12 +277,12 @@ def _validate_artifact_state(artifact: JsonObject) -> None:
         and (state != "quarantined" or _error_code(artifact) != "SOURCE_HASH_MISMATCH")
     ):
         raise ManifestError(
-            f"artifact {filename} with unapproved source bytes must be quarantined"
+            f"artifact {local_path} with unapproved source bytes must be quarantined"
         )
 
     review_status = cast(str, artifact["review_status"])
     review_flags = cast(list[str], artifact["review_flags"])
     if review_status == "accepted" and review_flags:
-        raise ManifestError(f"accepted artifact {filename} cannot carry review flags")
+        raise ManifestError(f"accepted artifact {local_path} cannot carry review flags")
     if review_status == "needs_review" and not review_flags:
-        raise ManifestError(f"artifact {filename} needs at least one review flag")
+        raise ManifestError(f"artifact {local_path} needs at least one review flag")

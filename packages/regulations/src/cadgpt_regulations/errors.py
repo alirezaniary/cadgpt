@@ -13,5 +13,9 @@ class InventoryError(RegulationsError):
     """The requested inventory cannot be started or written."""
 
 
+class AcquisitionError(RegulationsError):
+    """Official-source acquisition or receipt verification failed."""
+
+
 class ManifestError(RegulationsError):
     """A manifest violates its schema or deterministic invariants."""

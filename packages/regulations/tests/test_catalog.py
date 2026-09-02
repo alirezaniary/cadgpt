@@ -22,8 +22,10 @@ def test_catalog_has_all_numbered_volumes_in_canonical_order() -> None:
 def test_every_curated_artifact_pins_approved_source_bytes() -> None:
     artifacts = cast(list[JsonObject], load_catalog()["artifacts"])
 
-    assert len(artifacts) == 42
+    assert len(artifacts) == 43
     assert all(len(cast(str, artifact["expected_sha256"])) == 64 for artifact in artifacts)
+    assert sum(cast(int, artifact["expected_bytes"]) for artifact in artifacts) == 479447993
+    assert sum(cast(int, artifact["expected_pdf_pages"]) for artifact in artifacts) == 5892
 
 
 def test_catalog_preserves_required_directed_relationships() -> None:
@@ -71,6 +73,25 @@ def test_catalog_preserves_required_directed_relationships() -> None:
         "AMENDS",
         "volume-17-edition-1403",
     )
+    assert _has_relation(
+        artifacts["guide-masonry-perimeter-walls-v3-1404"],
+        "SUPERSEDES",
+        "guide-masonry-perimeter-walls-v2-1403",
+    )
+
+
+def test_volume_17_keeps_remote_identity_inert_and_local_storage_flat() -> None:
+    artifact = next(
+        artifact
+        for artifact in cast(list[JsonObject], load_catalog()["artifacts"])
+        if artifact["catalog_key"] == "volume-17-edition-1403"
+    )
+
+    assert "%2F" in cast(str, artifact["download_url"])
+    assert artifact["remote_filename"] == (
+        "mabahse/mabahse17/mabhas17-watermark-1403-02.pdf"
+    )
+    assert artifact["local_path"] == ("mabahse_mabahse17_mabhas17-watermark-1403-02.pdf")
 
 
 def test_catalog_rejects_unknown_fields_recursively() -> None:

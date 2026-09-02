@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import cast
 
 from cadgpt_regulations.errors import CatalogError, ManifestError
 from cadgpt_regulations.jsonio import JsonObject, load_object, validate_schema
 from cadgpt_regulations.resources import load_packaged_json
+from cadgpt_regulations.urlpolicy import canonical_origin, validate_acquisition_url
 
-CATALOG_SCHEMA_VERSION = "1.0.0"
+CATALOG_SCHEMA_VERSION = "2.0.0"
 DEFAULT_CATALOG_ID = "inbr-national-building-regulations"
 
 
@@ -45,10 +46,20 @@ def validate_catalog(data: JsonObject) -> None:
 def _validate_catalog_invariants(catalog: JsonObject) -> None:
     families = cast(list[JsonObject], catalog["families"])
     artifacts = cast(list[JsonObject], catalog["artifacts"])
+    metadata_sources = cast(list[JsonObject], catalog["metadata_sources"])
+    policy = cast(JsonObject, catalog["acquisition_policy"])
+
+    configured_origins = cast(list[str], policy["allowed_origins"])
+    canonical_origins = [canonical_origin(origin) for origin in configured_origins]
+    if canonical_origins != configured_origins:
+        raise ManifestError("catalog acquisition origins must be canonical origins")
+    if len(set(canonical_origins)) != len(canonical_origins):
+        raise ManifestError("catalog acquisition origins must be unique")
+    allowed_origins = frozenset(canonical_origins)
 
     family_keys = [cast(str, family["catalog_key"]) for family in families]
     artifact_keys = [cast(str, artifact["catalog_key"]) for artifact in artifacts]
-    filenames = [cast(str, artifact["original_filename"]) for artifact in artifacts]
+    local_paths = [cast(str, artifact["local_path"]) for artifact in artifacts]
     artifact_orders = [cast(int, artifact["catalog_order"]) for artifact in artifacts]
 
     if len(set(family_keys)) != len(family_keys):
@@ -60,14 +71,44 @@ def _validate_catalog_invariants(catalog: JsonObject) -> None:
         raise ManifestError(
             f"catalog family and artifact keys overlap: {sorted(overlap)!r}"
         )
-    if len(set(filenames)) != len(filenames):
-        raise ManifestError("catalog artifact filenames must be unique")
+    if len(set(local_paths)) != len(local_paths):
+        raise ManifestError("catalog artifact local paths must be unique")
     if len(set(artifact_orders)) != len(artifact_orders):
         raise ManifestError("catalog artifact order values must be unique")
     if artifact_orders != sorted(artifact_orders):
         raise ManifestError("catalog artifacts must be stored in catalog order")
-    if any("/" in filename or "\\" in filename for filename in filenames):
-        raise ManifestError("catalog filenames must be flat names, not decoded URL paths")
+    for artifact in artifacts:
+        local_path = cast(str, artifact["local_path"])
+        remote_filename = cast(str, artifact["remote_filename"])
+        if not _is_safe_flat_local_path(local_path):
+            raise ManifestError(
+                f"catalog local path must be a safe flat name: {local_path!r}"
+            )
+        if "\x00" in remote_filename:
+            raise ManifestError("catalog remote filenames cannot contain NUL bytes")
+        validate_acquisition_url(cast(str, artifact["download_url"]), allowed_origins)
+
+    source_keys = [
+        cast(str, metadata_source["source_key"]) for metadata_source in metadata_sources
+    ]
+    source_orders = [
+        cast(int, metadata_source["catalog_order"]) for metadata_source in metadata_sources
+    ]
+    if len(set(source_keys)) != len(source_keys):
+        raise ManifestError("catalog metadata source keys must be unique")
+    if len(set(source_orders)) != len(source_orders):
+        raise ManifestError("catalog metadata source order values must be unique")
+    if source_orders != sorted(source_orders):
+        raise ManifestError("catalog metadata sources must be stored in catalog order")
+    for metadata_source in metadata_sources:
+        requested_url = cast(str, metadata_source["requested_url"])
+        validate_acquisition_url(requested_url, allowed_origins)
+        expected_suffix = f"/{metadata_source['kind']}s/{metadata_source['wordpress_id']}"
+        if not requested_url.endswith(expected_suffix):
+            raise ManifestError(
+                f"metadata source {metadata_source['source_key']} does not match its "
+                "WordPress identity"
+            )
 
     volumes = [cast(int, family["volume"]) for family in families]
     family_orders = [cast(int, family["catalog_order"]) for family in families]
@@ -80,15 +121,15 @@ def _validate_catalog_invariants(catalog: JsonObject) -> None:
         relation_identities: set[tuple[str, str, int | None]] = set()
         for relationship in relationships:
             target = cast(str, relationship["target"])
-            source = cast(str, artifact["catalog_key"])
+            source_key = cast(str, artifact["catalog_key"])
             if target not in all_keys:
                 raise ManifestError(
                     f"catalog relationship from {artifact['catalog_key']} has "
                     f"unknown target {target}"
                 )
-            if target == source:
+            if target == source_key:
                 raise ManifestError(
-                    f"catalog relationship on {source} cannot target itself"
+                    f"catalog relationship on {source_key} cannot target itself"
                 )
             identity = (
                 cast(str, relationship["type"]),
@@ -96,13 +137,15 @@ def _validate_catalog_invariants(catalog: JsonObject) -> None:
                 cast(int | None, relationship["order"]),
             )
             if identity in relation_identities:
-                raise ManifestError(f"catalog relationship on {source} is duplicated")
+                raise ManifestError(f"catalog relationship on {source_key} is duplicated")
             relation_identities.add(identity)
             if relationship["type"] == "APPENDIX_OF" and relationship["order"] is None:
-                raise ManifestError(f"APPENDIX_OF relationship on {source} needs an order")
+                raise ManifestError(
+                    f"APPENDIX_OF relationship on {source_key} needs an order"
+                )
             if relationship["type"] != "APPENDIX_OF" and relationship["order"] is not None:
                 raise ManifestError(
-                    f"only APPENDIX_OF relationships may carry an order ({source})"
+                    f"only APPENDIX_OF relationships may carry an order ({source_key})"
                 )
 
         review_status = cast(str, artifact["review_status"])
@@ -191,7 +234,7 @@ def _validate_catalog_invariants(catalog: JsonObject) -> None:
         relation_type="MANDATORY_APPENDIX_OF",
         target="volume-04-edition-1396",
     )
-    for source, relation_type, target in (
+    for relation_source, relation_type, target in (
         ("volume-07-borehole-amendment-1405", "AMENDS", "volume-07-edition-1400"),
         ("volume-11-amendment-1403-08-08", "AMENDS", "volume-11-edition-1400"),
         (
@@ -202,8 +245,26 @@ def _validate_catalog_invariants(catalog: JsonObject) -> None:
         ("volume-17-amendment-01", "AMENDS", "volume-17-edition-1403"),
     ):
         _require_relationship(
-            artifacts, source=source, relation_type=relation_type, target=target
+            artifacts,
+            source=relation_source,
+            relation_type=relation_type,
+            target=target,
         )
+
+    _require_relationship(
+        artifacts,
+        source="guide-masonry-perimeter-walls-v3-1404",
+        relation_type="SUPERSEDES",
+        target="guide-masonry-perimeter-walls-v2-1403",
+    )
+
+
+def _is_safe_flat_local_path(value: str) -> bool:
+    if not value or value in {".", ".."} or "\x00" in value:
+        return False
+    if "/" in value or "\\" in value or Path(value).is_absolute():
+        return False
+    return not PureWindowsPath(value).drive
 
 
 def _require_relationship(

@@ -1,373 +1,2801 @@
 {
-  "schema_version": "1.0.0",
+  "acquisition_policy": {
+    "allowed_origins": [
+      "https://inbr.ir",
+      "https://inbr.s3.ir-thr-at1.arvanstorage.ir"
+    ],
+    "connect_timeout_seconds": 15,
+    "max_artifact_bytes": 134217728,
+    "max_attempts": 3,
+    "max_metadata_bytes": 8388608,
+    "max_redirects": 5,
+    "read_timeout_seconds": 120,
+    "total_timeout_seconds": 900
+  },
+  "artifacts": [
+    {
+      "catalog_key": "volume-01-edition-1392",
+      "catalog_order": 1,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/wp-content/uploads/2016/08/mabhas-1.pdf",
+      "edition": {
+        "edition_number": 1,
+        "label_en": "First edition",
+        "label_fa": "ویرایش اول",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1392"
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official PDF and cover metadata.",
+          "url": "https://inbr.ir/wp-content/uploads/2016/08/mabhas-1.pdf"
+        }
+      ],
+      "expected_bytes": 800235,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 122,
+      "expected_sha256": "e474fe98f8476430c8e0f0f158e16567f42b9ba890172afd90c8498319b52f2b",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas-1.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-01",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas-1.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2016/08/mabhas-1.pdf"
+      ],
+      "title_en": "Volume 1: Definitions",
+      "title_fa": "مبحث اول: تعاریف",
+      "translation_provenance": "official",
+      "volume": 1
+    },
+    {
+      "catalog_key": "volume-02-edition-1384",
+      "catalog_order": 2,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/wp-content/uploads/2016/08/mabhas-2.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": null,
+        "label_fa": null,
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1384"
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official PDF; publication year is evidenced, edition number is deliberately unset.",
+          "url": "https://inbr.ir/wp-content/uploads/2016/08/mabhas-2.pdf"
+        }
+      ],
+      "expected_bytes": 715973,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 178,
+      "expected_sha256": "0947a7066398b348ea5c2aab2fc1b3c3c0e69ead5438c62b69409c941e4efd5f",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas-2.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-02",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas-2.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2016/08/mabhas-2.pdf"
+      ],
+      "title_en": "Volume 2: Administration",
+      "title_fa": "مبحث دوم: نظامات اداری",
+      "translation_provenance": "official",
+      "volume": 2
+    },
+    {
+      "catalog_key": "volume-03-edition-1395",
+      "catalog_order": 3,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/wp-content/uploads/2023/11/mabhas3-95.pdf",
+      "edition": {
+        "edition_number": 3,
+        "label_en": "Third edition",
+        "label_fa": "ویرایش سوم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1395"
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official PDF and cover metadata; upload year is not used as edition evidence.",
+          "url": "https://inbr.ir/wp-content/uploads/2023/11/mabhas3-95.pdf"
+        }
+      ],
+      "expected_bytes": 1993191,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 230,
+      "expected_sha256": "a236c1dac71477f8ffc938ea002bfb1be12f7260917fc16c0fd9e973284c5c51",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas3-95.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-03",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas3-95.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2023/11/mabhas3-95.pdf"
+      ],
+      "title_en": "Volume 3: Building Fire Protection",
+      "title_fa": "مبحث سوم: حفاظت ساختمانها در مقابل حریق",
+      "translation_provenance": "official",
+      "volume": 3
+    },
+    {
+      "catalog_key": "volume-04-edition-1396",
+      "catalog_order": 4,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/upload/mabhas/mabhas4-96.pdf",
+      "edition": {
+        "edition_number": 3,
+        "label_en": "Third edition",
+        "label_fa": "ویرایش سوم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1396"
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official PDF and cover metadata.",
+          "url": "https://inbr.ir/upload/mabhas/mabhas4-96.pdf"
+        }
+      ],
+      "expected_bytes": 12899782,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 128,
+      "expected_sha256": "fca8ab6b7e6190951ee8c503fce4c2c93a57067546154f116e84d84577304a43",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas4-96.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-04",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas4-96.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/upload/mabhas/mabhas4-96.pdf"
+      ],
+      "title_en": "Volume 4: General Building Requirements",
+      "title_fa": "مبحث چهارم: الزامات عمومی ساختمان",
+      "translation_provenance": "official",
+      "volume": 4
+    },
+    {
+      "catalog_key": "volume-05-edition-1396",
+      "catalog_order": 5,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/wp-content/uploads/2023/07/mabhas5-1396.pdf",
+      "edition": {
+        "edition_number": 5,
+        "label_en": "Fifth edition",
+        "label_fa": "ویرایش پنجم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1396"
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official PDF and cover metadata; upload year is not used as edition evidence.",
+          "url": "https://inbr.ir/wp-content/uploads/2023/07/mabhas5-1396.pdf"
+        }
+      ],
+      "expected_bytes": 5123922,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 304,
+      "expected_sha256": "f705d76412366a07d2746fc0c95384739c6790780c5518be96c24746514276f1",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas5-1396.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-05",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas5-1396.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2023/07/mabhas5-1396.pdf"
+      ],
+      "title_en": "Volume 5: Building Materials & Products",
+      "title_fa": "مبحث پنجم: مصالح و فرآورده‌های ساختمانی",
+      "translation_provenance": "official",
+      "volume": 5
+    },
+    {
+      "catalog_key": "volume-06-edition-1398",
+      "catalog_order": 6,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/wp-content/uploads/2023/07/mahas6-98.pdf",
+      "edition": {
+        "edition_number": 4,
+        "label_en": "Fourth edition",
+        "label_fa": "ویرایش چهارم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1398"
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official PDF and cover metadata; the source filename typo is preserved.",
+          "url": "https://inbr.ir/wp-content/uploads/2023/07/mahas6-98.pdf"
+        }
+      ],
+      "expected_bytes": 2526084,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 179,
+      "expected_sha256": "9702369223d5c04072d5e8e01871045c80ff494ffe8ae1357ebd90e78ff18201",
+      "legal_status": "binding_regulation",
+      "local_path": "mahas6-98.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-06",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mahas6-98.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2023/07/mahas6-98.pdf"
+      ],
+      "title_en": "Volume 6: Design Loads for Buildings",
+      "title_fa": "مبحث ششم: بارهای وارد بر ساختمان",
+      "translation_provenance": "official",
+      "volume": 6
+    },
+    {
+      "catalog_key": "volume-07-edition-1400",
+      "catalog_order": 7,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/upload/mabhas/mabhas-7-1401-05.pdf",
+      "edition": {
+        "edition_number": 4,
+        "label_en": "Fourth edition",
+        "label_fa": "ویرایش چهارم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1400"
+      },
+      "evidence": [
+        {
+          "kind": "official_document_cover",
+          "note": "Official PDF cover; 1401-05 in the upload filename is not treated as the edition year.",
+          "url": "https://inbr.ir/upload/mabhas/mabhas-7-1401-05.pdf"
+        }
+      ],
+      "expected_bytes": 19049206,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 110,
+      "expected_sha256": "f3034d9229526fe36d79c8cf5b623da6f67a0a686a3622f5b151e0e2fff8fe09",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas-7-1401-05.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-07",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas-7-1401-05.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/upload/mabhas/mabhas-7-1401-05.pdf"
+      ],
+      "title_en": "Volume 7: Geotechnics and Foundation Engineering",
+      "title_fa": "مبحث هفتم: ژئوتکنیک و مهندسی پی",
+      "translation_provenance": "cover_translation",
+      "volume": 7
+    },
+    {
+      "catalog_key": "volume-07-borehole-amendment-1405",
+      "catalog_order": 8,
+      "document_kind": "amendment",
+      "download_url": "https://inbr.ir/wp-content/uploads/2026/05/7527201762627165953_390084042075871.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": null,
+        "label_fa": null,
+        "publication_date_shamsi": "1405/02/21",
+        "publication_year_shamsi": "1405"
+      },
+      "evidence": [
+        {
+          "kind": "official_document_cover",
+          "note": "Official two-page circular dated 1405/02/21 modifying borehole requirements.",
+          "url": "https://inbr.ir/wp-content/uploads/2026/05/7527201762627165953_390084042075871.pdf"
+        }
+      ],
+      "expected_bytes": 365068,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 2,
+      "expected_sha256": "dca0b3deb34408b7e394d09a6cfcc37c73619bdd3b9f737e751c453655ef48ab",
+      "legal_status": "official_amendment",
+      "local_path": "7527201762627165953_390084042075871.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-07-edition-1400",
+          "type": "AMENDS"
+        }
+      ],
+      "remote_filename": "7527201762627165953_390084042075871.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2026/05/7527201762627165953_390084042075871.pdf"
+      ],
+      "title_en": "Amendment to Volume 7 Borehole Requirements",
+      "title_fa": "اصلاح الزامات تعداد گمانه‌های مبحث هفتم",
+      "translation_provenance": "curated",
+      "volume": 7
+    },
+    {
+      "catalog_key": "volume-08-edition-1398",
+      "catalog_order": 9,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/upload/mabhas/mabhas8-981.pdf",
+      "edition": {
+        "edition_number": 3,
+        "label_en": "Third edition",
+        "label_fa": "ویرایش سوم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1398"
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official PDF and cover metadata.",
+          "url": "https://inbr.ir/upload/mabhas/mabhas8-981.pdf"
+        }
+      ],
+      "expected_bytes": 16625133,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 174,
+      "expected_sha256": "6593dd496e226a80bb23097f84c2444b9ac1707e96a5babd6520297287ebf76d",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas8-981.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-08",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas8-981.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/upload/mabhas/mabhas8-981.pdf"
+      ],
+      "title_en": "Volume 8: Masonry Buildings",
+      "title_fa": "مبحث هشتم: طرح و اجرای ساختمان‌های با مصالح بنایی",
+      "translation_provenance": "official",
+      "volume": 8
+    },
+    {
+      "catalog_key": "volume-09-edition-1399",
+      "catalog_order": 10,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/upload/mabhas/1402-08/mabhas9-1402-08.pdf",
+      "edition": {
+        "edition_number": 5,
+        "label_en": "Fifth edition",
+        "label_fa": "ویرایش پنجم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1399"
+      },
+      "evidence": [
+        {
+          "kind": "official_document_cover",
+          "note": "Official PDF cover; upload path year is not treated as edition evidence.",
+          "url": "https://inbr.ir/upload/mabhas/1402-08/mabhas9-1402-08.pdf"
+        }
+      ],
+      "expected_bytes": 70895250,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 652,
+      "expected_sha256": "7f1247e37ac4d4f7ba287cde94c25d077cec031637a4954c7de510c9e2e2b9c3",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas9-1402-08.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-09",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas9-1402-08.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/upload/mabhas/1402-08/mabhas9-1402-08.pdf"
+      ],
+      "title_en": "Volume 9: Design and Construction of Concrete Structures",
+      "title_fa": "مبحث نهم: طرح و اجرای ساختمان‌های بتن‌آرمه",
+      "translation_provenance": "official",
+      "volume": 9
+    },
+    {
+      "catalog_key": "volume-10-edition-1401",
+      "catalog_order": 11,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/upload/mabhas/1402-08/mabhas10-1402-08.pdf",
+      "edition": {
+        "edition_number": 5,
+        "label_en": "Fifth edition",
+        "label_fa": "ویرایش پنجم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1401"
+      },
+      "evidence": [
+        {
+          "kind": "official_document_cover",
+          "note": "Official PDF cover; upload path year is not treated as edition evidence.",
+          "url": "https://inbr.ir/upload/mabhas/1402-08/mabhas10-1402-08.pdf"
+        }
+      ],
+      "expected_bytes": 71208794,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 590,
+      "expected_sha256": "01d7fd2055f323cc59ed910a4b982f0feb40f39e35fc513f5f6d7840d4b357bc",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas10-1402-08.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-10",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas10-1402-08.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/upload/mabhas/1402-08/mabhas10-1402-08.pdf"
+      ],
+      "title_en": "Volume 10: Design and Construction of Steel Structures",
+      "title_fa": "مبحث دهم: طرح و اجرای ساختمان‌های فولادی",
+      "translation_provenance": "official",
+      "volume": 10
+    },
+    {
+      "catalog_key": "volume-11-edition-1400",
+      "catalog_order": 12,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/upload/mabhas/mabhas11-1401-05.pdf",
+      "edition": {
+        "edition_number": 3,
+        "label_en": "Third edition",
+        "label_fa": "ویرایش سوم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1400"
+      },
+      "evidence": [
+        {
+          "kind": "official_document_cover",
+          "note": "Official PDF cover; upload filename date is not treated as edition evidence.",
+          "url": "https://inbr.ir/upload/mabhas/mabhas11-1401-05.pdf"
+        }
+      ],
+      "expected_bytes": 22462841,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 144,
+      "expected_sha256": "744ad5ed62c678c12540f969bd730469dcfc8c44506a6c3e7fed5ca35d81a3ef",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas11-1401-05.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-11",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas11-1401-05.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/upload/mabhas/mabhas11-1401-05.pdf"
+      ],
+      "title_en": "Volume 11: Industrialized Construction",
+      "title_fa": "مبحث یازدهم: طرح و اجرای صنعتی ساختمان‌ها",
+      "translation_provenance": "official",
+      "volume": 11
+    },
+    {
+      "catalog_key": "volume-11-amendment-1403-08-08",
+      "catalog_order": 13,
+      "document_kind": "amendment",
+      "download_url": "https://inbr.ir/wp-content/uploads/2025/10/%D8%A7%D8%B5%D9%84%D8%A7%D8%AD%DB%8C%D9%87-%D9%85%D8%A8%D8%AD%D8%AB-11-%D8%AA%D8%A7%D8%B1%DB%8C%D8%AE-08-08-1403.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": null,
+        "label_fa": null,
+        "publication_date_shamsi": "1403/08/08",
+        "publication_year_shamsi": "1403"
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official dated amendment PDF; upload year is not used as publication evidence.",
+          "url": "https://inbr.ir/wp-content/uploads/2025/10/%D8%A7%D8%B5%D9%84%D8%A7%D8%AD%DB%8C%D9%87-%D9%85%D8%A8%D8%AD%D8%AB-11-%D8%AA%D8%A7%D8%B1%DB%8C%D8%AE-08-08-1403.pdf"
+        }
+      ],
+      "expected_bytes": 1615862,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 2,
+      "expected_sha256": "e9f887f377d202f068fc0288738bcb76959986d6234aaddfb11b5a5abab9b07b",
+      "legal_status": "official_amendment",
+      "local_path": "اصلاحیه-مبحث-11-تاریخ-08-08-1403.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-11-edition-1400",
+          "type": "AMENDS"
+        },
+        {
+          "order": null,
+          "target": "volume-11-edition-1400",
+          "type": "CLARIFIES"
+        }
+      ],
+      "remote_filename": "اصلاحیه-مبحث-11-تاریخ-08-08-1403.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2025/10/%D8%A7%D8%B5%D9%84%D8%A7%D8%AD%DB%8C%D9%87-%D9%85%D8%A8%D8%AD%D8%AB-11-%D8%AA%D8%A7%D8%B1%DB%8C%D8%AE-08-08-1403.pdf"
+      ],
+      "title_en": "Volume 11 Amendment Dated 1403/08/08",
+      "title_fa": "اصلاحیه مبحث یازدهم مورخ 1403/08/08",
+      "translation_provenance": "curated",
+      "volume": 11
+    },
+    {
+      "catalog_key": "volume-12-edition-1392",
+      "catalog_order": 14,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/wp-content/uploads/2016/08/mabhas-12.pdf",
+      "edition": {
+        "edition_number": 4,
+        "label_en": "Fourth edition",
+        "label_fa": "ویرایش چهارم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1392"
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official PDF and cover metadata.",
+          "url": "https://inbr.ir/wp-content/uploads/2016/08/mabhas-12.pdf"
+        }
+      ],
+      "expected_bytes": 490881,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 92,
+      "expected_sha256": "57c58ba582961ccec03ecd3891bf083c58bcd839240fd0e6b712c72e32838412",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas-12.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-12",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas-12.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2016/08/mabhas-12.pdf"
+      ],
+      "title_en": "Volume 12: Safety and Precautions in Construction",
+      "title_fa": "مبحث دوازدهم: ایمنی و حفاظت کار در حین اجرا",
+      "translation_provenance": "official",
+      "volume": 12
+    },
+    {
+      "catalog_key": "volume-12-supervisor-clarification-1404",
+      "catalog_order": 15,
+      "document_kind": "clarification",
+      "download_url": "https://inbr.ir/wp-content/uploads/2025/10/CamScanner-10-18-2025-09.09.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": null,
+        "label_fa": null,
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1404"
+      },
+      "evidence": [
+        {
+          "kind": "official_document_cover",
+          "note": "Official three-page clarification; descriptive scanner filename is preserved.",
+          "url": "https://inbr.ir/wp-content/uploads/2025/10/CamScanner-10-18-2025-09.09.pdf"
+        }
+      ],
+      "expected_bytes": 2207262,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 3,
+      "expected_sha256": "3ae33a9d2171de805cceaaf787baed0d865f39bce2ddf51a8b28a22b007ada14",
+      "legal_status": "official_clarification",
+      "local_path": "CamScanner-10-18-2025-09.09.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-12-edition-1392",
+          "type": "CLARIFIES"
+        }
+      ],
+      "remote_filename": "CamScanner-10-18-2025-09.09.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2025/10/CamScanner-10-18-2025-09.09.pdf"
+      ],
+      "title_en": "Clarification of Volume 12 Safety Supervisor Qualifications",
+      "title_fa": "توضیح شرایط صلاحیت مسئول ایمنی مرتبط با مبحث دوازدهم",
+      "translation_provenance": "curated",
+      "volume": 12
+    },
+    {
+      "catalog_key": "volume-13-edition-1395",
+      "catalog_order": 16,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/wp-content/uploads/2023/07/mabhas13-95.pdf",
+      "edition": {
+        "edition_number": 3,
+        "label_en": "Third edition",
+        "label_fa": "ویرایش سوم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1395"
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official PDF and cover metadata; upload year is not edition evidence.",
+          "url": "https://inbr.ir/wp-content/uploads/2023/07/mabhas13-95.pdf"
+        }
+      ],
+      "expected_bytes": 3894056,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 240,
+      "expected_sha256": "7cb1d72ebc9a1e2ba7576a5dc7c758a9d2c62811dc7220266fb79980cfc96589",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas13-95.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-13",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas13-95.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2023/07/mabhas13-95.pdf"
+      ],
+      "title_en": "Volume 13: Electrical Installations",
+      "title_fa": "مبحث سیزدهم: طرح و اجرای تأسیسات برقی ساختمان‌ها",
+      "translation_provenance": "official",
+      "volume": 13
+    },
+    {
+      "catalog_key": "volume-14-edition-1396",
+      "catalog_order": 17,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/wp-content/uploads/2023/07/mabhas14-96.pdf",
+      "edition": {
+        "edition_number": 3,
+        "label_en": "Third edition",
+        "label_fa": "ویرایش سوم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1396"
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official PDF and cover metadata; upload year is not edition evidence.",
+          "url": "https://inbr.ir/wp-content/uploads/2023/07/mabhas14-96.pdf"
+        }
+      ],
+      "expected_bytes": 4360494,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 240,
+      "expected_sha256": "04634503bcb1b64fc4f6e8d13f78a6312773eee64eec62c6752a29c2cf25bdbf",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas14-96.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-14",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas14-96.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2023/07/mabhas14-96.pdf"
+      ],
+      "title_en": "Volume 14: Mechanical Systems",
+      "title_fa": "مبحث چهاردهم: تأسیسات مکانیکی",
+      "translation_provenance": "official",
+      "volume": 14
+    },
+    {
+      "catalog_key": "volume-15-edition-1392",
+      "catalog_order": 18,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/wp-content/uploads/2016/08/mabhas-15.pdf",
+      "edition": {
+        "edition_number": 3,
+        "label_en": "Third edition",
+        "label_fa": "ویرایش سوم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1392"
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official PDF and cover metadata.",
+          "url": "https://inbr.ir/wp-content/uploads/2016/08/mabhas-15.pdf"
+        }
+      ],
+      "expected_bytes": 1026762,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 84,
+      "expected_sha256": "e27e1d74e6ded86ecfe6399b524b612d2cf6fdd2da4c6a36df7d94a3ed6ea477",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas-15.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-15",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas-15.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2016/08/mabhas-15.pdf"
+      ],
+      "title_en": "Volume 15: Elevators and Escalators",
+      "title_fa": "مبحث پانزدهم: آسانسورها و پلکان برقی",
+      "translation_provenance": "official",
+      "volume": 15
+    },
+    {
+      "catalog_key": "volume-16-edition-1396",
+      "catalog_order": 19,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/upload/mabhas/1402-08/mabhas-16-1402-08.pdf",
+      "edition": {
+        "edition_number": 4,
+        "label_en": "Fourth edition",
+        "label_fa": "ویرایش چهارم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1396"
+      },
+      "evidence": [
+        {
+          "kind": "official_document_cover",
+          "note": "Official PDF cover; upload path year is not edition evidence.",
+          "url": "https://inbr.ir/upload/mabhas/1402-08/mabhas-16-1402-08.pdf"
+        }
+      ],
+      "expected_bytes": 21599241,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 236,
+      "expected_sha256": "2a26ec242f5e7ec89c60c642d3fd00d7877ed9c0be2c0db0d31b83a195539bdb",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas-16-1402-08.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-16",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas-16-1402-08.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/upload/mabhas/1402-08/mabhas-16-1402-08.pdf"
+      ],
+      "title_en": "Volume 16: Plumbing Systems",
+      "title_fa": "مبحث شانزدهم: تأسیسات بهداشتی",
+      "translation_provenance": "official",
+      "volume": 16
+    },
+    {
+      "catalog_key": "volume-17-edition-1403",
+      "catalog_order": 20,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.s3.ir-thr-at1.arvanstorage.ir/mabahse%2Fmabahse17%2Fmabhas17-watermark-1403-02.pdf",
+      "edition": {
+        "edition_number": 5,
+        "label_en": "Fifth edition",
+        "label_fa": "ویرایش پنجم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1403"
+      },
+      "evidence": [
+        {
+          "kind": "official_document_cover",
+          "note": "Official watermarked PDF; the local flat filename is preserved and is never derived by decoding encoded URL separators.",
+          "url": "https://inbr.s3.ir-thr-at1.arvanstorage.ir/mabahse%2Fmabahse17%2Fmabhas17-watermark-1403-02.pdf"
+        }
+      ],
+      "expected_bytes": 30183839,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 259,
+      "expected_sha256": "eb575703d82dfe524ea227c1115c487f0d8c65aebb96442859ff68795fa70cc8",
+      "legal_status": "binding_regulation",
+      "local_path": "mabahse_mabahse17_mabhas17-watermark-1403-02.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-17",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabahse/mabahse17/mabhas17-watermark-1403-02.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.s3.ir-thr-at1.arvanstorage.ir/mabahse%2Fmabahse17%2Fmabhas17-watermark-1403-02.pdf"
+      ],
+      "title_en": "Volume 17: Natural Gas System in Buildings",
+      "title_fa": "مبحث هفدهم: سامانه گاز طبیعی در ساختمان",
+      "translation_provenance": "cover_translation",
+      "volume": 17
+    },
+    {
+      "catalog_key": "volume-17-amendment-01",
+      "catalog_order": 21,
+      "document_kind": "amendment",
+      "download_url": "https://inbr.ir/wp-content/uploads/2025/10/%D8%A7%D8%B5%D9%84%D8%A7%D8%AD%DB%8C%D9%87-1-%D9%85%D8%A8%D8%AD%D8%AB-17.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": "Amendment No. 1",
+        "label_fa": "اصلاحیه شماره یک",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": null
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official amendment PDF; upload year is not asserted as publication year.",
+          "url": "https://inbr.ir/wp-content/uploads/2025/10/%D8%A7%D8%B5%D9%84%D8%A7%D8%AD%DB%8C%D9%87-1-%D9%85%D8%A8%D8%AD%D8%AB-17.pdf"
+        }
+      ],
+      "expected_bytes": 1266748,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 2,
+      "expected_sha256": "2e9a85201cb8e3a231cbec6e0db3e615071d841384c40b53f91ec85798ea5738",
+      "legal_status": "official_amendment",
+      "local_path": "اصلاحیه-1-مبحث-17.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-17-edition-1403",
+          "type": "AMENDS"
+        }
+      ],
+      "remote_filename": "اصلاحیه-1-مبحث-17.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2025/10/%D8%A7%D8%B5%D9%84%D8%A7%D8%AD%DB%8C%D9%87-1-%D9%85%D8%A8%D8%AD%D8%AB-17.pdf"
+      ],
+      "title_en": "Amendment No. 1 to Volume 17",
+      "title_fa": "اصلاحیه شماره یک مبحث هفدهم",
+      "translation_provenance": "curated",
+      "volume": 17
+    },
+    {
+      "catalog_key": "volume-18-edition-1396",
+      "catalog_order": 22,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/upload/mabhas/mabhas-18-1402.pdf",
+      "edition": {
+        "edition_number": 3,
+        "label_en": "Third edition",
+        "label_fa": "ویرایش سوم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1396"
+      },
+      "evidence": [
+        {
+          "kind": "official_document_cover",
+          "note": "Official PDF cover; upload filename year is not edition evidence.",
+          "url": "https://inbr.ir/upload/mabhas/mabhas-18-1402.pdf"
+        }
+      ],
+      "expected_bytes": 12766729,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 112,
+      "expected_sha256": "f3b54dfed8835e92f416bcaaa22ff7308f114f815c20620fc2c42e56b08d9b24",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas-18-1402.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-18",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas-18-1402.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/upload/mabhas/mabhas-18-1402.pdf"
+      ],
+      "title_en": "Volume 18: Acoustics and Sound Control",
+      "title_fa": "مبحث هجدهم: عایق‌بندی و تنظیم صدا",
+      "translation_provenance": "official",
+      "volume": 18
+    },
+    {
+      "catalog_key": "volume-19-edition-1404",
+      "catalog_order": 23,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/wp-content/uploads/2023/11/mabhas19-v5.pdf",
+      "edition": {
+        "edition_number": 5,
+        "label_en": "Fifth edition",
+        "label_fa": "ویرایش پنجم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1404"
+      },
+      "evidence": [
+        {
+          "kind": "official_document_cover",
+          "note": "Official fifth-edition PDF; upload year is not edition evidence.",
+          "url": "https://inbr.ir/wp-content/uploads/2023/11/mabhas19-v5.pdf"
+        }
+      ],
+      "expected_bytes": 2164999,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 144,
+      "expected_sha256": "f75d9d167487fa0a285c857885ec2f7ba1a0da95e835f2385afd892e46baa32c",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas19-v5.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-19",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas19-v5.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2023/11/mabhas19-v5.pdf"
+      ],
+      "title_en": "Volume 19: Energy Management in Buildings",
+      "title_fa": "مبحث نوزدهم: مدیریت انرژی در ساختمان",
+      "translation_provenance": "cover_translation",
+      "volume": 19
+    },
+    {
+      "catalog_key": "volume-19-appendix-01",
+      "catalog_order": 24,
+      "document_kind": "appendix",
+      "download_url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA1-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": "Appendix 1",
+        "label_fa": "پیوست ۱",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": null
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official ordered appendix PDF.",
+          "url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA1-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf"
+        }
+      ],
+      "expected_bytes": 480389,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 8,
+      "expected_sha256": "536dd07db77686ae60dfde4cee318f146d598ed7365ea2f035c9a7f06506705a",
+      "legal_status": "binding_appendix",
+      "local_path": "پیوست1-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان.pdf",
+      "relationships": [
+        {
+          "order": 1,
+          "target": "volume-19-edition-1404",
+          "type": "APPENDIX_OF"
+        }
+      ],
+      "remote_filename": "پیوست1-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA1-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf"
+      ],
+      "title_en": "Appendix 1 to Volume 19, Fifth Edition",
+      "title_fa": "پیوست ۱ ویرایش پنجم مبحث نوزدهم",
+      "translation_provenance": "curated",
+      "volume": 19
+    },
+    {
+      "catalog_key": "volume-19-appendix-02",
+      "catalog_order": 25,
+      "document_kind": "appendix",
+      "download_url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA2-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": "Appendix 2",
+        "label_fa": "پیوست ۲",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": null
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official ordered appendix PDF.",
+          "url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA2-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf"
+        }
+      ],
+      "expected_bytes": 171250,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 4,
+      "expected_sha256": "8e40c4f80eb1db38874380160a167342a5ec75512842ebd424708e954ec0d4fe",
+      "legal_status": "binding_appendix",
+      "local_path": "پیوست2-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان.pdf",
+      "relationships": [
+        {
+          "order": 2,
+          "target": "volume-19-edition-1404",
+          "type": "APPENDIX_OF"
+        }
+      ],
+      "remote_filename": "پیوست2-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA2-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf"
+      ],
+      "title_en": "Appendix 2 to Volume 19, Fifth Edition",
+      "title_fa": "پیوست ۲ ویرایش پنجم مبحث نوزدهم",
+      "translation_provenance": "curated",
+      "volume": 19
+    },
+    {
+      "catalog_key": "volume-19-appendix-03",
+      "catalog_order": 26,
+      "document_kind": "appendix",
+      "download_url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-3-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86-1.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": "Appendix 3",
+        "label_fa": "پیوست ۳",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": null
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official ordered appendix PDF.",
+          "url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-3-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86-1.pdf"
+        }
+      ],
+      "expected_bytes": 434666,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 5,
+      "expected_sha256": "cb63d3b0c3b758863fa3eb615ff36b46639c509344686529fdbeaf085c86db5a",
+      "legal_status": "binding_appendix",
+      "local_path": "پیوست-3-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان-1.pdf",
+      "relationships": [
+        {
+          "order": 3,
+          "target": "volume-19-edition-1404",
+          "type": "APPENDIX_OF"
+        }
+      ],
+      "remote_filename": "پیوست-3-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان-1.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-3-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86-1.pdf"
+      ],
+      "title_en": "Appendix 3 to Volume 19, Fifth Edition",
+      "title_fa": "پیوست ۳ ویرایش پنجم مبحث نوزدهم",
+      "translation_provenance": "curated",
+      "volume": 19
+    },
+    {
+      "catalog_key": "volume-19-appendix-04",
+      "catalog_order": 27,
+      "document_kind": "appendix",
+      "download_url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-4-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": "Appendix 4",
+        "label_fa": "پیوست ۴",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": null
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official ordered appendix PDF.",
+          "url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-4-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf"
+        }
+      ],
+      "expected_bytes": 5220996,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 32,
+      "expected_sha256": "988ee48c00ae5e59c6518d72c8d878fa1913fb0653e9200298ceca822ea4de58",
+      "legal_status": "binding_appendix",
+      "local_path": "پیوست-4-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان.pdf",
+      "relationships": [
+        {
+          "order": 4,
+          "target": "volume-19-edition-1404",
+          "type": "APPENDIX_OF"
+        }
+      ],
+      "remote_filename": "پیوست-4-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-4-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf"
+      ],
+      "title_en": "Appendix 4 to Volume 19, Fifth Edition",
+      "title_fa": "پیوست ۴ ویرایش پنجم مبحث نوزدهم",
+      "translation_provenance": "curated",
+      "volume": 19
+    },
+    {
+      "catalog_key": "volume-19-appendix-05",
+      "catalog_order": 28,
+      "document_kind": "appendix",
+      "download_url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-5-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86-1.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": "Appendix 5",
+        "label_fa": "پیوست ۵",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": null
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official ordered appendix PDF.",
+          "url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-5-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86-1.pdf"
+        }
+      ],
+      "expected_bytes": 1229936,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 48,
+      "expected_sha256": "9b90fd5f3601b0da380dbaef791629fa95a6fb91aceae04172a8fd1c93b46e78",
+      "legal_status": "binding_appendix",
+      "local_path": "پیوست-5-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان-1.pdf",
+      "relationships": [
+        {
+          "order": 5,
+          "target": "volume-19-edition-1404",
+          "type": "APPENDIX_OF"
+        }
+      ],
+      "remote_filename": "پیوست-5-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان-1.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-5-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86-1.pdf"
+      ],
+      "title_en": "Appendix 5 to Volume 19, Fifth Edition",
+      "title_fa": "پیوست ۵ ویرایش پنجم مبحث نوزدهم",
+      "translation_provenance": "curated",
+      "volume": 19
+    },
+    {
+      "catalog_key": "volume-19-appendix-06",
+      "catalog_order": 29,
+      "document_kind": "appendix",
+      "download_url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-6-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D8%AF%DB%8C-%D9%85%D8%A7%D9%87-1404.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": "Appendix 6",
+        "label_fa": "پیوست ۶",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1404"
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official ordered appendix PDF.",
+          "url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-6-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D8%AF%DB%8C-%D9%85%D8%A7%D9%87-1404.pdf"
+        }
+      ],
+      "expected_bytes": 44849,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 2,
+      "expected_sha256": "a0ffaa4f1b3f0bf03ffaa435579b16f8e32f6f7f4d28b0dbce61a93b3548bfde",
+      "legal_status": "binding_appendix",
+      "local_path": "پیوست-6-ویرایش-پنجم-مبحث-نوزدهم-دی-ماه-1404.pdf",
+      "relationships": [
+        {
+          "order": 6,
+          "target": "volume-19-edition-1404",
+          "type": "APPENDIX_OF"
+        }
+      ],
+      "remote_filename": "پیوست-6-ویرایش-پنجم-مبحث-نوزدهم-دی-ماه-1404.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-6-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D8%AF%DB%8C-%D9%85%D8%A7%D9%87-1404.pdf"
+      ],
+      "title_en": "Appendix 6 to Volume 19, Fifth Edition",
+      "title_fa": "پیوست ۶ ویرایش پنجم مبحث نوزدهم",
+      "translation_provenance": "curated",
+      "volume": 19
+    },
+    {
+      "catalog_key": "volume-19-appendix-07",
+      "catalog_order": 30,
+      "document_kind": "appendix",
+      "download_url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-7-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": "Appendix 7",
+        "label_fa": "پیوست ۷",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": null
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official ordered appendix PDF.",
+          "url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-7-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf"
+        }
+      ],
+      "expected_bytes": 1029008,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 13,
+      "expected_sha256": "f3e8e5c3f59ca25e3831cffe245a1d0b5081043bbe4aff91de5f76086b158031",
+      "legal_status": "binding_appendix",
+      "local_path": "پیوست-7-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان.pdf",
+      "relationships": [
+        {
+          "order": 7,
+          "target": "volume-19-edition-1404",
+          "type": "APPENDIX_OF"
+        }
+      ],
+      "remote_filename": "پیوست-7-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-7-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf"
+      ],
+      "title_en": "Appendix 7 to Volume 19, Fifth Edition",
+      "title_fa": "پیوست ۷ ویرایش پنجم مبحث نوزدهم",
+      "translation_provenance": "curated",
+      "volume": 19
+    },
+    {
+      "catalog_key": "volume-19-appendix-08",
+      "catalog_order": 31,
+      "document_kind": "appendix",
+      "download_url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-8-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D8%AF%DB%8C-%D9%85%D8%A7%D9%87-1404.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": "Appendix 8",
+        "label_fa": "پیوست ۸",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1404"
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official ordered appendix PDF.",
+          "url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-8-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D8%AF%DB%8C-%D9%85%D8%A7%D9%87-1404.pdf"
+        }
+      ],
+      "expected_bytes": 127244,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 7,
+      "expected_sha256": "bda99bcbdb1d907871b72f362fad8b295f4af0e8ad810f6492bb9f89045b7b5b",
+      "legal_status": "binding_appendix",
+      "local_path": "پیوست-8-ویرایش-پنجم-مبحث-نوزدهم-دی-ماه-1404.pdf",
+      "relationships": [
+        {
+          "order": 8,
+          "target": "volume-19-edition-1404",
+          "type": "APPENDIX_OF"
+        }
+      ],
+      "remote_filename": "پیوست-8-ویرایش-پنجم-مبحث-نوزدهم-دی-ماه-1404.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-8-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D8%AF%DB%8C-%D9%85%D8%A7%D9%87-1404.pdf"
+      ],
+      "title_en": "Appendix 8 to Volume 19, Fifth Edition",
+      "title_fa": "پیوست ۸ ویرایش پنجم مبحث نوزدهم",
+      "translation_provenance": "curated",
+      "volume": 19
+    },
+    {
+      "catalog_key": "volume-19-appendix-09",
+      "catalog_order": 32,
+      "document_kind": "appendix",
+      "download_url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-9-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": "Appendix 9",
+        "label_fa": "پیوست ۹",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": null
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official ordered appendix PDF.",
+          "url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-9-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf"
+        }
+      ],
+      "expected_bytes": 2151031,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 10,
+      "expected_sha256": "12862c5a23ef22d9c7993853cee3d97406b635161786b1d5815717e400447972",
+      "legal_status": "binding_appendix",
+      "local_path": "پیوست-9-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان.pdf",
+      "relationships": [
+        {
+          "order": 9,
+          "target": "volume-19-edition-1404",
+          "type": "APPENDIX_OF"
+        }
+      ],
+      "remote_filename": "پیوست-9-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-9-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf"
+      ],
+      "title_en": "Appendix 9 to Volume 19, Fifth Edition",
+      "title_fa": "پیوست ۹ ویرایش پنجم مبحث نوزدهم",
+      "translation_provenance": "curated",
+      "volume": 19
+    },
+    {
+      "catalog_key": "volume-20-edition-1396",
+      "catalog_order": 33,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/upload/mabhas/mabhas-20-1402.pdf",
+      "edition": {
+        "edition_number": 2,
+        "label_en": "Second edition",
+        "label_fa": "ویرایش دوم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1396"
+      },
+      "evidence": [
+        {
+          "kind": "official_document_cover",
+          "note": "Official PDF cover; upload filename year is not edition evidence.",
+          "url": "https://inbr.ir/upload/mabhas/mabhas-20-1402.pdf"
+        }
+      ],
+      "expected_bytes": 10775850,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 88,
+      "expected_sha256": "ab14d6110e21dd16a229d23eb1d928be2f9eb7b442bc22c917d4a5d4ea7099c3",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas-20-1402.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-20",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas-20-1402.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/upload/mabhas/mabhas-20-1402.pdf"
+      ],
+      "title_en": "Volume 20: Signs and Symbols",
+      "title_fa": "مبحث بیستم: علائم و تابلوها",
+      "translation_provenance": "official",
+      "volume": 20
+    },
+    {
+      "catalog_key": "volume-21-edition-1395",
+      "catalog_order": 34,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/upload/mabhas/1402-08/mabhas-21-1402-08.pdf",
+      "edition": {
+        "edition_number": 2,
+        "label_en": "Second edition",
+        "label_fa": "ویرایش دوم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1395"
+      },
+      "evidence": [
+        {
+          "kind": "official_document_cover",
+          "note": "Official PDF cover; upload path year is not edition evidence.",
+          "url": "https://inbr.ir/upload/mabhas/1402-08/mabhas-21-1402-08.pdf"
+        }
+      ],
+      "expected_bytes": 10120832,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 128,
+      "expected_sha256": "0165a8f41351668c2b2e829e539d8aa5865a9dc3bca66e73c29dd9ab1dec7341",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas-21-1402-08.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-21",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas-21-1402-08.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/upload/mabhas/1402-08/mabhas-21-1402-08.pdf"
+      ],
+      "title_en": "Volume 21: Passive Defense",
+      "title_fa": "مبحث بیست و یکم: پدافند غیرعامل",
+      "translation_provenance": "official",
+      "volume": 21
+    },
+    {
+      "catalog_key": "volume-22-edition-1392",
+      "catalog_order": 35,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/wp-content/uploads/2016/08/mabhas-22.pdf",
+      "edition": {
+        "edition_number": 1,
+        "label_en": "First edition",
+        "label_fa": "ویرایش اول",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1392"
+      },
+      "evidence": [
+        {
+          "kind": "source_url",
+          "note": "Official first-edition PDF; post 6691 is retained only as provenance for a later non-citable draft.",
+          "url": "https://inbr.ir/wp-content/uploads/2016/08/mabhas-22.pdf"
+        },
+        {
+          "kind": "official_post",
+          "note": "Explicitly non-citable draft second edition, not substituted for this local binding first edition.",
+          "url": "https://inbr.ir/wp-json/wp/v2/posts/6691"
+        }
+      ],
+      "expected_bytes": 430755,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 92,
+      "expected_sha256": "bc4bdbbfe03892b8ad037587d5e23d1e5105773b395390565b16546fd0b28b19",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas-22.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-22",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas-22.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2016/08/mabhas-22.pdf"
+      ],
+      "title_en": "Volume 22: Building Care and Maintenance",
+      "title_fa": "مبحث بیست و دوم: مراقبت و نگهداری از ساختمان‌ها",
+      "translation_provenance": "official",
+      "volume": 22
+    },
+    {
+      "catalog_key": "volume-23-edition-1401",
+      "catalog_order": 36,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/upload/mabhas/mabhas-23.pdf",
+      "edition": {
+        "edition_number": 1,
+        "label_en": "First edition",
+        "label_fa": "ویرایش اول",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1401"
+      },
+      "evidence": [
+        {
+          "kind": "official_document_cover",
+          "note": "Official PDF cover and curated English translation.",
+          "url": "https://inbr.ir/upload/mabhas/mabhas-23.pdf"
+        }
+      ],
+      "expected_bytes": 12705390,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 104,
+      "expected_sha256": "b71f6146929375fe39edb8810f1f3e07022065bb7070553fd0a8cf46a7c23f89",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas-23.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-23",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas-23.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/upload/mabhas/mabhas-23.pdf"
+      ],
+      "title_en": "Volume 23: Building Traffic Requirements",
+      "title_fa": "مبحث بیست و سوم: الزامات ترافیکی ساختمان",
+      "translation_provenance": "cover_translation",
+      "volume": 23
+    },
+    {
+      "catalog_key": "volume-24-current-1404",
+      "catalog_order": 37,
+      "document_kind": "numbered_volume",
+      "download_url": "https://inbr.ir/wp-content/uploads/2026/05/mabhas24-3.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": null,
+        "label_fa": null,
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1404"
+      },
+      "evidence": [
+        {
+          "kind": "official_post",
+          "note": "Current official download record; no revision number is invented from the filename.",
+          "url": "https://inbr.ir/wp-json/wp/v2/posts/7061"
+        },
+        {
+          "kind": "official_post",
+          "note": "Historical record explicitly identifies an earlier non-citable draft; that status is not applied to this current artifact.",
+          "url": "https://inbr.ir/wp-json/wp/v2/posts/6022"
+        }
+      ],
+      "expected_bytes": 2907914,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 53,
+      "expected_sha256": "f63836c287aa1f4af1f845b966bff04e8f034434b353f00cedfeda06b98c5719",
+      "legal_status": "binding_regulation",
+      "local_path": "mabhas24-3.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-24",
+          "type": "EDITION_OF"
+        }
+      ],
+      "remote_filename": "mabhas24-3.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2026/05/mabhas24-3.pdf"
+      ],
+      "title_en": "Volume 24: Urban Building Compliance",
+      "title_fa": "مبحث بیست و چهارم: انطباق شهری ساختمان",
+      "translation_provenance": "cover_translation",
+      "volume": 24
+    },
+    {
+      "catalog_key": "guide-seismic-dampers-isolators-draft",
+      "catalog_order": 38,
+      "document_kind": "guide",
+      "download_url": "https://inbr.ir/upload/mabhas/%D8%B1%D8%A7%D9%87%D9%86%D9%85%D8%A7%DB%8C%20%D8%B7%D8%B1%D8%A7%D8%AD%DB%8C%20%D9%85%DB%8C%D8%B1%D8%A7%DA%AF%D8%B1%D9%87%D8%A7%20%D9%88%20%D8%AC%D8%AF%D8%A7%DA%AF%D8%B1%D9%87%D8%A7%DB%8C%20%D9%84%D8%B1%D8%B2%D9%87%20%D8%A7%DB%8C.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": "Draft",
+        "label_fa": "پیش‌نویس",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": null
+      },
+      "evidence": [
+        {
+          "kind": "official_catalog",
+          "note": "Official catalog explicitly labels this document a draft guide; it is not a numbered or binding regulation.",
+          "url": "https://inbr.ir/مباحث-مقررات-ملی/"
+        }
+      ],
+      "expected_bytes": 41424331,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 328,
+      "expected_sha256": "b311fe06d01053c71d46670ce01ca8234ed77f1b58b64b23208b17eaa3c3014c",
+      "legal_status": "draft_nonbinding",
+      "local_path": "راهنمای طراحی میراگرها و جداگرهای لرزه ای.pdf",
+      "relationships": [],
+      "remote_filename": "راهنمای طراحی میراگرها و جداگرهای لرزه ای.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/upload/mabhas/%D8%B1%D8%A7%D9%87%D9%86%D9%85%D8%A7%DB%8C%20%D8%B7%D8%B1%D8%A7%D8%AD%DB%8C%20%D9%85%DB%8C%D8%B1%D8%A7%DA%AF%D8%B1%D9%87%D8%A7%20%D9%88%20%D8%AC%D8%AF%D8%A7%DA%AF%D8%B1%D9%87%D8%A7%DB%8C%20%D9%84%D8%B1%D8%B2%D9%87%20%D8%A7%DB%8C.pdf"
+      ],
+      "title_en": "Draft Guide for the Design of Seismic Dampers and Isolators",
+      "title_fa": "پیش‌نویس راهنمای طراحی میراگرها و جداگرهای لرزه‌ای",
+      "translation_provenance": "curated",
+      "volume": null
+    },
+    {
+      "catalog_key": "guide-masonry-perimeter-walls-v3-1404",
+      "catalog_order": 39,
+      "document_kind": "guide",
+      "download_url": "https://inbr.ir/wp-content/uploads/2025/12/دستورالعملطراحی.pdf",
+      "edition": {
+        "edition_number": 3,
+        "label_en": "Version 3",
+        "label_fa": "نسخه سوم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1404"
+      },
+      "evidence": [
+        {
+          "kind": "official_post",
+          "note": "Official post labels and orders this as version 3 before version 2.",
+          "url": "https://inbr.ir/wp-json/wp/v2/posts/6735"
+        },
+        {
+          "kind": "official_document_cover",
+          "note": "Official PDF cover dates the third version to Azar 1404 and supplies the document title.",
+          "url": "https://inbr.ir/wp-content/uploads/2025/12/دستورالعملطراحی.pdf"
+        }
+      ],
+      "expected_bytes": 3845085,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 68,
+      "expected_sha256": "acd530ac4b887bdf4924aa614d901becf9d06c95717f6a1934005ff9316447a3",
+      "legal_status": "supplementary_nonbinding",
+      "local_path": "guide-masonry-perimeter-walls-v3-1404.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "guide-masonry-perimeter-walls-v2-1403",
+          "type": "SUPERSEDES"
+        },
+        {
+          "order": null,
+          "target": "volume-08",
+          "type": "GUIDE_FOR"
+        }
+      ],
+      "remote_filename": "دستورالعملطراحی.pdf",
+      "review_flags": [
+        "GUIDE_FOR_VOLUME_08_UNVERIFIED"
+      ],
+      "review_status": "needs_review",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2025/12/دستورالعملطراحی.pdf",
+        "https://inbr.ir/wp-json/wp/v2/posts/6735"
+      ],
+      "title_en": "Design and Construction of Perimeter Masonry Walls",
+      "title_fa": "دستورالعمل طراحی و اجرای دیوارهای بنایی محوطه",
+      "translation_provenance": "official",
+      "volume": null
+    },
+    {
+      "catalog_key": "guide-masonry-perimeter-walls-v2-1403",
+      "catalog_order": 40,
+      "document_kind": "guide",
+      "download_url": "https://inbr.ir/wp-content/uploads/2024/09/%D8%B7%D8%B1%D8%A7%D8%AD%DB%8C-%D8%AF%DB%8C%D9%88%D8%A7%D8%B1-%D9%85%D8%AD%D9%88%D8%B7%D9%87-%D9%85%D9%87%D8%B1-1403.pdf",
+      "edition": {
+        "edition_number": 2,
+        "label_en": "Version 2",
+        "label_fa": "نسخه دوم",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1403"
+      },
+      "evidence": [
+        {
+          "kind": "official_post",
+          "note": "Official post labels this as version 2 after version 3.",
+          "url": "https://inbr.ir/wp-json/wp/v2/posts/6735"
+        },
+        {
+          "kind": "official_document_cover",
+          "note": "Official scanned cover and bibliographic page identify publication year 1403 and the second version.",
+          "url": "https://inbr.ir/wp-content/uploads/2024/09/%D8%B7%D8%B1%D8%A7%D8%AD%DB%8C-%D8%AF%DB%8C%D9%88%D8%A7%D8%B1-%D9%85%D8%AD%D9%88%D8%B7%D9%87-%D9%85%D9%87%D8%B1-1403.pdf"
+        }
+      ],
+      "expected_bytes": 5217505,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 75,
+      "expected_sha256": "f1eb68785aa4abb57b537f06c850ec67b8344355ef0fce4f12aadb194f8f773c",
+      "legal_status": "supplementary_nonbinding",
+      "local_path": "guide-masonry-perimeter-walls-v2-1403.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-08",
+          "type": "GUIDE_FOR"
+        }
+      ],
+      "remote_filename": "طراحی-دیوار-محوطه-مهر-1403.pdf",
+      "review_flags": [
+        "GUIDE_FOR_VOLUME_08_UNVERIFIED"
+      ],
+      "review_status": "needs_review",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2024/09/%D8%B7%D8%B1%D8%A7%D8%AD%DB%8C-%D8%AF%DB%8C%D9%88%D8%A7%D8%B1-%D9%85%D8%AD%D9%88%D8%B7%D9%87-%D9%85%D9%87%D8%B1-1403.pdf",
+        "https://inbr.ir/wp-json/wp/v2/posts/6735"
+      ],
+      "title_en": "Design and Construction of Perimeter Masonry Walls",
+      "title_fa": "دستورالعمل طراحی و اجرای دیوارهای بنایی محوطه",
+      "translation_provenance": "official",
+      "volume": null
+    },
+    {
+      "catalog_key": "guide-structural-calculation-design-draft",
+      "catalog_order": 41,
+      "document_kind": "guide",
+      "download_url": "https://inbr.ir/upload/mabhas/%DA%A9%D8%AA%D8%A7%D8%A8%20%D9%85%D8%AD%D8%A7%D8%B3%D8%A8%D8%A7%D8%AA%20%D9%88%20%D8%B7%D8%B1%D8%A7%D8%AD%DB%8C%20%D8%B3%D8%A7%D8%B2%D9%87%20%D8%A7%DB%8C.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": "Draft",
+        "label_fa": "پیش‌نویس",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": null
+      },
+      "evidence": [
+        {
+          "kind": "official_catalog",
+          "note": "Official catalog explicitly labels this document a draft guide; it is not a numbered or binding regulation.",
+          "url": "https://inbr.ir/مباحث-مقررات-ملی/"
+        }
+      ],
+      "expected_bytes": 35829359,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 248,
+      "expected_sha256": "04df31f04b0b47ffdcf427c55d5876ca6d49b2eb440c01c1d8efe29de8e133ec",
+      "legal_status": "draft_nonbinding",
+      "local_path": "کتاب محاسبات و طراحی سازه ای.pdf",
+      "relationships": [],
+      "remote_filename": "کتاب محاسبات و طراحی سازه ای.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/upload/mabhas/%DA%A9%D8%AA%D8%A7%D8%A8%20%D9%85%D8%AD%D8%A7%D8%B3%D8%A8%D8%A7%D8%AA%20%D9%88%20%D8%B7%D8%B1%D8%A7%D8%AD%DB%8C%20%D8%B3%D8%A7%D8%B2%D9%87%20%D8%A7%DB%8C.pdf"
+      ],
+      "title_en": "Draft Guide for Structural Calculation and Design",
+      "title_fa": "پیش‌نویس راهنمای محاسبات و طراحی سازه‌ای",
+      "translation_provenance": "curated",
+      "volume": null
+    },
+    {
+      "catalog_key": "guide-existing-building-safety-retrofit",
+      "catalog_order": 42,
+      "document_kind": "guide",
+      "download_url": "https://inbr.ir/upload/mabhas/%D8%AF%D8%B3%D8%AA%D9%88%D8%B1-%DA%A9%D8%A7%D8%B1-%D8%A7%D8%B1%D8%B2%DB%8C%D8%A7%D8%A8%DB%8C-%D8%A7%DB%8C%D9%85%D9%86%DB%8C-%D9%88-%D8%A8%D9%87%D8%B3%D8%A7%D8%B2%DB%8C_photo.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": null,
+        "label_fa": null,
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": null
+      },
+      "evidence": [
+        {
+          "kind": "official_catalog",
+          "note": "Official catalog lists a supplementary guide, not a numbered regulation; conflicting date metadata is not asserted.",
+          "url": "https://inbr.ir/مباحث-مقررات-ملی/"
+        }
+      ],
+      "expected_bytes": 34683588,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 298,
+      "expected_sha256": "98d123bbce7c4b8735bf06f118c8c932f0c7e0ac3486ecd3d50c2f3710b636f9",
+      "legal_status": "supplementary_nonbinding",
+      "local_path": "دستور-کار-ارزیابی-ایمنی-و-بهسازی_photo.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-22",
+          "type": "GUIDE_FOR"
+        }
+      ],
+      "remote_filename": "دستور-کار-ارزیابی-ایمنی-و-بهسازی_photo.pdf",
+      "review_flags": [
+        "PUBLICATION_METADATA_UNRESOLVED"
+      ],
+      "review_status": "needs_review",
+      "source_urls": [
+        "https://inbr.ir/upload/mabhas/%D8%AF%D8%B3%D8%AA%D9%88%D8%B1-%DA%A9%D8%A7%D8%B1-%D8%A7%D8%B1%D8%B2%DB%8C%D8%A7%D8%A8%DB%8C-%D8%A7%DB%8C%D9%85%D9%86%DB%8C-%D9%88-%D8%A8%D9%87%D8%B3%D8%A7%D8%B2%DB%8C_photo.pdf"
+      ],
+      "title_en": "Procedure and Guide for Safety Evaluation and Retrofitting of Existing Buildings",
+      "title_fa": "دستور کار و راهنمای ارزیابی ایمنی و بهسازی ساختمان‌های موجود",
+      "translation_provenance": "curated",
+      "volume": null
+    },
+    {
+      "catalog_key": "volume-04-protective-security-appendix-1403",
+      "catalog_order": 43,
+      "document_kind": "mandatory_appendix",
+      "download_url": "https://inbr.ir/wp-content/uploads/2025/02/zavabethefazati-11.pdf",
+      "edition": {
+        "edition_number": null,
+        "label_en": "Mandatory appendix",
+        "label_fa": "پیوست لازم‌الاجرا",
+        "publication_date_shamsi": null,
+        "publication_year_shamsi": "1403"
+      },
+      "evidence": [
+        {
+          "kind": "official_post",
+          "note": "Current official post identifies this as a mandatory appendix to Volume 4 despite the misleading local filename.",
+          "url": "https://inbr.ir/wp-json/wp/v2/posts/7064"
+        },
+        {
+          "kind": "official_post",
+          "note": "Historical official draft record retained as provenance; the current appendix is not classified as a draft.",
+          "url": "https://inbr.ir/wp-json/wp/v2/posts/5713"
+        }
+      ],
+      "expected_bytes": 4375663,
+      "expected_media_type": "application/pdf",
+      "expected_pdf_pages": 54,
+      "expected_sha256": "93da5daaa83cc54d0f225a31d50224caaeead351c1e79de3dfae51edb015e426",
+      "legal_status": "binding_appendix",
+      "local_path": "zavabethefazati-11.pdf",
+      "relationships": [
+        {
+          "order": null,
+          "target": "volume-04-edition-1396",
+          "type": "MANDATORY_APPENDIX_OF"
+        }
+      ],
+      "remote_filename": "zavabethefazati-11.pdf",
+      "review_flags": [],
+      "review_status": "accepted",
+      "source_urls": [
+        "https://inbr.ir/wp-content/uploads/2025/02/zavabethefazati-11.pdf"
+      ],
+      "title_en": "Protective and Security Requirements for Buildings",
+      "title_fa": "ضوابط حفاظتی - انتظامی ساختمان‌ها",
+      "translation_provenance": "curated",
+      "volume": 4
+    }
+  ],
   "catalog_id": "inbr-national-building-regulations",
+  "families": [
+    {
+      "catalog_key": "volume-01",
+      "catalog_order": 1,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official bilingual family title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Definitions",
+      "title_fa": "تعاریف",
+      "translation_provenance": "official",
+      "volume": 1
+    },
+    {
+      "catalog_key": "volume-02",
+      "catalog_order": 2,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official bilingual family title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Administration",
+      "title_fa": "نظامات اداری",
+      "translation_provenance": "official",
+      "volume": 2
+    },
+    {
+      "catalog_key": "volume-03",
+      "catalog_order": 3,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official bilingual family title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Building Fire Protection",
+      "title_fa": "حفاظت ساختمانها در مقابل حریق",
+      "translation_provenance": "official",
+      "volume": 3
+    },
+    {
+      "catalog_key": "volume-04",
+      "catalog_order": 4,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official bilingual family title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "General Building Requirements",
+      "title_fa": "الزامات عمومی ساختمان",
+      "translation_provenance": "official",
+      "volume": 4
+    },
+    {
+      "catalog_key": "volume-05",
+      "catalog_order": 5,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official bilingual family title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Building Materials & Products",
+      "title_fa": "مصالح و فرآورده‌های ساختمانی",
+      "translation_provenance": "official",
+      "volume": 5
+    },
+    {
+      "catalog_key": "volume-06",
+      "catalog_order": 6,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official bilingual family title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Design Loads for Buildings",
+      "title_fa": "بارهای وارد بر ساختمان",
+      "translation_provenance": "official",
+      "volume": 6
+    },
+    {
+      "catalog_key": "volume-07",
+      "catalog_order": 7,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official historical family title; edition-specific cover titles remain on artifacts.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Foundations",
+      "title_fa": "پی و پی‌سازی",
+      "translation_provenance": "official",
+      "volume": 7
+    },
+    {
+      "catalog_key": "volume-08",
+      "catalog_order": 8,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official bilingual family title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Masonry Buildings",
+      "title_fa": "طرح و اجرای ساختمان‌های با مصالح بنایی",
+      "translation_provenance": "official",
+      "volume": 8
+    },
+    {
+      "catalog_key": "volume-09",
+      "catalog_order": 9,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official bilingual family title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Design and Construction of Concrete Structures",
+      "title_fa": "طرح و اجرای ساختمان‌های بتن‌آرمه",
+      "translation_provenance": "official",
+      "volume": 9
+    },
+    {
+      "catalog_key": "volume-10",
+      "catalog_order": 10,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official bilingual family title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Design and Construction of Steel Structures",
+      "title_fa": "طرح و اجرای ساختمان‌های فولادی",
+      "translation_provenance": "official",
+      "volume": 10
+    },
+    {
+      "catalog_key": "volume-11",
+      "catalog_order": 11,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official bilingual family title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Industrialized Construction",
+      "title_fa": "طرح و اجرای صنعتی ساختمان‌ها",
+      "translation_provenance": "official",
+      "volume": 11
+    },
+    {
+      "catalog_key": "volume-12",
+      "catalog_order": 12,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official bilingual family title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Safety and Precautions in Construction",
+      "title_fa": "ایمنی و حفاظت کار در حین اجرا",
+      "translation_provenance": "official",
+      "volume": 12
+    },
+    {
+      "catalog_key": "volume-13",
+      "catalog_order": 13,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official bilingual family title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Electrical Installations",
+      "title_fa": "طرح و اجرای تأسیسات برقی ساختمان‌ها",
+      "translation_provenance": "official",
+      "volume": 13
+    },
+    {
+      "catalog_key": "volume-14",
+      "catalog_order": 14,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official bilingual family title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Mechanical Systems",
+      "title_fa": "تأسیسات مکانیکی",
+      "translation_provenance": "official",
+      "volume": 14
+    },
+    {
+      "catalog_key": "volume-15",
+      "catalog_order": 15,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official bilingual family title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Elevators and Escalators",
+      "title_fa": "آسانسورها و پلکان برقی",
+      "translation_provenance": "official",
+      "volume": 15
+    },
+    {
+      "catalog_key": "volume-16",
+      "catalog_order": 16,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official bilingual family title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Plumbing Systems",
+      "title_fa": "تأسیسات بهداشتی",
+      "translation_provenance": "official",
+      "volume": 16
+    },
+    {
+      "catalog_key": "volume-17",
+      "catalog_order": 17,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official historical family title; edition-specific cover titles remain on artifacts.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Natural Gas Piping",
+      "title_fa": "لوله‌کشی گاز طبیعی در ساختمان",
+      "translation_provenance": "official",
+      "volume": 17
+    },
+    {
+      "catalog_key": "volume-18",
+      "catalog_order": 18,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official bilingual family title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Acoustics and Sound Control",
+      "title_fa": "عایق‌بندی و تنظیم صدا",
+      "translation_provenance": "official",
+      "volume": 18
+    },
+    {
+      "catalog_key": "volume-19",
+      "catalog_order": 19,
+      "evidence": [
+        {
+          "kind": "official_catalog",
+          "note": "Current family title translated from the current official edition cover.",
+          "url": "https://inbr.ir/مباحث-مقررات-ملی/"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/مباحث-مقررات-ملی/"
+      ],
+      "title_en": "Energy Management in Buildings",
+      "title_fa": "مدیریت انرژی در ساختمان",
+      "translation_provenance": "cover_translation",
+      "volume": 19
+    },
+    {
+      "catalog_key": "volume-20",
+      "catalog_order": 20,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official bilingual family title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Signs and Symbols",
+      "title_fa": "علائم و تابلوها",
+      "translation_provenance": "official",
+      "volume": 20
+    },
+    {
+      "catalog_key": "volume-21",
+      "catalog_order": 21,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official bilingual family title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Passive Defense",
+      "title_fa": "پدافند غیرعامل",
+      "translation_provenance": "official",
+      "volume": 21
+    },
+    {
+      "catalog_key": "volume-22",
+      "catalog_order": 22,
+      "evidence": [
+        {
+          "kind": "official_historical_metadata",
+          "note": "Official title of the local first-edition family; post 6691 describes a later non-citable draft under a revised title.",
+          "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/pages/1160"
+      ],
+      "title_en": "Building Care and Maintenance",
+      "title_fa": "مراقبت و نگهداری از ساختمان‌ها",
+      "translation_provenance": "official",
+      "volume": 22
+    },
+    {
+      "catalog_key": "volume-23",
+      "catalog_order": 23,
+      "evidence": [
+        {
+          "kind": "official_document_cover",
+          "note": "English title is a curated translation of the official cover title.",
+          "url": "https://inbr.ir/upload/mabhas/mabhas-23.pdf"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/مباحث-مقررات-ملی/"
+      ],
+      "title_en": "Building Traffic Requirements",
+      "title_fa": "الزامات ترافیکی ساختمان",
+      "translation_provenance": "cover_translation",
+      "volume": 23
+    },
+    {
+      "catalog_key": "volume-24",
+      "catalog_order": 24,
+      "evidence": [
+        {
+          "kind": "official_post",
+          "note": "Current official Volume 24 download record; no revision number is asserted.",
+          "url": "https://inbr.ir/wp-json/wp/v2/posts/7061"
+        }
+      ],
+      "source_urls": [
+        "https://inbr.ir/wp-json/wp/v2/posts/7061"
+      ],
+      "title_en": "Urban Building Compliance",
+      "title_fa": "انطباق شهری ساختمان",
+      "translation_provenance": "cover_translation",
+      "volume": 24
+    }
+  ],
+  "metadata_sources": [
+    {
+      "catalog_order": 1,
+      "expected_document_links": [
+        {
+          "href": "https://inbr.ir/?page_id=1163",
+          "label": "تعاریف"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1166",
+          "label": "نظامات اداری"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1170",
+          "label": "حفاظت ساختمانها در مقابل حريق"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1173",
+          "label": "الزامات عمومي ساختمان"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1176",
+          "label": "مصالح وفرآورده هاي ساختماني"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1180",
+          "label": "بارهاي وارد بر ساختمان"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1182",
+          "label": "پي و پي سازي"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1184",
+          "label": "طرح واجراي ساختمانهاي بامصالح بنايي"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1186",
+          "label": "طرح و اجراي ساختمانهاي بتن آرمه"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1188",
+          "label": "طرح و اجراي ساختمانهاي فولادي"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1193",
+          "label": "طرح واجراي صنعتي ساختمان ها"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1196",
+          "label": "ايمني و حفاظت كار در حين اجرا"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1198",
+          "label": "طرح و اجراي تاسيسات برقي ساختمانها"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1200",
+          "label": "تاسيسات مکانیکی"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1203",
+          "label": "آسانسورها و پلكان برقي"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1206",
+          "label": "تأسيسات بهداشتی"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1208",
+          "label": "لوله كشي گاز طبيعي"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1210",
+          "label": "عايق بندي و تنظيم صدا"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1212",
+          "label": "صرفه جويي درمصرف انرژي"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1216",
+          "label": "علائم و تابلوها"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1218",
+          "label": "پدافند غیرعامل"
+        },
+        {
+          "href": "https://inbr.ir/?page_id=1220",
+          "label": "مراقبت و نگهداري"
+        }
+      ],
+      "expected_semantic_sha256": "c14cebad8e448b2fe0d888890e6a2d57caecf2d383235e2c28a7481fe4b0be2f",
+      "kind": "page",
+      "requested_url": "https://inbr.ir/wp-json/wp/v2/pages/104",
+      "source_key": "page-104",
+      "wordpress_id": 104
+    },
+    {
+      "catalog_order": 2,
+      "expected_document_links": [
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=323",
+          "label": "تعاریف"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=231",
+          "label": "نظامات اداری"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=226",
+          "label": "حفاظت ساختمانها در مقابل حريق"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=232",
+          "label": "الزامات عمومي ساختمان"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=233",
+          "label": "مصالح وفرآورده هاي ساختماني"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=234",
+          "label": "بارهاي وارد بر ساختمان"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=285",
+          "label": "پي و پي سازي"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=235",
+          "label": "طرح واجراي ساختمانهاي بامصالح بنايي"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=236",
+          "label": "طرح و اجراي ساختمانهاي بتن آرمه"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=286",
+          "label": "طرح و اجراي ساختمانهاي فولادي"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=237",
+          "label": "طرح واجراي صنعتي ساختمان ها"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=238",
+          "label": "ايمني و حفاظت كار در حين اجرا"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=239",
+          "label": "طرح و اجراي تاسيسات برقي ساختمانها"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=240",
+          "label": "تاسيسات مکانیکی"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=287",
+          "label": "آسانسورها و پلكان برقي"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=241",
+          "label": "تأسيسات بهداشتی"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=296",
+          "label": "لوله كشي گاز طبيعي"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=242",
+          "label": "عايق بندي و تنظيم صدا"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=243",
+          "label": "صرفه جويي درمصرف انرژي"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=244",
+          "label": "علائم و تابلوها"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=316",
+          "label": "پدافند غیرعامل"
+        },
+        {
+          "href": "https://inbr.ir/spage/uspage.aspx?id=337",
+          "label": "مراقبت و نگهداري"
+        }
+      ],
+      "expected_semantic_sha256": "7643b35fc10209788198d70bbdfcce71e500bd778e5da6d9bf9786f8f12c7225",
+      "kind": "page",
+      "requested_url": "https://inbr.ir/wp-json/wp/v2/pages/1160",
+      "source_key": "page-1160",
+      "wordpress_id": 1160
+    },
+    {
+      "catalog_order": 3,
+      "expected_document_links": [
+        {
+          "href": "https://inbr.ir/%d8%af%d8%a7%d9%86%d9%84%d9%88%d8%af-%d9%85%d8%a8%d8%ad%d8%ab-%d8%a7%d9%88%d9%84/",
+          "label": "دانلود مبحث اول"
+        },
+        {
+          "href": "https://inbr.ir/%d8%af%d8%a7%d9%86%d9%84%d9%88%d8%af-%d9%85%d8%a8%d8%ad%d8%ab-%d8%af%d9%88%d9%85/",
+          "label": "دانلود مبحث دوم"
+        },
+        {
+          "href": "https://inbr.ir/?p=5814",
+          "label": "دانلود مبحث سوم"
+        },
+        {
+          "href": "https://inbr.ir/%d8%af%d8%a7%d9%86%d9%84%d9%88%d8%af-%d9%85%d8%a8%d8%ad%d8%ab-%da%86%d9%87%d8%a7%d8%b1%d9%85/",
+          "label": "دانلود مبحث چهارم"
+        },
+        {
+          "href": "https://inbr.ir/?p=5653",
+          "label": "دانلود مبحث پنجم"
+        },
+        {
+          "href": "https://inbr.ir/?p=5665",
+          "label": "دانلود مبحث ششم"
+        },
+        {
+          "href": "https://inbr.ir/%d8%af%d8%a7%d9%86%d9%84%d9%88%d8%af-%d9%85%d8%a8%d8%ad%d8%ab-%d9%87%d9%81%d8%aa%d9%85/",
+          "label": "دانلود مبحث هفتم"
+        },
+        {
+          "href": "https://inbr.ir/%d8%af%d8%a7%d9%86%d9%84%d9%88%d8%af-%d9%85%d8%a8%d8%ad%d8%ab-%d9%87%d8%b4%d8%aa%d9%85/",
+          "label": "دانلود مبحث هشتم"
+        },
+        {
+          "href": "https://inbr.ir/?p=5789",
+          "label": "دانلود مبحث نهم"
+        },
+        {
+          "href": "https://inbr.ir/?p=5793",
+          "label": "دانلود مبحث دهم"
+        },
+        {
+          "href": "https://inbr.ir/%d8%af%d8%a7%d9%86%d9%84%d9%88%d8%af-%d9%85%d8%a8%d8%ad%d8%ab-%db%8c%d8%a7%d8%b2%d8%af%d9%87%d9%85/",
+          "label": "دانلود مبحث یازدهم"
+        },
+        {
+          "href": "https://inbr.ir/%d8%af%d8%a7%d9%86%d9%84%d9%88%d8%af-%d9%85%d8%a8%d8%ad%d8%ab-%d8%af%d9%88%d8%a7%d8%b2%d8%af%d9%87%d9%85/",
+          "label": "دانلود مبحث دوازدهم"
+        },
+        {
+          "href": "https://inbr.ir/?p=5671",
+          "label": "دانلود مبحث سیزدهم"
+        },
+        {
+          "href": "https://inbr.ir/?p=5677",
+          "label": "دانلود مبحث چهاردهم"
+        },
+        {
+          "href": "https://inbr.ir/%d8%af%d8%a7%d9%86%d9%84%d9%88%d8%af-%d9%85%d8%a8%d8%ad%d8%ab-%d9%be%d8%a7%d9%86%d8%b2%d8%af%d9%87%d9%85/",
+          "label": "دانلود مبحث پانزدهم"
+        },
+        {
+          "href": "https://inbr.ir/?p=5817",
+          "label": "دانلود مبحث شانزدهم"
+        },
+        {
+          "href": "https://inbr.ir/?p=6070",
+          "label": "دانلود مبحث هفدهم"
+        },
+        {
+          "href": "https://inbr.ir/?p=5756",
+          "label": "دانلود مبحث هجدهم"
+        },
+        {
+          "href": "https://inbr.ir/?p=5798",
+          "label": "دانلود مبحث نوزدهم"
+        },
+        {
+          "href": "https://inbr.ir/?p=5760",
+          "label": "دانلود مبحث بیستم"
+        },
+        {
+          "href": "https://inbr.ir/?p=5820",
+          "label": "دانلود مبحث بیست و یکم"
+        },
+        {
+          "href": "https://inbr.ir/%d8%af%d8%a7%d9%86%d9%84%d9%88%d8%af-%d9%85%d8%a8%d8%ad%d8%ab-%d8%a8%db%8c%d8%b3%d8%aa-%d9%88-%d8%af%d9%88%d9%85/",
+          "label": "دانلود مبحث بیست و دوم"
+        },
+        {
+          "href": "https://inbr.ir/%d8%af%d8%a7%d9%86%d9%84%d9%88%d8%af-%d9%85%d8%a8%d8%ad%d8%ab-%d8%a8%db%8c%d8%b3%d8%aa-%d9%88-%d8%b3%d9%88%d9%85/",
+          "label": "دانلود مبحث بیست و سوم"
+        },
+        {
+          "href": "https://inbr.ir/%d8%af%d8%a7%d9%86%d9%84%d9%88%d8%af-%d9%85%d8%a8%d8%ad%d8%ab-%d8%a8%db%8c%d8%b3%d8%aa-%d9%88-%da%86%d9%87%d8%a7%d8%b1%d9%85/",
+          "label": "دانلود مبحث بیست و چهارم"
+        },
+        {
+          "href": "https://inbr.ir/upload/mabhas/%D8%B1%D8%A7%D9%87%D9%86%D9%85%D8%A7%DB%8C%20%D8%B7%D8%B1%D8%A7%D8%AD%DB%8C%20%D9%85%DB%8C%D8%B1%D8%A7%DA%AF%D8%B1%D9%87%D8%A7%20%D9%88%20%D8%AC%D8%AF%D8%A7%DA%AF%D8%B1%D9%87%D8%A7%DB%8C%20%D9%84%D8%B1%D8%B2%D9%87%20%D8%A7%DB%8C.pdf",
+          "label": "پیش نویس راهنمای طراحی میراگرها و جداگرهای لرزه ای"
+        },
+        {
+          "href": "https://inbr.ir/%d8%b1%d8%a7%d9%87%d9%86%d9%85%d8%a7%db%8c-%d8%b7%d8%b1%d8%a7%d8%ad%db%8c-%d8%af%db%8c%d9%88%d8%a7%d8%b1%d9%87%d8%a7%db%8c-%d8%a8%d9%86%d8%a7%db%8c%db%8c-%d9%85%d8%ad%d9%88%d8%b7%d9%87/",
+          "label": "راهنمای طراحی دیوارهای بنایی محوطه"
+        },
+        {
+          "href": "https://inbr.ir/upload/mabhas/%DA%A9%D8%AA%D8%A7%D8%A8%20%D9%85%D8%AD%D8%A7%D8%B3%D8%A8%D8%A7%D8%AA%20%D9%88%20%D8%B7%D8%B1%D8%A7%D8%AD%DB%8C%20%D8%B3%D8%A7%D8%B2%D9%87%20%D8%A7%DB%8C.pdf",
+          "label": "پیش نویس راهنمای محاسبات و طراحی سازه ای"
+        },
+        {
+          "href": "https://inbr.ir/%d8%af%d8%b3%d8%aa%d9%88%d8%b1-%da%a9%d8%a7%d8%b1-%d9%88-%d8%b1%d8%a7%d9%87%d9%86%d9%85%d8%a7%db%8c-%d8%a7%d8%b1%d8%b2%db%8c%d8%a7%d8%a8%db%8c-%d8%a7%db%8c%d9%85%d9%86%db%8c-%d9%88-%d8%a8%d9%87%d8%b3/",
+          "label": "دستور کار و راهنمای ارزیابی ایمنی و بهسازی ساختمان های موجود"
+        },
+        {
+          "href": "https://inbr.ir/%d8%b6%d9%88%d8%a7%d8%a8%d8%b7-%d8%ad%d9%81%d8%a7%d8%b8%d8%aa%db%8c-%d8%a7%d9%86%d8%aa%d8%b8%d8%a7%d9%85%db%8c-%d8%b3%d8%a7%d8%ae%d8%aa%d9%85%d8%a7%d9%86-%d9%87%d8%a7/",
+          "label": "پیوست لازم و الاجرا مبحث چهارم مقررات ملی ساختمان"
+        },
+        {
+          "href": "https://inbr.ir/%d8%b6%d9%88%d8%a7%d8%a8%d8%b7-%d8%ad%d9%81%d8%a7%d8%b8%d8%aa%db%8c-%d8%a7%d9%86%d8%aa%d8%b8%d8%a7%d9%85%db%8c-%d8%b3%d8%a7%d8%ae%d8%aa%d9%85%d8%a7%d9%86-%d9%87%d8%a7/",
+          "label": "ضوابط حفاظتی – انتظامی ساختمان ها"
+        }
+      ],
+      "expected_semantic_sha256": "f3beaa7b1088351a7b36f74c6e0892a2f177b7b4e77e6968c11fbc8ee09181c1",
+      "kind": "page",
+      "requested_url": "https://inbr.ir/wp-json/wp/v2/pages/5825",
+      "source_key": "page-5825",
+      "wordpress_id": 5825
+    },
+    {
+      "catalog_order": 4,
+      "expected_document_links": [
+        {
+          "href": "https://inbr.ir/wp-content/uploads/2023/08/ضوابط-حفاظتی-انتظامی-ساختمان-ها.pdf",
+          "label": "دانلود پیش‌نویس پیوست"
+        }
+      ],
+      "expected_semantic_sha256": "cbb9dc4d1e6f9bd8aa6ff1ed1a1998cbddbd6c9866da4e8519be35381e2cb996",
+      "kind": "post",
+      "requested_url": "https://inbr.ir/wp-json/wp/v2/posts/5713",
+      "source_key": "post-5713",
+      "wordpress_id": 5713
+    },
+    {
+      "catalog_order": 5,
+      "expected_document_links": [
+        {
+          "href": "https://inbr.ir/wp-content/uploads/2024/05/pishneves-entebagh-shahri-watermark.pdf",
+          "label": "دانلود پیش نویس پیوست"
+        }
+      ],
+      "expected_semantic_sha256": "63a145c038b4509c55c36a49a6c9b2b3fec8224576c1dc6c2e6a82709d7f77db",
+      "kind": "post",
+      "requested_url": "https://inbr.ir/wp-json/wp/v2/posts/6022",
+      "source_key": "post-6022",
+      "wordpress_id": 6022
+    },
+    {
+      "catalog_order": 6,
+      "expected_document_links": [
+        {
+          "href": "https://inbr.ir/wp-content/uploads/2025/10/متن-پیش-نویس-اول-ویرایش-دوم-مبحث-22-مقررات-ملی-ساختمان-06-08-1404.pdf",
+          "label": "دانلود فایل"
+        }
+      ],
+      "expected_semantic_sha256": "1fce15d54e2b94f802e40716ba289d00553e7d77e5b6cd0870ec546421016ca7",
+      "kind": "post",
+      "requested_url": "https://inbr.ir/wp-json/wp/v2/posts/6691",
+      "source_key": "post-6691",
+      "wordpress_id": 6691
+    },
+    {
+      "catalog_order": 7,
+      "expected_document_links": [
+        {
+          "href": "https://inbr.ir/wp-content/uploads/2025/12/دستورالعملطراحی.pdf",
+          "label": "نسخه سوم راهنمای طراحی دیوارهای بنایی محوطه"
+        },
+        {
+          "href": "https://inbr.ir/wp-content/uploads/2024/09/%D8%B7%D8%B1%D8%A7%D8%AD%DB%8C-%D8%AF%DB%8C%D9%88%D8%A7%D8%B1-%D9%85%D8%AD%D9%88%D8%B7%D9%87-%D9%85%D9%87%D8%B1-1403.pdf",
+          "label": "نسخه دوم راهنمای طراحی دیوارهای بنایی محوطه"
+        }
+      ],
+      "expected_semantic_sha256": "45fa0e9958f1d854d7e883ef8e8c79d387606caa4519735a2be1444b379f9f02",
+      "kind": "post",
+      "requested_url": "https://inbr.ir/wp-json/wp/v2/posts/6735",
+      "source_key": "post-6735",
+      "wordpress_id": 6735
+    },
+    {
+      "catalog_order": 8,
+      "expected_document_links": [
+        {
+          "href": "https://inbr.ir/wp-content/uploads/2026/05/mabhas24-3.pdf",
+          "label": "دانلود مبحث بیست و چهارم"
+        }
+      ],
+      "expected_semantic_sha256": "ee3be2e2ebc43cc908d2b71dedf3a74db3e0e3cfab5b61de97a4c765c4f589eb",
+      "kind": "post",
+      "requested_url": "https://inbr.ir/wp-json/wp/v2/posts/7061",
+      "source_key": "post-7061",
+      "wordpress_id": 7061
+    },
+    {
+      "catalog_order": 9,
+      "expected_document_links": [
+        {
+          "href": "https://inbr.ir/wp-content/uploads/2025/02/zavabethefazati-11.pdf",
+          "label": "پیوست لازم و الاجرا مبحث چهارم مقررات ملی ساختمان ضوابط حفاظتی – انتظامی ساختمان ها"
+        }
+      ],
+      "expected_semantic_sha256": "7da98740816b9d0ab913a01946c9a6e3e8d7581f936f48231bc8543210e60467",
+      "kind": "post",
+      "requested_url": "https://inbr.ir/wp-json/wp/v2/posts/7064",
+      "source_key": "post-7064",
+      "wordpress_id": 7064
+    }
+  ],
   "provenance": [
     {
       "kind": "official_catalog",
-      "url": "https://inbr.ir/مباحث-مقررات-ملی/",
-      "note": "Current official INBR National Building Regulations catalog and ordering."
+      "note": "Current official INBR National Building Regulations catalog and ordering.",
+      "url": "https://inbr.ir/مباحث-مقررات-ملی/"
     },
     {
       "kind": "official_rest_record",
-      "url": "https://inbr.ir/wp-json/wp/v2/pages/5825",
-      "note": "Machine-readable record for the current official catalog."
+      "note": "Machine-readable record for the current official catalog.",
+      "url": "https://inbr.ir/wp-json/wp/v2/pages/5825"
     },
     {
       "kind": "official_historical_metadata",
-      "url": "https://inbr.ir/wp-json/wp/v2/pages/1160",
-      "note": "Historical INBR bilingual volume-title metadata."
+      "note": "Historical INBR bilingual volume-title metadata.",
+      "url": "https://inbr.ir/wp-json/wp/v2/pages/1160"
     },
     {
       "kind": "official_historical_metadata",
-      "url": "https://inbr.ir/wp-json/wp/v2/pages/104",
-      "note": "Historical INBR volume and guide metadata."
+      "note": "Historical INBR volume and guide metadata.",
+      "url": "https://inbr.ir/wp-json/wp/v2/pages/104"
     },
     {
       "kind": "official_post",
-      "url": "https://inbr.ir/wp-json/wp/v2/posts/6022",
-      "note": "Official record for the earlier non-citable draft of Volume 24."
+      "note": "Official record for the earlier non-citable draft of Volume 24.",
+      "url": "https://inbr.ir/wp-json/wp/v2/posts/6022"
     },
     {
       "kind": "official_post",
-      "url": "https://inbr.ir/wp-json/wp/v2/posts/6691",
-      "note": "Official record for the non-citable draft second edition of Volume 22; it is not the local first-edition artifact."
+      "note": "Official record for the non-citable draft second edition of Volume 22; it is not the local first-edition artifact.",
+      "url": "https://inbr.ir/wp-json/wp/v2/posts/6691"
     },
     {
       "kind": "official_post",
-      "url": "https://inbr.ir/wp-json/wp/v2/posts/7061",
-      "note": "Official current download record for Volume 24."
+      "note": "Official current download record for Volume 24.",
+      "url": "https://inbr.ir/wp-json/wp/v2/posts/7061"
     },
     {
       "kind": "official_post",
-      "url": "https://inbr.ir/wp-json/wp/v2/posts/7064",
-      "note": "Official current record identifying the protective and security requirements as a mandatory appendix to Volume 4."
+      "note": "Official current record identifying the protective and security requirements as a mandatory appendix to Volume 4.",
+      "url": "https://inbr.ir/wp-json/wp/v2/posts/7064"
     },
     {
       "kind": "official_post",
-      "url": "https://inbr.ir/wp-json/wp/v2/posts/5713",
-      "note": "Official historical draft record for the protective and security requirements appendix."
+      "note": "Official historical draft record for the protective and security requirements appendix.",
+      "url": "https://inbr.ir/wp-json/wp/v2/posts/5713"
+    },
+    {
+      "kind": "official_post",
+      "note": "Official ordered record for versions 3 and 2 of the masonry perimeter-wall guide.",
+      "url": "https://inbr.ir/wp-json/wp/v2/posts/6735"
     }
   ],
-  "families": [
-    {"catalog_key": "volume-01", "catalog_order": 1, "volume": 1, "title_fa": "تعاریف", "title_en": "Definitions", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official bilingual family title."}]},
-    {"catalog_key": "volume-02", "catalog_order": 2, "volume": 2, "title_fa": "نظامات اداری", "title_en": "Administration", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official bilingual family title."}]},
-    {"catalog_key": "volume-03", "catalog_order": 3, "volume": 3, "title_fa": "حفاظت ساختمانها در مقابل حریق", "title_en": "Building Fire Protection", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official bilingual family title."}]},
-    {"catalog_key": "volume-04", "catalog_order": 4, "volume": 4, "title_fa": "الزامات عمومی ساختمان", "title_en": "General Building Requirements", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official bilingual family title."}]},
-    {"catalog_key": "volume-05", "catalog_order": 5, "volume": 5, "title_fa": "مصالح و فرآورده‌های ساختمانی", "title_en": "Building Materials & Products", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official bilingual family title."}]},
-    {"catalog_key": "volume-06", "catalog_order": 6, "volume": 6, "title_fa": "بارهای وارد بر ساختمان", "title_en": "Design Loads for Buildings", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official bilingual family title."}]},
-    {"catalog_key": "volume-07", "catalog_order": 7, "volume": 7, "title_fa": "پی و پی‌سازی", "title_en": "Foundations", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official historical family title; edition-specific cover titles remain on artifacts."}]},
-    {"catalog_key": "volume-08", "catalog_order": 8, "volume": 8, "title_fa": "طرح و اجرای ساختمان‌های با مصالح بنایی", "title_en": "Masonry Buildings", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official bilingual family title."}]},
-    {"catalog_key": "volume-09", "catalog_order": 9, "volume": 9, "title_fa": "طرح و اجرای ساختمان‌های بتن‌آرمه", "title_en": "Design and Construction of Concrete Structures", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official bilingual family title."}]},
-    {"catalog_key": "volume-10", "catalog_order": 10, "volume": 10, "title_fa": "طرح و اجرای ساختمان‌های فولادی", "title_en": "Design and Construction of Steel Structures", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official bilingual family title."}]},
-    {"catalog_key": "volume-11", "catalog_order": 11, "volume": 11, "title_fa": "طرح و اجرای صنعتی ساختمان‌ها", "title_en": "Industrialized Construction", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official bilingual family title."}]},
-    {"catalog_key": "volume-12", "catalog_order": 12, "volume": 12, "title_fa": "ایمنی و حفاظت کار در حین اجرا", "title_en": "Safety and Precautions in Construction", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official bilingual family title."}]},
-    {"catalog_key": "volume-13", "catalog_order": 13, "volume": 13, "title_fa": "طرح و اجرای تأسیسات برقی ساختمان‌ها", "title_en": "Electrical Installations", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official bilingual family title."}]},
-    {"catalog_key": "volume-14", "catalog_order": 14, "volume": 14, "title_fa": "تأسیسات مکانیکی", "title_en": "Mechanical Systems", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official bilingual family title."}]},
-    {"catalog_key": "volume-15", "catalog_order": 15, "volume": 15, "title_fa": "آسانسورها و پلکان برقی", "title_en": "Elevators and Escalators", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official bilingual family title."}]},
-    {"catalog_key": "volume-16", "catalog_order": 16, "volume": 16, "title_fa": "تأسیسات بهداشتی", "title_en": "Plumbing Systems", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official bilingual family title."}]},
-    {"catalog_key": "volume-17", "catalog_order": 17, "volume": 17, "title_fa": "لوله‌کشی گاز طبیعی در ساختمان", "title_en": "Natural Gas Piping", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official historical family title; edition-specific cover titles remain on artifacts."}]},
-    {"catalog_key": "volume-18", "catalog_order": 18, "volume": 18, "title_fa": "عایق‌بندی و تنظیم صدا", "title_en": "Acoustics and Sound Control", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official bilingual family title."}]},
-    {"catalog_key": "volume-19", "catalog_order": 19, "volume": 19, "title_fa": "مدیریت انرژی در ساختمان", "title_en": "Energy Management in Buildings", "translation_provenance": "cover_translation", "source_urls": ["https://inbr.ir/مباحث-مقررات-ملی/"], "evidence": [{"kind": "official_catalog", "url": "https://inbr.ir/مباحث-مقررات-ملی/", "note": "Current family title translated from the current official edition cover."}]},
-    {"catalog_key": "volume-20", "catalog_order": 20, "volume": 20, "title_fa": "علائم و تابلوها", "title_en": "Signs and Symbols", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official bilingual family title."}]},
-    {"catalog_key": "volume-21", "catalog_order": 21, "volume": 21, "title_fa": "پدافند غیرعامل", "title_en": "Passive Defense", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official bilingual family title."}]},
-    {"catalog_key": "volume-22", "catalog_order": 22, "volume": 22, "title_fa": "مراقبت و نگهداری از ساختمان‌ها", "title_en": "Building Care and Maintenance", "translation_provenance": "official", "source_urls": ["https://inbr.ir/wp-json/wp/v2/pages/1160"], "evidence": [{"kind": "official_historical_metadata", "url": "https://inbr.ir/wp-json/wp/v2/pages/1160", "note": "Official title of the local first-edition family; post 6691 describes a later non-citable draft under a revised title."}]},
-    {"catalog_key": "volume-23", "catalog_order": 23, "volume": 23, "title_fa": "الزامات ترافیکی ساختمان", "title_en": "Building Traffic Requirements", "translation_provenance": "cover_translation", "source_urls": ["https://inbr.ir/مباحث-مقررات-ملی/"], "evidence": [{"kind": "official_document_cover", "url": "https://inbr.ir/upload/mabhas/mabhas-23.pdf", "note": "English title is a curated translation of the official cover title."}]},
-    {"catalog_key": "volume-24", "catalog_order": 24, "volume": 24, "title_fa": "انطباق شهری ساختمان", "title_en": "Urban Building Compliance", "translation_provenance": "cover_translation", "source_urls": ["https://inbr.ir/wp-json/wp/v2/posts/7061"], "evidence": [{"kind": "official_post", "url": "https://inbr.ir/wp-json/wp/v2/posts/7061", "note": "Current official Volume 24 download record; no revision number is asserted."}]}
-  ],
-  "artifacts": [
-    {
-      "catalog_key": "volume-01-edition-1392", "catalog_order": 1, "original_filename": "mabhas-1.pdf", "expected_media_type": "application/pdf", "expected_sha256": "e474fe98f8476430c8e0f0f158e16567f42b9ba890172afd90c8498319b52f2b", "document_kind": "numbered_volume", "volume": 1,
-      "title_fa": "مبحث اول: تعاریف", "title_en": "Volume 1: Definitions", "translation_provenance": "official",
-      "edition": {"label_fa": "ویرایش اول", "label_en": "First edition", "edition_number": 1, "publication_year_shamsi": "1392", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-01", "order": null}], "source_urls": ["https://inbr.ir/wp-content/uploads/2016/08/mabhas-1.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2016/08/mabhas-1.pdf", "note": "Official PDF and cover metadata."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-02-edition-1384", "catalog_order": 2, "original_filename": "mabhas-2.pdf", "expected_media_type": "application/pdf", "expected_sha256": "0947a7066398b348ea5c2aab2fc1b3c3c0e69ead5438c62b69409c941e4efd5f", "document_kind": "numbered_volume", "volume": 2,
-      "title_fa": "مبحث دوم: نظامات اداری", "title_en": "Volume 2: Administration", "translation_provenance": "official",
-      "edition": {"label_fa": null, "label_en": null, "edition_number": null, "publication_year_shamsi": "1384", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-02", "order": null}], "source_urls": ["https://inbr.ir/wp-content/uploads/2016/08/mabhas-2.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2016/08/mabhas-2.pdf", "note": "Official PDF; publication year is evidenced, edition number is deliberately unset."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-03-edition-1395", "catalog_order": 3, "original_filename": "mabhas3-95.pdf", "expected_media_type": "application/pdf", "expected_sha256": "a236c1dac71477f8ffc938ea002bfb1be12f7260917fc16c0fd9e973284c5c51", "document_kind": "numbered_volume", "volume": 3,
-      "title_fa": "مبحث سوم: حفاظت ساختمانها در مقابل حریق", "title_en": "Volume 3: Building Fire Protection", "translation_provenance": "official",
-      "edition": {"label_fa": "ویرایش سوم", "label_en": "Third edition", "edition_number": 3, "publication_year_shamsi": "1395", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-03", "order": null}], "source_urls": ["https://inbr.ir/wp-content/uploads/2023/11/mabhas3-95.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2023/11/mabhas3-95.pdf", "note": "Official PDF and cover metadata; upload year is not used as edition evidence."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-04-edition-1396", "catalog_order": 4, "original_filename": "mabhas4-96.pdf", "expected_media_type": "application/pdf", "expected_sha256": "fca8ab6b7e6190951ee8c503fce4c2c93a57067546154f116e84d84577304a43", "document_kind": "numbered_volume", "volume": 4,
-      "title_fa": "مبحث چهارم: الزامات عمومی ساختمان", "title_en": "Volume 4: General Building Requirements", "translation_provenance": "official",
-      "edition": {"label_fa": "ویرایش سوم", "label_en": "Third edition", "edition_number": 3, "publication_year_shamsi": "1396", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-04", "order": null}], "source_urls": ["https://inbr.ir/upload/mabhas/mabhas4-96.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/upload/mabhas/mabhas4-96.pdf", "note": "Official PDF and cover metadata."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-05-edition-1396", "catalog_order": 5, "original_filename": "mabhas5-1396.pdf", "expected_media_type": "application/pdf", "expected_sha256": "f705d76412366a07d2746fc0c95384739c6790780c5518be96c24746514276f1", "document_kind": "numbered_volume", "volume": 5,
-      "title_fa": "مبحث پنجم: مصالح و فرآورده‌های ساختمانی", "title_en": "Volume 5: Building Materials & Products", "translation_provenance": "official",
-      "edition": {"label_fa": "ویرایش پنجم", "label_en": "Fifth edition", "edition_number": 5, "publication_year_shamsi": "1396", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-05", "order": null}], "source_urls": ["https://inbr.ir/wp-content/uploads/2023/07/mabhas5-1396.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2023/07/mabhas5-1396.pdf", "note": "Official PDF and cover metadata; upload year is not used as edition evidence."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-06-edition-1398", "catalog_order": 6, "original_filename": "mahas6-98.pdf", "expected_media_type": "application/pdf", "expected_sha256": "9702369223d5c04072d5e8e01871045c80ff494ffe8ae1357ebd90e78ff18201", "document_kind": "numbered_volume", "volume": 6,
-      "title_fa": "مبحث ششم: بارهای وارد بر ساختمان", "title_en": "Volume 6: Design Loads for Buildings", "translation_provenance": "official",
-      "edition": {"label_fa": "ویرایش چهارم", "label_en": "Fourth edition", "edition_number": 4, "publication_year_shamsi": "1398", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-06", "order": null}], "source_urls": ["https://inbr.ir/wp-content/uploads/2023/07/mahas6-98.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2023/07/mahas6-98.pdf", "note": "Official PDF and cover metadata; the source filename typo is preserved."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-07-edition-1400", "catalog_order": 7, "original_filename": "mabhas-7-1401-05.pdf", "expected_media_type": "application/pdf", "expected_sha256": "f3034d9229526fe36d79c8cf5b623da6f67a0a686a3622f5b151e0e2fff8fe09", "document_kind": "numbered_volume", "volume": 7,
-      "title_fa": "مبحث هفتم: ژئوتکنیک و مهندسی پی", "title_en": "Volume 7: Geotechnics and Foundation Engineering", "translation_provenance": "cover_translation",
-      "edition": {"label_fa": "ویرایش چهارم", "label_en": "Fourth edition", "edition_number": 4, "publication_year_shamsi": "1400", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-07", "order": null}], "source_urls": ["https://inbr.ir/upload/mabhas/mabhas-7-1401-05.pdf"],
-      "evidence": [{"kind": "official_document_cover", "url": "https://inbr.ir/upload/mabhas/mabhas-7-1401-05.pdf", "note": "Official PDF cover; 1401-05 in the upload filename is not treated as the edition year."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-07-borehole-amendment-1405", "catalog_order": 8, "original_filename": "7527201762627165953_390084042075871.pdf", "expected_media_type": "application/pdf", "expected_sha256": "dca0b3deb34408b7e394d09a6cfcc37c73619bdd3b9f737e751c453655ef48ab", "document_kind": "amendment", "volume": 7,
-      "title_fa": "اصلاح الزامات تعداد گمانه‌های مبحث هفتم", "title_en": "Amendment to Volume 7 Borehole Requirements", "translation_provenance": "curated",
-      "edition": {"label_fa": null, "label_en": null, "edition_number": null, "publication_year_shamsi": "1405", "publication_date_shamsi": "1405/02/21"}, "legal_status": "official_amendment",
-      "relationships": [{"type": "AMENDS", "target": "volume-07-edition-1400", "order": null}], "source_urls": ["https://inbr.ir/wp-content/uploads/2026/05/7527201762627165953_390084042075871.pdf"],
-      "evidence": [{"kind": "official_document_cover", "url": "https://inbr.ir/wp-content/uploads/2026/05/7527201762627165953_390084042075871.pdf", "note": "Official two-page circular dated 1405/02/21 modifying borehole requirements."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-08-edition-1398", "catalog_order": 9, "original_filename": "mabhas8-981.pdf", "expected_media_type": "application/pdf", "expected_sha256": "6593dd496e226a80bb23097f84c2444b9ac1707e96a5babd6520297287ebf76d", "document_kind": "numbered_volume", "volume": 8,
-      "title_fa": "مبحث هشتم: طرح و اجرای ساختمان‌های با مصالح بنایی", "title_en": "Volume 8: Masonry Buildings", "translation_provenance": "official",
-      "edition": {"label_fa": "ویرایش سوم", "label_en": "Third edition", "edition_number": 3, "publication_year_shamsi": "1398", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-08", "order": null}], "source_urls": ["https://inbr.ir/upload/mabhas/mabhas8-981.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/upload/mabhas/mabhas8-981.pdf", "note": "Official PDF and cover metadata."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-09-edition-1399", "catalog_order": 10, "original_filename": "mabhas9-1402-08.pdf", "expected_media_type": "application/pdf", "expected_sha256": "7f1247e37ac4d4f7ba287cde94c25d077cec031637a4954c7de510c9e2e2b9c3", "document_kind": "numbered_volume", "volume": 9,
-      "title_fa": "مبحث نهم: طرح و اجرای ساختمان‌های بتن‌آرمه", "title_en": "Volume 9: Design and Construction of Concrete Structures", "translation_provenance": "official",
-      "edition": {"label_fa": "ویرایش پنجم", "label_en": "Fifth edition", "edition_number": 5, "publication_year_shamsi": "1399", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-09", "order": null}], "source_urls": ["https://inbr.ir/upload/mabhas/1402-08/mabhas9-1402-08.pdf"],
-      "evidence": [{"kind": "official_document_cover", "url": "https://inbr.ir/upload/mabhas/1402-08/mabhas9-1402-08.pdf", "note": "Official PDF cover; upload path year is not treated as edition evidence."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-10-edition-1401", "catalog_order": 11, "original_filename": "mabhas10-1402-08.pdf", "expected_media_type": "application/pdf", "expected_sha256": "01d7fd2055f323cc59ed910a4b982f0feb40f39e35fc513f5f6d7840d4b357bc", "document_kind": "numbered_volume", "volume": 10,
-      "title_fa": "مبحث دهم: طرح و اجرای ساختمان‌های فولادی", "title_en": "Volume 10: Design and Construction of Steel Structures", "translation_provenance": "official",
-      "edition": {"label_fa": "ویرایش پنجم", "label_en": "Fifth edition", "edition_number": 5, "publication_year_shamsi": "1401", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-10", "order": null}], "source_urls": ["https://inbr.ir/upload/mabhas/1402-08/mabhas10-1402-08.pdf"],
-      "evidence": [{"kind": "official_document_cover", "url": "https://inbr.ir/upload/mabhas/1402-08/mabhas10-1402-08.pdf", "note": "Official PDF cover; upload path year is not treated as edition evidence."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-11-edition-1400", "catalog_order": 12, "original_filename": "mabhas11-1401-05.pdf", "expected_media_type": "application/pdf", "expected_sha256": "744ad5ed62c678c12540f969bd730469dcfc8c44506a6c3e7fed5ca35d81a3ef", "document_kind": "numbered_volume", "volume": 11,
-      "title_fa": "مبحث یازدهم: طرح و اجرای صنعتی ساختمان‌ها", "title_en": "Volume 11: Industrialized Construction", "translation_provenance": "official",
-      "edition": {"label_fa": "ویرایش سوم", "label_en": "Third edition", "edition_number": 3, "publication_year_shamsi": "1400", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-11", "order": null}], "source_urls": ["https://inbr.ir/upload/mabhas/mabhas11-1401-05.pdf"],
-      "evidence": [{"kind": "official_document_cover", "url": "https://inbr.ir/upload/mabhas/mabhas11-1401-05.pdf", "note": "Official PDF cover; upload filename date is not treated as edition evidence."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-11-amendment-1403-08-08", "catalog_order": 13, "original_filename": "اصلاحیه-مبحث-11-تاریخ-08-08-1403.pdf", "expected_media_type": "application/pdf", "expected_sha256": "e9f887f377d202f068fc0288738bcb76959986d6234aaddfb11b5a5abab9b07b", "document_kind": "amendment", "volume": 11,
-      "title_fa": "اصلاحیه مبحث یازدهم مورخ 1403/08/08", "title_en": "Volume 11 Amendment Dated 1403/08/08", "translation_provenance": "curated",
-      "edition": {"label_fa": null, "label_en": null, "edition_number": null, "publication_year_shamsi": "1403", "publication_date_shamsi": "1403/08/08"}, "legal_status": "official_amendment",
-      "relationships": [{"type": "AMENDS", "target": "volume-11-edition-1400", "order": null}, {"type": "CLARIFIES", "target": "volume-11-edition-1400", "order": null}], "source_urls": ["https://inbr.ir/wp-content/uploads/2025/10/%D8%A7%D8%B5%D9%84%D8%A7%D8%AD%DB%8C%D9%87-%D9%85%D8%A8%D8%AD%D8%AB-11-%D8%AA%D8%A7%D8%B1%DB%8C%D8%AE-08-08-1403.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2025/10/%D8%A7%D8%B5%D9%84%D8%A7%D8%AD%DB%8C%D9%87-%D9%85%D8%A8%D8%AD%D8%AB-11-%D8%AA%D8%A7%D8%B1%DB%8C%D8%AE-08-08-1403.pdf", "note": "Official dated amendment PDF; upload year is not used as publication evidence."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-12-edition-1392", "catalog_order": 14, "original_filename": "mabhas-12.pdf", "expected_media_type": "application/pdf", "expected_sha256": "57c58ba582961ccec03ecd3891bf083c58bcd839240fd0e6b712c72e32838412", "document_kind": "numbered_volume", "volume": 12,
-      "title_fa": "مبحث دوازدهم: ایمنی و حفاظت کار در حین اجرا", "title_en": "Volume 12: Safety and Precautions in Construction", "translation_provenance": "official",
-      "edition": {"label_fa": "ویرایش چهارم", "label_en": "Fourth edition", "edition_number": 4, "publication_year_shamsi": "1392", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-12", "order": null}], "source_urls": ["https://inbr.ir/wp-content/uploads/2016/08/mabhas-12.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2016/08/mabhas-12.pdf", "note": "Official PDF and cover metadata."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-12-supervisor-clarification-1404", "catalog_order": 15, "original_filename": "CamScanner-10-18-2025-09.09.pdf", "expected_media_type": "application/pdf", "expected_sha256": "3ae33a9d2171de805cceaaf787baed0d865f39bce2ddf51a8b28a22b007ada14", "document_kind": "clarification", "volume": 12,
-      "title_fa": "توضیح شرایط صلاحیت مسئول ایمنی مرتبط با مبحث دوازدهم", "title_en": "Clarification of Volume 12 Safety Supervisor Qualifications", "translation_provenance": "curated",
-      "edition": {"label_fa": null, "label_en": null, "edition_number": null, "publication_year_shamsi": "1404", "publication_date_shamsi": null}, "legal_status": "official_clarification",
-      "relationships": [{"type": "CLARIFIES", "target": "volume-12-edition-1392", "order": null}], "source_urls": ["https://inbr.ir/wp-content/uploads/2025/10/CamScanner-10-18-2025-09.09.pdf"],
-      "evidence": [{"kind": "official_document_cover", "url": "https://inbr.ir/wp-content/uploads/2025/10/CamScanner-10-18-2025-09.09.pdf", "note": "Official three-page clarification; descriptive scanner filename is preserved."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-13-edition-1395", "catalog_order": 16, "original_filename": "mabhas13-95.pdf", "expected_media_type": "application/pdf", "expected_sha256": "7cb1d72ebc9a1e2ba7576a5dc7c758a9d2c62811dc7220266fb79980cfc96589", "document_kind": "numbered_volume", "volume": 13,
-      "title_fa": "مبحث سیزدهم: طرح و اجرای تأسیسات برقی ساختمان‌ها", "title_en": "Volume 13: Electrical Installations", "translation_provenance": "official",
-      "edition": {"label_fa": "ویرایش سوم", "label_en": "Third edition", "edition_number": 3, "publication_year_shamsi": "1395", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-13", "order": null}], "source_urls": ["https://inbr.ir/wp-content/uploads/2023/07/mabhas13-95.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2023/07/mabhas13-95.pdf", "note": "Official PDF and cover metadata; upload year is not edition evidence."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-14-edition-1396", "catalog_order": 17, "original_filename": "mabhas14-96.pdf", "expected_media_type": "application/pdf", "expected_sha256": "04634503bcb1b64fc4f6e8d13f78a6312773eee64eec62c6752a29c2cf25bdbf", "document_kind": "numbered_volume", "volume": 14,
-      "title_fa": "مبحث چهاردهم: تأسیسات مکانیکی", "title_en": "Volume 14: Mechanical Systems", "translation_provenance": "official",
-      "edition": {"label_fa": "ویرایش سوم", "label_en": "Third edition", "edition_number": 3, "publication_year_shamsi": "1396", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-14", "order": null}], "source_urls": ["https://inbr.ir/wp-content/uploads/2023/07/mabhas14-96.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2023/07/mabhas14-96.pdf", "note": "Official PDF and cover metadata; upload year is not edition evidence."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-15-edition-1392", "catalog_order": 18, "original_filename": "mabhas-15.pdf", "expected_media_type": "application/pdf", "expected_sha256": "e27e1d74e6ded86ecfe6399b524b612d2cf6fdd2da4c6a36df7d94a3ed6ea477", "document_kind": "numbered_volume", "volume": 15,
-      "title_fa": "مبحث پانزدهم: آسانسورها و پلکان برقی", "title_en": "Volume 15: Elevators and Escalators", "translation_provenance": "official",
-      "edition": {"label_fa": "ویرایش سوم", "label_en": "Third edition", "edition_number": 3, "publication_year_shamsi": "1392", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-15", "order": null}], "source_urls": ["https://inbr.ir/wp-content/uploads/2016/08/mabhas-15.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2016/08/mabhas-15.pdf", "note": "Official PDF and cover metadata."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-16-edition-1396", "catalog_order": 19, "original_filename": "mabhas-16-1402-08.pdf", "expected_media_type": "application/pdf", "expected_sha256": "2a26ec242f5e7ec89c60c642d3fd00d7877ed9c0be2c0db0d31b83a195539bdb", "document_kind": "numbered_volume", "volume": 16,
-      "title_fa": "مبحث شانزدهم: تأسیسات بهداشتی", "title_en": "Volume 16: Plumbing Systems", "translation_provenance": "official",
-      "edition": {"label_fa": "ویرایش چهارم", "label_en": "Fourth edition", "edition_number": 4, "publication_year_shamsi": "1396", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-16", "order": null}], "source_urls": ["https://inbr.ir/upload/mabhas/1402-08/mabhas-16-1402-08.pdf"],
-      "evidence": [{"kind": "official_document_cover", "url": "https://inbr.ir/upload/mabhas/1402-08/mabhas-16-1402-08.pdf", "note": "Official PDF cover; upload path year is not edition evidence."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-17-edition-1403", "catalog_order": 20, "original_filename": "mabahse_mabahse17_mabhas17-watermark-1403-02.pdf", "expected_media_type": "application/pdf", "expected_sha256": "eb575703d82dfe524ea227c1115c487f0d8c65aebb96442859ff68795fa70cc8", "document_kind": "numbered_volume", "volume": 17,
-      "title_fa": "مبحث هفدهم: سامانه گاز طبیعی در ساختمان", "title_en": "Volume 17: Natural Gas System in Buildings", "translation_provenance": "cover_translation",
-      "edition": {"label_fa": "ویرایش پنجم", "label_en": "Fifth edition", "edition_number": 5, "publication_year_shamsi": "1403", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-17", "order": null}], "source_urls": ["https://inbr.s3.ir-thr-at1.arvanstorage.ir/mabahse%2Fmabahse17%2Fmabhas17-watermark-1403-02.pdf"],
-      "evidence": [{"kind": "official_document_cover", "url": "https://inbr.s3.ir-thr-at1.arvanstorage.ir/mabahse%2Fmabahse17%2Fmabhas17-watermark-1403-02.pdf", "note": "Official watermarked PDF; the local flat filename is preserved and is never derived by decoding encoded URL separators."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-17-amendment-01", "catalog_order": 21, "original_filename": "اصلاحیه-1-مبحث-17.pdf", "expected_media_type": "application/pdf", "expected_sha256": "2e9a85201cb8e3a231cbec6e0db3e615071d841384c40b53f91ec85798ea5738", "document_kind": "amendment", "volume": 17,
-      "title_fa": "اصلاحیه شماره یک مبحث هفدهم", "title_en": "Amendment No. 1 to Volume 17", "translation_provenance": "curated",
-      "edition": {"label_fa": "اصلاحیه شماره یک", "label_en": "Amendment No. 1", "edition_number": null, "publication_year_shamsi": null, "publication_date_shamsi": null}, "legal_status": "official_amendment",
-      "relationships": [{"type": "AMENDS", "target": "volume-17-edition-1403", "order": null}], "source_urls": ["https://inbr.ir/wp-content/uploads/2025/10/%D8%A7%D8%B5%D9%84%D8%A7%D8%AD%DB%8C%D9%87-1-%D9%85%D8%A8%D8%AD%D8%AB-17.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2025/10/%D8%A7%D8%B5%D9%84%D8%A7%D8%AD%DB%8C%D9%87-1-%D9%85%D8%A8%D8%AD%D8%AB-17.pdf", "note": "Official amendment PDF; upload year is not asserted as publication year."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-18-edition-1396", "catalog_order": 22, "original_filename": "mabhas-18-1402.pdf", "expected_media_type": "application/pdf", "expected_sha256": "f3b54dfed8835e92f416bcaaa22ff7308f114f815c20620fc2c42e56b08d9b24", "document_kind": "numbered_volume", "volume": 18,
-      "title_fa": "مبحث هجدهم: عایق‌بندی و تنظیم صدا", "title_en": "Volume 18: Acoustics and Sound Control", "translation_provenance": "official",
-      "edition": {"label_fa": "ویرایش سوم", "label_en": "Third edition", "edition_number": 3, "publication_year_shamsi": "1396", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-18", "order": null}], "source_urls": ["https://inbr.ir/upload/mabhas/mabhas-18-1402.pdf"],
-      "evidence": [{"kind": "official_document_cover", "url": "https://inbr.ir/upload/mabhas/mabhas-18-1402.pdf", "note": "Official PDF cover; upload filename year is not edition evidence."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-19-edition-1404", "catalog_order": 23, "original_filename": "mabhas19-v5.pdf", "expected_media_type": "application/pdf", "expected_sha256": "f75d9d167487fa0a285c857885ec2f7ba1a0da95e835f2385afd892e46baa32c", "document_kind": "numbered_volume", "volume": 19,
-      "title_fa": "مبحث نوزدهم: مدیریت انرژی در ساختمان", "title_en": "Volume 19: Energy Management in Buildings", "translation_provenance": "cover_translation",
-      "edition": {"label_fa": "ویرایش پنجم", "label_en": "Fifth edition", "edition_number": 5, "publication_year_shamsi": "1404", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-19", "order": null}], "source_urls": ["https://inbr.ir/wp-content/uploads/2023/11/mabhas19-v5.pdf"],
-      "evidence": [{"kind": "official_document_cover", "url": "https://inbr.ir/wp-content/uploads/2023/11/mabhas19-v5.pdf", "note": "Official fifth-edition PDF; upload year is not edition evidence."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-19-appendix-01", "catalog_order": 24, "original_filename": "پیوست1-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان.pdf", "expected_media_type": "application/pdf", "expected_sha256": "536dd07db77686ae60dfde4cee318f146d598ed7365ea2f035c9a7f06506705a", "document_kind": "appendix", "volume": 19,
-      "title_fa": "پیوست ۱ ویرایش پنجم مبحث نوزدهم", "title_en": "Appendix 1 to Volume 19, Fifth Edition", "translation_provenance": "curated",
-      "edition": {"label_fa": "پیوست ۱", "label_en": "Appendix 1", "edition_number": null, "publication_year_shamsi": null, "publication_date_shamsi": null}, "legal_status": "binding_appendix",
-      "relationships": [{"type": "APPENDIX_OF", "target": "volume-19-edition-1404", "order": 1}], "source_urls": ["https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA1-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA1-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf", "note": "Official ordered appendix PDF."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-19-appendix-02", "catalog_order": 25, "original_filename": "پیوست2-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان.pdf", "expected_media_type": "application/pdf", "expected_sha256": "8e40c4f80eb1db38874380160a167342a5ec75512842ebd424708e954ec0d4fe", "document_kind": "appendix", "volume": 19,
-      "title_fa": "پیوست ۲ ویرایش پنجم مبحث نوزدهم", "title_en": "Appendix 2 to Volume 19, Fifth Edition", "translation_provenance": "curated",
-      "edition": {"label_fa": "پیوست ۲", "label_en": "Appendix 2", "edition_number": null, "publication_year_shamsi": null, "publication_date_shamsi": null}, "legal_status": "binding_appendix",
-      "relationships": [{"type": "APPENDIX_OF", "target": "volume-19-edition-1404", "order": 2}], "source_urls": ["https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA2-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA2-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf", "note": "Official ordered appendix PDF."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-19-appendix-03", "catalog_order": 26, "original_filename": "پیوست-3-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان-1.pdf", "expected_media_type": "application/pdf", "expected_sha256": "cb63d3b0c3b758863fa3eb615ff36b46639c509344686529fdbeaf085c86db5a", "document_kind": "appendix", "volume": 19,
-      "title_fa": "پیوست ۳ ویرایش پنجم مبحث نوزدهم", "title_en": "Appendix 3 to Volume 19, Fifth Edition", "translation_provenance": "curated",
-      "edition": {"label_fa": "پیوست ۳", "label_en": "Appendix 3", "edition_number": null, "publication_year_shamsi": null, "publication_date_shamsi": null}, "legal_status": "binding_appendix",
-      "relationships": [{"type": "APPENDIX_OF", "target": "volume-19-edition-1404", "order": 3}], "source_urls": ["https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-3-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86-1.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-3-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86-1.pdf", "note": "Official ordered appendix PDF."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-19-appendix-04", "catalog_order": 27, "original_filename": "پیوست-4-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان.pdf", "expected_media_type": "application/pdf", "expected_sha256": "988ee48c00ae5e59c6518d72c8d878fa1913fb0653e9200298ceca822ea4de58", "document_kind": "appendix", "volume": 19,
-      "title_fa": "پیوست ۴ ویرایش پنجم مبحث نوزدهم", "title_en": "Appendix 4 to Volume 19, Fifth Edition", "translation_provenance": "curated",
-      "edition": {"label_fa": "پیوست ۴", "label_en": "Appendix 4", "edition_number": null, "publication_year_shamsi": null, "publication_date_shamsi": null}, "legal_status": "binding_appendix",
-      "relationships": [{"type": "APPENDIX_OF", "target": "volume-19-edition-1404", "order": 4}], "source_urls": ["https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-4-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-4-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf", "note": "Official ordered appendix PDF."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-19-appendix-05", "catalog_order": 28, "original_filename": "پیوست-5-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان-1.pdf", "expected_media_type": "application/pdf", "expected_sha256": "9b90fd5f3601b0da380dbaef791629fa95a6fb91aceae04172a8fd1c93b46e78", "document_kind": "appendix", "volume": 19,
-      "title_fa": "پیوست ۵ ویرایش پنجم مبحث نوزدهم", "title_en": "Appendix 5 to Volume 19, Fifth Edition", "translation_provenance": "curated",
-      "edition": {"label_fa": "پیوست ۵", "label_en": "Appendix 5", "edition_number": null, "publication_year_shamsi": null, "publication_date_shamsi": null}, "legal_status": "binding_appendix",
-      "relationships": [{"type": "APPENDIX_OF", "target": "volume-19-edition-1404", "order": 5}], "source_urls": ["https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-5-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86-1.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-5-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86-1.pdf", "note": "Official ordered appendix PDF."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-19-appendix-06", "catalog_order": 29, "original_filename": "پیوست-6-ویرایش-پنجم-مبحث-نوزدهم-دی-ماه-1404.pdf", "expected_media_type": "application/pdf", "expected_sha256": "a0ffaa4f1b3f0bf03ffaa435579b16f8e32f6f7f4d28b0dbce61a93b3548bfde", "document_kind": "appendix", "volume": 19,
-      "title_fa": "پیوست ۶ ویرایش پنجم مبحث نوزدهم", "title_en": "Appendix 6 to Volume 19, Fifth Edition", "translation_provenance": "curated",
-      "edition": {"label_fa": "پیوست ۶", "label_en": "Appendix 6", "edition_number": null, "publication_year_shamsi": "1404", "publication_date_shamsi": null}, "legal_status": "binding_appendix",
-      "relationships": [{"type": "APPENDIX_OF", "target": "volume-19-edition-1404", "order": 6}], "source_urls": ["https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-6-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D8%AF%DB%8C-%D9%85%D8%A7%D9%87-1404.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-6-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D8%AF%DB%8C-%D9%85%D8%A7%D9%87-1404.pdf", "note": "Official ordered appendix PDF."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-19-appendix-07", "catalog_order": 30, "original_filename": "پیوست-7-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان.pdf", "expected_media_type": "application/pdf", "expected_sha256": "f3e8e5c3f59ca25e3831cffe245a1d0b5081043bbe4aff91de5f76086b158031", "document_kind": "appendix", "volume": 19,
-      "title_fa": "پیوست ۷ ویرایش پنجم مبحث نوزدهم", "title_en": "Appendix 7 to Volume 19, Fifth Edition", "translation_provenance": "curated",
-      "edition": {"label_fa": "پیوست ۷", "label_en": "Appendix 7", "edition_number": null, "publication_year_shamsi": null, "publication_date_shamsi": null}, "legal_status": "binding_appendix",
-      "relationships": [{"type": "APPENDIX_OF", "target": "volume-19-edition-1404", "order": 7}], "source_urls": ["https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-7-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-7-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf", "note": "Official ordered appendix PDF."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-19-appendix-08", "catalog_order": 31, "original_filename": "پیوست-8-ویرایش-پنجم-مبحث-نوزدهم-دی-ماه-1404.pdf", "expected_media_type": "application/pdf", "expected_sha256": "bda99bcbdb1d907871b72f362fad8b295f4af0e8ad810f6492bb9f89045b7b5b", "document_kind": "appendix", "volume": 19,
-      "title_fa": "پیوست ۸ ویرایش پنجم مبحث نوزدهم", "title_en": "Appendix 8 to Volume 19, Fifth Edition", "translation_provenance": "curated",
-      "edition": {"label_fa": "پیوست ۸", "label_en": "Appendix 8", "edition_number": null, "publication_year_shamsi": "1404", "publication_date_shamsi": null}, "legal_status": "binding_appendix",
-      "relationships": [{"type": "APPENDIX_OF", "target": "volume-19-edition-1404", "order": 8}], "source_urls": ["https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-8-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D8%AF%DB%8C-%D9%85%D8%A7%D9%87-1404.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-8-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D8%AF%DB%8C-%D9%85%D8%A7%D9%87-1404.pdf", "note": "Official ordered appendix PDF."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-19-appendix-09", "catalog_order": 32, "original_filename": "پیوست-9-ویرایش-پنجم-مبحث-نوزدهم-مقررات-ملی-ساختمان.pdf", "expected_media_type": "application/pdf", "expected_sha256": "12862c5a23ef22d9c7993853cee3d97406b635161786b1d5815717e400447972", "document_kind": "appendix", "volume": 19,
-      "title_fa": "پیوست ۹ ویرایش پنجم مبحث نوزدهم", "title_en": "Appendix 9 to Volume 19, Fifth Edition", "translation_provenance": "curated",
-      "edition": {"label_fa": "پیوست ۹", "label_en": "Appendix 9", "edition_number": null, "publication_year_shamsi": null, "publication_date_shamsi": null}, "legal_status": "binding_appendix",
-      "relationships": [{"type": "APPENDIX_OF", "target": "volume-19-edition-1404", "order": 9}], "source_urls": ["https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-9-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2023/11/%D9%BE%DB%8C%D9%88%D8%B3%D8%AA-9-%D9%88%DB%8C%D8%B1%D8%A7%DB%8C%D8%B4-%D9%BE%D9%86%D8%AC%D9%85-%D9%85%D8%A8%D8%AD%D8%AB-%D9%86%D9%88%D8%B2%D8%AF%D9%87%D9%85-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%85%D9%84%DB%8C-%D8%B3%D8%A7%D8%AE%D8%AA%D9%85%D8%A7%D9%86.pdf", "note": "Official ordered appendix PDF."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-20-edition-1396", "catalog_order": 33, "original_filename": "mabhas-20-1402.pdf", "expected_media_type": "application/pdf", "expected_sha256": "ab14d6110e21dd16a229d23eb1d928be2f9eb7b442bc22c917d4a5d4ea7099c3", "document_kind": "numbered_volume", "volume": 20,
-      "title_fa": "مبحث بیستم: علائم و تابلوها", "title_en": "Volume 20: Signs and Symbols", "translation_provenance": "official",
-      "edition": {"label_fa": "ویرایش دوم", "label_en": "Second edition", "edition_number": 2, "publication_year_shamsi": "1396", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-20", "order": null}], "source_urls": ["https://inbr.ir/upload/mabhas/mabhas-20-1402.pdf"],
-      "evidence": [{"kind": "official_document_cover", "url": "https://inbr.ir/upload/mabhas/mabhas-20-1402.pdf", "note": "Official PDF cover; upload filename year is not edition evidence."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-21-edition-1395", "catalog_order": 34, "original_filename": "mabhas-21-1402-08.pdf", "expected_media_type": "application/pdf", "expected_sha256": "0165a8f41351668c2b2e829e539d8aa5865a9dc3bca66e73c29dd9ab1dec7341", "document_kind": "numbered_volume", "volume": 21,
-      "title_fa": "مبحث بیست و یکم: پدافند غیرعامل", "title_en": "Volume 21: Passive Defense", "translation_provenance": "official",
-      "edition": {"label_fa": "ویرایش دوم", "label_en": "Second edition", "edition_number": 2, "publication_year_shamsi": "1395", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-21", "order": null}], "source_urls": ["https://inbr.ir/upload/mabhas/1402-08/mabhas-21-1402-08.pdf"],
-      "evidence": [{"kind": "official_document_cover", "url": "https://inbr.ir/upload/mabhas/1402-08/mabhas-21-1402-08.pdf", "note": "Official PDF cover; upload path year is not edition evidence."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-22-edition-1392", "catalog_order": 35, "original_filename": "mabhas-22.pdf", "expected_media_type": "application/pdf", "expected_sha256": "bc4bdbbfe03892b8ad037587d5e23d1e5105773b395390565b16546fd0b28b19", "document_kind": "numbered_volume", "volume": 22,
-      "title_fa": "مبحث بیست و دوم: مراقبت و نگهداری از ساختمان‌ها", "title_en": "Volume 22: Building Care and Maintenance", "translation_provenance": "official",
-      "edition": {"label_fa": "ویرایش اول", "label_en": "First edition", "edition_number": 1, "publication_year_shamsi": "1392", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-22", "order": null}], "source_urls": ["https://inbr.ir/wp-content/uploads/2016/08/mabhas-22.pdf"],
-      "evidence": [{"kind": "source_url", "url": "https://inbr.ir/wp-content/uploads/2016/08/mabhas-22.pdf", "note": "Official first-edition PDF; post 6691 is retained only as provenance for a later non-citable draft."}, {"kind": "official_post", "url": "https://inbr.ir/wp-json/wp/v2/posts/6691", "note": "Explicitly non-citable draft second edition, not substituted for this local binding first edition."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-23-edition-1401", "catalog_order": 36, "original_filename": "mabhas-23.pdf", "expected_media_type": "application/pdf", "expected_sha256": "b71f6146929375fe39edb8810f1f3e07022065bb7070553fd0a8cf46a7c23f89", "document_kind": "numbered_volume", "volume": 23,
-      "title_fa": "مبحث بیست و سوم: الزامات ترافیکی ساختمان", "title_en": "Volume 23: Building Traffic Requirements", "translation_provenance": "cover_translation",
-      "edition": {"label_fa": "ویرایش اول", "label_en": "First edition", "edition_number": 1, "publication_year_shamsi": "1401", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-23", "order": null}], "source_urls": ["https://inbr.ir/upload/mabhas/mabhas-23.pdf"],
-      "evidence": [{"kind": "official_document_cover", "url": "https://inbr.ir/upload/mabhas/mabhas-23.pdf", "note": "Official PDF cover and curated English translation."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "volume-24-current-1404", "catalog_order": 37, "original_filename": "mabhas24-3.pdf", "expected_media_type": "application/pdf", "expected_sha256": "f63836c287aa1f4af1f845b966bff04e8f034434b353f00cedfeda06b98c5719", "document_kind": "numbered_volume", "volume": 24,
-      "title_fa": "مبحث بیست و چهارم: انطباق شهری ساختمان", "title_en": "Volume 24: Urban Building Compliance", "translation_provenance": "cover_translation",
-      "edition": {"label_fa": null, "label_en": null, "edition_number": null, "publication_year_shamsi": "1404", "publication_date_shamsi": null}, "legal_status": "binding_regulation",
-      "relationships": [{"type": "EDITION_OF", "target": "volume-24", "order": null}], "source_urls": ["https://inbr.ir/wp-content/uploads/2026/05/mabhas24-3.pdf"],
-      "evidence": [{"kind": "official_post", "url": "https://inbr.ir/wp-json/wp/v2/posts/7061", "note": "Current official download record; no revision number is invented from the filename."}, {"kind": "official_post", "url": "https://inbr.ir/wp-json/wp/v2/posts/6022", "note": "Historical record explicitly identifies an earlier non-citable draft; that status is not applied to this current artifact."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "guide-seismic-dampers-isolators-draft", "catalog_order": 38, "original_filename": "راهنمای طراحی میراگرها و جداگرهای لرزه ای.pdf", "expected_media_type": "application/pdf", "expected_sha256": "b311fe06d01053c71d46670ce01ca8234ed77f1b58b64b23208b17eaa3c3014c", "document_kind": "guide", "volume": null,
-      "title_fa": "پیش‌نویس راهنمای طراحی میراگرها و جداگرهای لرزه‌ای", "title_en": "Draft Guide for the Design of Seismic Dampers and Isolators", "translation_provenance": "curated",
-      "edition": {"label_fa": "پیش‌نویس", "label_en": "Draft", "edition_number": null, "publication_year_shamsi": null, "publication_date_shamsi": null}, "legal_status": "draft_nonbinding",
-      "relationships": [], "source_urls": ["https://inbr.ir/upload/mabhas/%D8%B1%D8%A7%D9%87%D9%86%D9%85%D8%A7%DB%8C%20%D8%B7%D8%B1%D8%A7%D8%AD%DB%8C%20%D9%85%DB%8C%D8%B1%D8%A7%DA%AF%D8%B1%D9%87%D8%A7%20%D9%88%20%D8%AC%D8%AF%D8%A7%DA%AF%D8%B1%D9%87%D8%A7%DB%8C%20%D9%84%D8%B1%D8%B2%D9%87%20%D8%A7%DB%8C.pdf"],
-      "evidence": [{"kind": "official_catalog", "url": "https://inbr.ir/مباحث-مقررات-ملی/", "note": "Official catalog explicitly labels this document a draft guide; it is not a numbered or binding regulation."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "guide-masonry-perimeter-walls", "catalog_order": 39, "original_filename": "راهنمای-طراحی-دیوارهای-بنایی-محوطه.pdf", "expected_media_type": "application/pdf", "expected_sha256": "896389209a92153e613165fc21b4a1daa4b758e793cad40dab2c25b03a8f56fd", "document_kind": "guide", "volume": null,
-      "title_fa": "راهنمای طراحی دیوارهای بنایی محوطه", "title_en": "Guide for the Design of Masonry Perimeter Walls", "translation_provenance": "curated",
-      "edition": {"label_fa": null, "label_en": null, "edition_number": null, "publication_year_shamsi": null, "publication_date_shamsi": null}, "legal_status": "supplementary_nonbinding",
-      "relationships": [], "source_urls": ["https://inbr.ir/%d8%b1%d8%a7%d9%87%d9%86%d9%85%d8%a7%db%8c-%d8%b7%d8%b1%d8%a7%d8%ad%db%8c-%d8%af%db%8c%d9%88%d8%a7%d8%b1%d9%87%d8%a7%db%8c-%d8%a8%d9%86%d8%a7%db%8c%db%8c-%d9%85%d8%ad%d9%88%d8%b7%d9%87/"],
-      "evidence": [{"kind": "official_catalog", "url": "https://inbr.ir/مباحث-مقررات-ملی/", "note": "Official catalog links a landing page; the local .pdf-named payload is retained and must be content-probed."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "guide-structural-calculation-design-draft", "catalog_order": 40, "original_filename": "کتاب محاسبات و طراحی سازه ای.pdf", "expected_media_type": "application/pdf", "expected_sha256": "04df31f04b0b47ffdcf427c55d5876ca6d49b2eb440c01c1d8efe29de8e133ec", "document_kind": "guide", "volume": null,
-      "title_fa": "پیش‌نویس راهنمای محاسبات و طراحی سازه‌ای", "title_en": "Draft Guide for Structural Calculation and Design", "translation_provenance": "curated",
-      "edition": {"label_fa": "پیش‌نویس", "label_en": "Draft", "edition_number": null, "publication_year_shamsi": null, "publication_date_shamsi": null}, "legal_status": "draft_nonbinding",
-      "relationships": [], "source_urls": ["https://inbr.ir/upload/mabhas/%DA%A9%D8%AA%D8%A7%D8%A8%20%D9%85%D8%AD%D8%A7%D8%B3%D8%A8%D8%A7%D8%AA%20%D9%88%20%D8%B7%D8%B1%D8%A7%D8%AD%DB%8C%20%D8%B3%D8%A7%D8%B2%D9%87%20%D8%A7%DB%8C.pdf"],
-      "evidence": [{"kind": "official_catalog", "url": "https://inbr.ir/مباحث-مقررات-ملی/", "note": "Official catalog explicitly labels this document a draft guide; it is not a numbered or binding regulation."}], "review_status": "accepted", "review_flags": []
-    },
-    {
-      "catalog_key": "guide-existing-building-safety-retrofit", "catalog_order": 41, "original_filename": "دستور-کار-ارزیابی-ایمنی-و-بهسازی_photo.pdf", "expected_media_type": "application/pdf", "expected_sha256": "98d123bbce7c4b8735bf06f118c8c932f0c7e0ac3486ecd3d50c2f3710b636f9", "document_kind": "guide", "volume": null,
-      "title_fa": "دستور کار و راهنمای ارزیابی ایمنی و بهسازی ساختمان‌های موجود", "title_en": "Procedure and Guide for Safety Evaluation and Retrofitting of Existing Buildings", "translation_provenance": "curated",
-      "edition": {"label_fa": null, "label_en": null, "edition_number": null, "publication_year_shamsi": null, "publication_date_shamsi": null}, "legal_status": "supplementary_nonbinding",
-      "relationships": [{"type": "GUIDE_FOR", "target": "volume-22", "order": null}], "source_urls": ["https://inbr.ir/upload/mabhas/%D8%AF%D8%B3%D8%AA%D9%88%D8%B1-%DA%A9%D8%A7%D8%B1-%D8%A7%D8%B1%D8%B2%DB%8C%D8%A7%D8%A8%DB%8C-%D8%A7%DB%8C%D9%85%D9%86%DB%8C-%D9%88-%D8%A8%D9%87%D8%B3%D8%A7%D8%B2%DB%8C_photo.pdf"],
-      "evidence": [{"kind": "official_catalog", "url": "https://inbr.ir/مباحث-مقررات-ملی/", "note": "Official catalog lists a supplementary guide, not a numbered regulation; conflicting date metadata is not asserted."}], "review_status": "needs_review", "review_flags": ["PUBLICATION_METADATA_UNRESOLVED"]
-    },
-    {
-      "catalog_key": "volume-04-protective-security-appendix-1403", "catalog_order": 42, "original_filename": "zavabethefazati-11.pdf", "expected_media_type": "application/pdf", "expected_sha256": "93da5daaa83cc54d0f225a31d50224caaeead351c1e79de3dfae51edb015e426", "document_kind": "mandatory_appendix", "volume": 4,
-      "title_fa": "ضوابط حفاظتی - انتظامی ساختمان‌ها", "title_en": "Protective and Security Requirements for Buildings", "translation_provenance": "curated",
-      "edition": {"label_fa": "پیوست لازم‌الاجرا", "label_en": "Mandatory appendix", "edition_number": null, "publication_year_shamsi": "1403", "publication_date_shamsi": null}, "legal_status": "binding_appendix",
-      "relationships": [{"type": "MANDATORY_APPENDIX_OF", "target": "volume-04-edition-1396", "order": null}], "source_urls": ["https://inbr.ir/wp-content/uploads/2025/02/zavabethefazati-11.pdf"],
-      "evidence": [{"kind": "official_post", "url": "https://inbr.ir/wp-json/wp/v2/posts/7064", "note": "Current official post identifies this as a mandatory appendix to Volume 4 despite the misleading local filename."}, {"kind": "official_post", "url": "https://inbr.ir/wp-json/wp/v2/posts/5713", "note": "Historical official draft record retained as provenance; the current appendix is not classified as a draft."}], "review_status": "accepted", "review_flags": []
-    }
-  ]
+  "schema_version": "2.0.0"
 }

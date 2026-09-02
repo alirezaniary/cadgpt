@@ -1,112 +1,113 @@
 {
-  "$id": "https://cadgpt.local/schemas/regulation-manifest-1.0.0.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "additionalProperties": false,
-  "properties": {
-    "artifacts": {
-      "items": {
-        "$ref": "#/$defs/artifact"
-      },
-      "minItems": 1,
-      "type": "array"
-    },
-    "catalog": {
-      "additionalProperties": false,
-      "properties": {
-        "catalog_id": {
-          "minLength": 1,
-          "type": "string"
-        },
-        "provenance": {
-          "items": {
-            "$ref": "#/$defs/evidence"
-          },
-          "minItems": 1,
-          "type": "array"
-        },
-        "schema_version": {
-          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
-          "type": "string"
-        },
-        "sha256": {
-          "$ref": "#/$defs/sha256"
-        }
-      },
-      "required": [
-        "catalog_id",
-        "schema_version",
-        "sha256",
-        "provenance"
-      ],
-      "type": "object"
-    },
-    "schema_version": {
-      "const": "1.0.0"
-    },
-    "summary": {
-      "additionalProperties": false,
-      "properties": {
-        "artifacts_accounted": {
-          "minimum": 0,
-          "type": "integer"
-        },
-        "expected_artifacts": {
-          "minimum": 0,
-          "type": "integer"
-        },
-        "files_discovered": {
-          "minimum": 0,
-          "type": "integer"
-        },
-        "missing": {
-          "minimum": 0,
-          "type": "integer"
-        },
-        "needs_review": {
-          "minimum": 0,
-          "type": "integer"
-        },
-        "pdf_pages": {
-          "minimum": 0,
-          "type": "integer"
-        },
-        "quarantined": {
-          "minimum": 0,
-          "type": "integer"
-        },
-        "unaccounted": {
-          "minimum": 0,
-          "type": "integer"
-        },
-        "valid_pdfs": {
-          "minimum": 0,
-          "type": "integer"
-        }
-      },
-      "required": [
-        "expected_artifacts",
-        "files_discovered",
-        "artifacts_accounted",
-        "valid_pdfs",
-        "quarantined",
-        "missing",
-        "unaccounted",
-        "needs_review",
-        "pdf_pages"
-      ],
-      "type": "object"
-    }
-  },
-  "required": [
-    "schema_version",
-    "catalog",
-    "summary",
-    "artifacts"
-  ],
-  "type": "object",
   "$defs": {
     "artifact": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "artifact_state": {
+                "const": "ready"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "bytes": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "detected_media_type": {
+                "const": "application/pdf"
+              },
+              "error": {
+                "type": "null"
+              },
+              "pdf_page_count": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "present": {
+                "const": true
+              },
+              "sha256": {
+                "$ref": "#/$defs/sha256"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "artifact_state": {
+                "const": "quarantined"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "error": {
+                "$ref": "#/$defs/error"
+              }
+            }
+          }
+        },
+        {
+          "else": {
+            "properties": {
+              "review_flags": {
+                "minItems": 1
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "review_status": {
+                "const": "accepted"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "review_flags": {
+                "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "present": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "bytes": {
+                "type": "null"
+              },
+              "detected_media_type": {
+                "type": "null"
+              },
+              "error": {
+                "properties": {
+                  "code": {
+                    "const": "EXPECTED_ARTIFACT_MISSING"
+                  }
+                }
+              },
+              "pdf_page_count": {
+                "type": "null"
+              },
+              "sha256": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
       "properties": {
         "artifact_state": {
           "enum": [
@@ -155,6 +156,17 @@
             "unclassified"
           ]
         },
+        "download_url": {
+          "anyOf": [
+            {
+              "format": "iri",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "edition": {
           "$ref": "#/$defs/edition"
         },
@@ -174,10 +186,32 @@
           },
           "type": "array"
         },
+        "expected_bytes": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "expected_media_type": {
           "type": [
             "string",
             "null"
+          ]
+        },
+        "expected_pdf_pages": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "expected_sha256": {
@@ -202,7 +236,7 @@
             "unknown"
           ]
         },
-        "original_filename": {
+        "local_path": {
           "minLength": 1,
           "type": "string"
         },
@@ -225,6 +259,12 @@
             "$ref": "#/$defs/relationship"
           },
           "type": "array"
+        },
+        "remote_filename": {
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "review_flags": {
           "items": {
@@ -292,9 +332,13 @@
       "required": [
         "catalog_key",
         "catalog_order",
-        "original_filename",
+        "download_url",
+        "remote_filename",
+        "local_path",
         "expected_media_type",
         "expected_sha256",
+        "expected_bytes",
+        "expected_pdf_pages",
         "document_kind",
         "volume",
         "title_fa",
@@ -315,113 +359,7 @@
         "pdf_page_count",
         "error"
       ],
-      "type": "object",
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "artifact_state": {
-                "const": "ready"
-              }
-            }
-          },
-          "then": {
-            "properties": {
-              "detected_media_type": {
-                "const": "application/pdf"
-              },
-              "error": {
-                "type": "null"
-              },
-              "bytes": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "pdf_page_count": {
-                "minimum": 1,
-                "type": "integer"
-              },
-              "present": {
-                "const": true
-              },
-              "sha256": {
-                "$ref": "#/$defs/sha256"
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "artifact_state": {
-                "const": "quarantined"
-              }
-            }
-          },
-          "then": {
-            "properties": {
-              "error": {
-                "$ref": "#/$defs/error"
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "review_status": {
-                "const": "accepted"
-              }
-            }
-          },
-          "then": {
-            "properties": {
-              "review_flags": {
-                "maxItems": 0
-              }
-            }
-          },
-          "else": {
-            "properties": {
-              "review_flags": {
-                "minItems": 1
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "present": {
-                "const": false
-              }
-            }
-          },
-          "then": {
-            "properties": {
-              "bytes": {
-                "type": "null"
-              },
-              "detected_media_type": {
-                "type": "null"
-              },
-              "error": {
-                "properties": {
-                  "code": {
-                    "const": "EXPECTED_ARTIFACT_MISSING"
-                  }
-                }
-              },
-              "pdf_page_count": {
-                "type": "null"
-              },
-              "sha256": {
-                "type": "null"
-              }
-            }
-          }
-        }
-      ]
+      "type": "object"
     },
     "edition": {
       "additionalProperties": false,
@@ -556,5 +494,115 @@
       "pattern": "^[a-f0-9]{64}$",
       "type": "string"
     }
-  }
+  },
+  "$id": "https://cadgpt.local/schemas/regulation-manifest-2.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/artifact"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "catalog": {
+      "additionalProperties": false,
+      "properties": {
+        "catalog_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "provenance": {
+          "items": {
+            "$ref": "#/$defs/evidence"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "schema_version": {
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "type": "string"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "required": [
+        "catalog_id",
+        "schema_version",
+        "sha256",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "summary": {
+      "additionalProperties": false,
+      "properties": {
+        "artifacts_accounted": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "bytes": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "expected_artifacts": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "files_discovered": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "missing": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "needs_review": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pdf_pages": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "quarantined": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unaccounted": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "valid_pdfs": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "expected_artifacts",
+        "files_discovered",
+        "artifacts_accounted",
+        "valid_pdfs",
+        "quarantined",
+        "missing",
+        "unaccounted",
+        "needs_review",
+        "pdf_pages",
+        "bytes"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "catalog",
+    "summary",
+    "artifacts"
+  ],
+  "type": "object"
 }

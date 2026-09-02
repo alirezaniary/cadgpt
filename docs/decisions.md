@@ -388,3 +388,41 @@ The first corpus contract uses JSON Schema Draft 2020-12, validated by the narro
 that later non-Python workers can consume, reject unknown fields recursively, and make every
 contract version explicit. Poppler's existing `pdfinfo` executable remains the authoritative
 page-count source; this phase adds no PDF parser, OCR stack, network client, or inference SDK.
+
+## 2026-09-02 — Official acquisition separates remote identity from local storage
+
+An official artifact now has three identities with different trust levels. `download_url` is
+the exact configured network request, `remote_filename` is inert Unicode evidence and may
+contain decoded separators, and `local_path` is a unique catalog-controlled flat name. Neither
+URL decoding nor `Content-Disposition` can choose a filesystem path. This is necessary for the
+Volume 17 URL whose `%2F` bytes denote a remote name with embedded separators, but it applies to
+the whole corpus so one exceptional source cannot become an exceptional code path.
+
+Official acquisition uses the narrowly pinned `httpx>=0.28.1,<0.29`. Redirects are followed
+manually with an exact-origin check at every hop, environment proxy configuration is disabled,
+bodies are streamed into exclusive temporary files, and installation is atomic and
+no-clobber. Existing identical files are re-attested and reused without changing their mtime;
+different files are never overwritten. SHA-256, byte count, PDF signature, and Poppler page
+count must all match the curated contract before an artifact is installed.
+
+Each source or artifact also has one monotonic total deadline spanning redirects, streaming,
+and retries, in addition to per-operation HTTP timeouts. Acquisition accepts only a
+caller-created output root owned by the current user and not writable by group or world;
+managed directories are re-attested before payload installation. Pathname operations do not
+eliminate replacement by another process running as the same user, so same-user directory
+replacement remains an explicitly documented local hardening residual.
+
+The deterministic receipt retains raw WordPress bytes and canonical semantic projections in
+content-addressed storage. It records every source and artifact even when siblings fail, while
+`acquisition-check` rehashes stored evidence and fails closed on drift, quarantine, missing
+coverage, or unaccounted generated payloads. Acquisition health remains separate from review:
+a correctly downloaded guide with an unresolved legal relationship is still not publishable.
+
+The URL layer validates names and TLS origins but does not pin a resolved IP address into the
+HTTP connection. `httpx` performs DNS resolution after the exact-host check. HTTPS certificate
+validation materially limits DNS rebinding against the official hosts, but connection-level
+DNS pinning remains a residual hardening opportunity rather than a guarantee claimed here.
+
+**Reopens if:** acquisition must run across an untrusted resolver without TLS, or a future
+network policy requires connection-level address pinning in addition to exact-origin and TLS
+validation.
