@@ -10,6 +10,7 @@ import pytest
 from cadgpt_engine import (
     REPORT_SCHEMA_VERSION,
     Applicability,
+    Comparison,
     InvalidIdsError,
     InvalidIfcError,
     ReasonCode,
@@ -77,6 +78,38 @@ def test_the_requirement_description_is_the_rule_in_words_not_an_object_repr(
             )
 
 
+def test_the_requirement_basis_names_the_bound_as_data_not_a_stringified_dict(
+    three_doors_ifc: Path, door_width_ids: Path
+) -> None:
+    """I5's structured counterpart to `description`: the operator and value `description`
+    can only narrate, so a service can render "at least 900" in the reader's language
+    without re-parsing `{'minInclusive': '900'}` back apart.
+    """
+    report = run_check(three_doors_ifc, door_width_ids)
+    basis = report.specifications[0].requirements[0].basis
+
+    assert basis.facet_type == "attribute"
+    assert basis.name == "OverallWidth"
+    assert basis.cardinality == "required"
+    assert basis.comparisons == (Comparison(operator="minInclusive", value="900"),)
+
+
+def test_the_specification_states_what_it_applies_to(
+    three_doors_ifc: Path, door_width_ids: Path
+) -> None:
+    """I5: a requirement without its subject is half a citation.
+
+    `spec.description` is the IDS author's own `<ids:description>`, empty in this fixture
+    on purpose, so `applicability_description` -- `ifctester`'s own applicability rendering
+    -- is the only place the subject reaches the report at all.
+    """
+    report = run_check(three_doors_ifc, door_width_ids)
+    spec = report.specifications[0]
+
+    assert spec.description == ""
+    assert spec.applicability_description == "All IFCDOOR data"
+
+
 def test_a_prohibited_specifications_requirement_line_never_contradicts_its_verdict(
     three_doors_ifc: Path, door_prohibited_ids: Path
 ) -> None:
@@ -107,6 +140,10 @@ def test_a_prohibited_specifications_requirement_line_never_contradicts_its_verd
     assert "not applicable" not in requirement.description, (
         "a requirement line must never contradict the FAIL verdict beside it"
     )
+    # The facet's own `cardinality="required"` attribute (see door_prohibited.ids) must not
+    # leak into the structured citation: the specification's prohibition overrides it, the
+    # same substitution `description` above just made, or the two would disagree.
+    assert requirement.basis.cardinality == "prohibited"
 
 
 def test_indeterminate_is_never_counted_as_a_pass(

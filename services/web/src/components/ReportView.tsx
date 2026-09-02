@@ -172,6 +172,11 @@ export function ReportView({ report }: { report: Report }) {
             <p className="muted">
               {t("report.matched", { count: spec.matched })} · {spec.cardinality}
             </p>
+            {spec.applicability_description && (
+              <p className="muted" data-testid="applicability">
+                {spec.applicability_description}
+              </p>
+            )}
             {spec.reason_label && <p className="notice">{spec.reason_label}</p>}
 
             {spec.requirements.map((requirement, requirementIndex) => {
@@ -179,7 +184,9 @@ export function ReportView({ report }: { report: Report }) {
               const visibleEntities = orderedEntities.filter((e) => isVisible(e, filter));
               return (
                 <div key={requirementIndex} className="requirement">
-                  <p className="requirement__description">{requirement.description}</p>
+                  <p className="requirement__description" data-testid="requirement-text">
+                    {requirement.requirement_text ?? requirement.description}
+                  </p>
                   {visibleEntities.length > 0 && (
                     <table className="entities">
                       <tbody>

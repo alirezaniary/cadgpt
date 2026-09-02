@@ -233,3 +233,71 @@ msgstr "انگلیسی"
 
 msgid "Persian"
 msgstr "فارسی"
+
+#: cadgpt/apps/review/requirements.py (minInclusive)
+msgid "at least %(value)s"
+msgstr "دست‌کم %(value)s"
+
+#: cadgpt/apps/review/requirements.py (maxInclusive)
+msgid "at most %(value)s"
+msgstr "حداکثر %(value)s"
+
+#: cadgpt/apps/review/requirements.py (minExclusive)
+msgid "more than %(value)s"
+msgstr "بیش از %(value)s"
+
+#: cadgpt/apps/review/requirements.py (maxExclusive)
+msgid "less than %(value)s"
+msgstr "کمتر از %(value)s"
+
+#: cadgpt/apps/review/requirements.py (enumeration, literal)
+msgid "%(value)s"
+msgstr "%(value)s"
+
+#: cadgpt/apps/review/requirements.py (pattern)
+msgid "matching %(value)s"
+msgstr "منطبق با %(value)s"
+
+#: cadgpt/apps/review/requirements.py (length)
+msgid "exactly %(value)s characters"
+msgstr "دقیقاً %(value)s نویسه"
+
+#: cadgpt/apps/review/requirements.py (minLength)
+msgid "at least %(value)s characters"
+msgstr "دست‌کم %(value)s نویسه"
+
+#: cadgpt/apps/review/requirements.py (maxLength)
+msgid "at most %(value)s characters"
+msgstr "حداکثر %(value)s نویسه"
+
+#: cadgpt/apps/review/requirements.py (required, with a bound)
+msgid "The %(name)s shall be %(bound)s."
+msgstr "%(name)s باید %(bound)s باشد."
+
+#: cadgpt/apps/review/requirements.py (required, no bound)
+msgid "The %(name)s shall be provided."
+msgstr "%(name)s باید ثبت شده باشد."
+
+#: cadgpt/apps/review/requirements.py (prohibited, with a bound)
+msgid "The %(name)s shall not be %(bound)s."
+msgstr "%(name)s نباید %(bound)s باشد."
+
+#: cadgpt/apps/review/requirements.py (prohibited, no bound)
+msgid "The %(name)s shall not be provided."
+msgstr "%(name)s نباید ثبت شده باشد."
+
+#: cadgpt/apps/review/requirements.py (optional, with a bound)
+msgid "The %(name)s may be %(bound)s."
+msgstr "%(name)s می‌تواند %(bound)s باشد."
+
+#: cadgpt/apps/review/requirements.py (optional, no bound)
+msgid "The %(name)s may be provided."
+msgstr "%(name)s می‌تواند ثبت شده باشد."
+
+#: cadgpt/apps/review/requirements.py (conjunctive joiner, e.g. a range's min and max)
+msgid " and "
+msgstr " و "
+
+#: cadgpt/apps/review/requirements.py (disjunctive joiner, xs:enumeration members)
+msgid " or "
+msgstr " یا "

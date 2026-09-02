@@ -107,11 +107,19 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
 
   // T-0026: the requirement line is the rule in words, from ifctester's own `to_string`,
   // never the CPython object repr `str(facet)` produced before this fix.
-  const requirementDescription = report.locator(".requirement__description");
-  await expect(requirementDescription).toHaveText(
-    "The OverallWidth shall be {'minInclusive': '900'}",
-  );
-  await expect(requirementDescription).not.toContainText("object at 0x");
+  const requirementText = report.locator('[data-testid="requirement-text"]');
+  await expect(requirementText).not.toContainText("object at 0x");
+
+  // T-0027: the primary line is now the structured citation, rendered through gettext --
+  // "at least 900" from operator/value data, never ifctester's own dict-repr sentence
+  // `{'minInclusive': '900'}`.
+  await expect(requirementText).toHaveText("The OverallWidth shall be at least 900.");
+  await expect(requirementText).not.toContainText("minInclusive");
+
+  // T-0027: the subject line -- what the rule applies to. The fixture's own
+  // `<ids:description>` is empty, so this is the only place the subject reaches the DOM.
+  const applicability = report.locator('[data-testid="applicability"]').first();
+  await expect(applicability).toHaveText("All IFCDOOR data");
 
   // T-0025.1: coverage is presented before findings — assert document order, not just
   // presence. A coverage line rendered underneath the specification list would satisfy a

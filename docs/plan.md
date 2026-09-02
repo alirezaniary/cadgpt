@@ -230,6 +230,43 @@ buildingSMART XSD. **T-0038.** Two decisions were settled and logged: a requirem
 evaluated nothing is *explained, never suppressed*, and a verdict-changing engine release *bumps
 the engine version* so a stored run says which engine judged it.
 
+**T-0027 — the requirement as structured data the service localizes. Done 2026-09-02.**
+The report's primary line read `The OverallWidth shall be {'minInclusive': '900'}` — a Python
+dict repr, with no unit, beside a row reporting a bare `800.0`, in English written into the
+stored document by the engine, and never saying what the rule applied to. The engine now names
+the citation as data (`RequirementBasis`: facet type, subject, cardinality, and operator/value
+comparisons) and the service supplies the sentence through `gettext`, exactly as
+`reason_code`/`reason_label` already did. `description` stays as the fallback, so documents
+stored before the bump still read. `REPORT_SCHEMA_VERSION` 1 → 2; nothing branches on it, and
+the fallback keys off field presence rather than version, which is the more robust choice.
+
+Verified by the coordinator inside the containers rather than from the evidence block: one
+stored document renders `The OverallWidth shall be at least 900.` and
+`OverallWidth باید دست‌کم 900 باشد.`, a hand-built v1 document still falls back in both locales,
+and the browser now shows `All IFCDOOR data` above the requirement — a citation that finally
+states its subject. No unit is invented: the IDS states none, so the sentence states none.
+
+The review was gated on I5 and earned it. The mechanism was sound; two of the sentences it
+produced were false. `xs:enumeration` is a **disjunction**, and the joiner was an unconditional
+`" and "` — so a rule offering a choice of two values was reported as demanding both at once,
+which no model can satisfy and no IDS ever asked for. And an operator the table did not
+recognise fell through to a bare `"%(value)s"`, so `totalDigits` — "at most 4 significant
+digits", and in `ifctester`'s own supported list — rendered as "shall be 4". That second one is
+the more dangerous shape: `reasons.label_for` degrades to the *identifier*, visibly unresolved
+and honest, while this degraded to a confident sentence indistinguishable from a correct one.
+Both fixed, both re-verified on the real path in both languages, and both mutations re-run by
+the coordinator: removing the enumeration grouping fails the test on `and` vs `or`, and
+disabling the unknown-operator guard raises `KeyError: 'totalDigits'`.
+
+The review also caught the evidence block reassuring the reader about exactly the case that was
+broken, and dropped seven suspicions after executing them — format-string injection, XSS, unit
+invention, lazy-string leakage, fa catalogue coverage, schema-version migration, and an
+undisclosed deviation in the `to_string("applicability")` call that turned out to be *more*
+correct than the task text. Remaining findings became **T-0039** (a restriction on the attribute
+*name* leaves the subject null and puts the dict repr back; `applicability_description` is
+still untranslated English in the stored document) and **T-0040** (`localize_report` raises
+rather than degrading on a malformed `basis`, 500-ing the whole run detail).
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -272,6 +309,8 @@ the first of them:
 - **T-0034** — the filter banner must not claim credit for what the engine capped.
 - **T-0035** — two latent report-view defects: an unsortable list and a colliding key.
 - **T-0036** — the Persian report: prove RTL, and stop rendering a raw payload value.
+- **T-0039** — the subject of a citation: structured in the engine, worded in the service.
+- **T-0040** — `localize_report` must degrade, not 500.
 
 ## Phase 4 — Toward the PRD
 

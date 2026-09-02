@@ -16,8 +16,10 @@ from cadgpt_engine.messages import default_message
 from cadgpt_engine.reasons import classify, is_recognised, status_for
 from cadgpt_engine.report import (
     REPORT_SCHEMA_VERSION,
+    Comparison,
     EntityOutcome,
     Report,
+    RequirementBasis,
     RequirementOutcome,
     SpecificationOutcome,
 )
@@ -38,6 +40,7 @@ __all__ = [
     "NOT_EVALUABLE_CODES",
     "REPORT_SCHEMA_VERSION",
     "Applicability",
+    "Comparison",
     "EngineError",
     "EntityOutcome",
     "InvalidIdsError",
@@ -45,6 +48,7 @@ __all__ = [
     "InvalidInputError",
     "ReasonCode",
     "Report",
+    "RequirementBasis",
     "RequirementOutcome",
     "RuleSetSummary",
     "SpecificationOutcome",

@@ -69,8 +69,34 @@ export interface EntityOutcome {
   detail: string;
 }
 
+export interface Comparison {
+  operator: string;
+  value: string;
+}
+
+/**
+ * The requirement's own facet, as data rather than English -- `description`'s structured
+ * counterpart. Optional because a report stored before `REPORT_SCHEMA_VERSION` 2 has no
+ * `basis` key at all: `description` is the fallback for exactly that case.
+ */
+export interface RequirementBasis {
+  facet_type: string;
+  name: string | null;
+  cardinality: string;
+  comparisons: Comparison[];
+}
+
 export interface RequirementOutcome {
+  /** ifctester's own English sentence. Kept as the fallback when `requirement_text` cannot
+   * be built from `basis` -- an old document, or a facet type the service does not render. */
   description: string;
+  /** The same fact as `description`, structured -- absent for a report stored before this
+   * field existed. */
+  basis?: RequirementBasis;
+  /** `basis` rendered into the reader's language by the service, or `description` when it
+   * could not be. Always present: this is the primary line to render, the way
+   * `reason_label` is for a finding's cause. */
+  requirement_text: string;
   status: Status;
   passed: number;
   failed: number;
@@ -82,6 +108,10 @@ export interface RequirementOutcome {
 export interface SpecificationOutcome {
   name: string;
   description: string;
+  /** ifctester's own rendering of what the applicability facets select (e.g. "All IFCDOOR
+   * data") -- the report's subject line. Absent for a report stored before this field
+   * existed. */
+  applicability_description?: string;
   instructions: string;
   applicability: Applicability;
   status: Status;

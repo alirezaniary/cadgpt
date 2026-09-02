@@ -22,7 +22,12 @@ from cadgpt_engine.status import Applicability, ReasonCode, Status
 
 #: Wire-format version of the documents produced here. Bump when a field changes meaning,
 #: so a stored report from an older engine can still be read correctly.
-REPORT_SCHEMA_VERSION = 1
+#:
+#: Bumped to 2 for `RequirementOutcome.basis`: `description` stops being the requirement's
+#: citation and becomes its fallback -- the field's role changes even though its own text
+#: does not -- so a document written before this version has no `basis` at all and must be
+#: read through that fallback rather than assumed to carry one.
+REPORT_SCHEMA_VERSION = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,8 +56,63 @@ class EntityOutcome:
 
 
 @dataclass(frozen=True, slots=True)
+class Comparison:
+    """One operator and the value it compares against.
+
+    What a `Restriction` option is, without `Restriction.__str__`'s `str(self.options)` --
+    the Python dict repr this task exists to stop putting in front of a reader. `operator`
+    is an XSD facet name (`minInclusive`, `maxInclusive`, `enumeration`, ...) or the literal
+    string `"literal"` when the requirement states a bare value with no restriction at all.
+    `value` carries no unit: the engine measures what the IDS states and invents nothing
+    the IDS did not say.
+    """
+
+    operator: str
+    value: str
+
+    def to_dict(self) -> dict[str, str]:
+        return {"operator": self.operator, "value": self.value}
+
+
+@dataclass(frozen=True, slots=True)
+class RequirementBasis:
+    """The requirement's own facet, as data a service can put into a sentence.
+
+    The structured counterpart to `RequirementOutcome.description`: the same fact, named
+    rather than rendered into English. `name` is the attribute or property name the facet
+    reads (`None` for a facet type that names no such thing -- an entity-class or
+    classification requirement, which the fixtures this task ships against do not exercise).
+    `cardinality` is the requirement's effective cardinality -- `"prohibited"` when the
+    specification itself is prohibited (`maxOccurs == 0`) even if the facet's own
+    `cardinality` attribute says `"required"`, mirroring the same substitution
+    `check.py`'s `clause_type` makes for `description` so the two can never contradict each
+    other under I5/I7.
+    """
+
+    facet_type: str
+    name: str | None
+    cardinality: str
+    comparisons: tuple[Comparison, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "facet_type": self.facet_type,
+            "name": self.name,
+            "cardinality": self.cardinality,
+            "comparisons": [c.to_dict() for c in self.comparisons],
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class RequirementOutcome:
+    """`description` is upstream's own sentence -- what the engine's CLI and tests print,
+    and the fallback a service renders when `basis` cannot be turned into a sentence in the
+    reader's language. `basis` is the primary citation: the service supplies the wording,
+    the same shape `reason_code` / `reason_label` already established for a finding's cause.
+    """
+
     description: str
+    basis: RequirementBasis
     status: Status
     passed: int
     failed: int
@@ -63,6 +123,7 @@ class RequirementOutcome:
     def to_dict(self) -> dict[str, Any]:
         return {
             "description": self.description,
+            "basis": self.basis.to_dict(),
             "status": self.status.value,
             "passed": self.passed,
             "failed": self.failed,
@@ -74,8 +135,16 @@ class RequirementOutcome:
 
 @dataclass(frozen=True, slots=True)
 class SpecificationOutcome:
+    """`description` is the IDS author's own `<ids:description>` text -- theirs, and never
+    overwritten. `applicability_description` is a different fact: `ifctester`'s own
+    rendering of what the applicability facets select (`to_string("applicability", ...)`,
+    e.g. "All IFCDOOR data"), carried through so the report states what the rule applies to
+    even when the author left `description` blank, as the shipped fixture does.
+    """
+
     name: str
     description: str
+    applicability_description: str
     instructions: str
     applicability: Applicability
     status: Status
@@ -91,6 +160,7 @@ class SpecificationOutcome:
         return {
             "name": self.name,
             "description": self.description,
+            "applicability_description": self.applicability_description,
             "instructions": self.instructions,
             "applicability": self.applicability.value,
             "status": self.status.value,

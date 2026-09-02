@@ -28,8 +28,10 @@ import ifctester.ids
 from cadgpt_engine.errors import InvalidIdsError, InvalidIfcError
 from cadgpt_engine.reasons import classify
 from cadgpt_engine.report import (
+    Comparison,
     EntityOutcome,
     Report,
+    RequirementBasis,
     RequirementOutcome,
     SpecificationOutcome,
 )
@@ -78,6 +80,58 @@ def _outcome(element: Any, reason: str) -> EntityOutcome:
     )
 
 
+def _comparisons(value: Any) -> tuple[Comparison, ...]:
+    """The bound a facet's `value` states, as operator/value pairs.
+
+    `ifctester.ids.Restriction.__str__` returns `str(self.options)` -- a Python dict repr
+    with no unit and no way to translate it. `Restriction.options` is that same dict read
+    directly instead: each key is an XSD facet name (`minInclusive`, `enumeration`, ...) and
+    each value is either one bound or, for `enumeration` with several members, a list of
+    them. A bare literal (no `Restriction` at all, e.g. `<ids:simpleValue>`) has no operator
+    to name, so it is recorded as `"literal"` rather than invented.
+    """
+    if value is None:
+        return ()
+    if isinstance(value, ifctester.ids.Restriction):
+        comparisons: list[Comparison] = []
+        for operator, bound in value.options.items():
+            members = bound if isinstance(bound, list) else [bound]
+            comparisons.extend(Comparison(operator=operator, value=str(m)) for m in members)
+        return tuple(comparisons)
+    return (Comparison(operator="literal", value=str(value)),)
+
+
+def _facet_subject_name(facet: Any) -> str | None:
+    """The attribute or property name a facet reads, or `None` for a facet type that names
+    no such thing. `Property.baseName` takes priority: `Property` also carries a `name`-less
+    shape but `PartOf`/`Attribute`/`Entity` carry `name` and no `baseName`, so checking
+    `baseName` first and falling back to `name` covers both without asking what kind of
+    facet this is.
+    """
+    base_name = getattr(facet, "baseName", None)
+    if isinstance(base_name, str):
+        return base_name
+    name = getattr(facet, "name", None)
+    return name if isinstance(name, str) else None
+
+
+def _requirement_basis(facet: Any, specification: Any) -> RequirementBasis:
+    """The structured counterpart to `description` -- see `RequirementBasis`.
+
+    `cardinality` substitutes `"prohibited"` for a facet's own `cardinality` under the same
+    condition `clause_type` below does for `description`: a prohibited specification
+    (`maxOccurs == 0`) overrides every facet's own cardinality, and the two must never
+    diverge or the structured citation would contradict the sentence beside it.
+    """
+    cardinality = "prohibited" if specification.maxOccurs == 0 else str(facet.cardinality)
+    return RequirementBasis(
+        facet_type=type(facet).__name__.lower(),
+        name=_facet_subject_name(facet),
+        cardinality=cardinality,
+        comparisons=_comparisons(getattr(facet, "value", None)),
+    )
+
+
 def _requirement(facet: Any, specification: Any, entity_limit: int) -> RequirementOutcome:
     outcomes = tuple(_outcome(f["element"], f["reason"]) for f in facet.failures)
     passed = len(facet.passed_entities)
@@ -96,6 +150,7 @@ def _requirement(facet: Any, specification: Any, entity_limit: int) -> Requireme
 
     return RequirementOutcome(
         description=facet.to_string(clause_type, specification, facet),
+        basis=_requirement_basis(facet, specification),
         status=_aggregate(passed, failed, indeterminate),
         passed=passed,
         failed=failed,
@@ -179,6 +234,9 @@ def _specification(spec: Any, entity_limit: int) -> SpecificationOutcome:
     return SpecificationOutcome(
         name=spec.name or "",
         description=spec.description or "",
+        applicability_description=" and ".join(
+            f.to_string("applicability") for f in spec.applicability
+        ),
         instructions=spec.instructions or "",
         applicability=applicability,
         status=status,
