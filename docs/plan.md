@@ -114,6 +114,29 @@ each of which the current architecture was shaped to receive:
 - **Findings as rows**, when dispositions arrive and findings need identity across runs.
   Until then the report is one JSON document, which is what it is used as.
 
+## Regulation corpus workstream — **IN PROGRESS 2026-09-02**
+
+This workstream supports Gate 1 and the later rule-pack phase without putting jurisdictional
+logic into the checking engine. It converts the official INBR publications into a source-
+anchored semantic corpus; compiling accepted semantics into buildingSMART IDS remains a later
+and separate step.
+
+1. **Corpus contract and inventory — DONE 2026-09-02.** Immutable hashes, MIME checks, canonical Persian and
+   English titles, official ordering, editions, relationships, coverage, and quarantine.
+2. **Page transcription.** Native positioned text where trustworthy; Persian/English OCR for
+   scans, photographs, and watermarks; raw and normalized forms retained together.
+3. **Document structure.** Ordered hierarchy, clauses, definitions, tables, figures,
+   equations, symbols, units, printed page labels, and exact source spans.
+4. **Model extraction.** Section-aware chunks capped near ten pages, two blind Luna
+   extractions, strict Structured Outputs, and raw-response retention.
+5. **Validation.** Deterministic anchor/reference/formula checks, independent Luna validation,
+   official-web corroboration, conflict reconciliation, and quarantine.
+6. **Publication.** Immutable JSON/JSONL plus a complete coverage and deferred-human-review
+   report. Processing runs to terminal states without waiting for a reviewer; flagged content
+   cannot enter the publishable corpus until reviewed later.
+
+The active task is `docs/tasks/T-0024-regulation-corpus-contract.md`.
+
 ---
 
 ## Constraints on what is not built yet

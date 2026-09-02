@@ -26,8 +26,8 @@ format:  ## Apply ruff fixes and formatting
 	$(UV) ruff check . --fix
 	$(UV) ruff format .
 
-types:  ## mypy --strict over the engine and the service
-	$(UV) mypy packages/engine/src $(API)/cadgpt
+types:  ## mypy --strict over the Python packages and the service
+	$(UV) mypy packages/engine/src packages/regulations/src $(API)/cadgpt
 
 contracts:  ## The import contracts: I1, engine independence, app layering
 	$(UV) lint-imports --no-cache

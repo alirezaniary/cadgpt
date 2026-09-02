@@ -7,11 +7,13 @@ members = ["packages/*", "services/api"]
 [tool.uv.sources]
 cadgpt-engine = { workspace = true }
 cadgpt-api = { workspace = true }
+cadgpt-regulations = { workspace = true }
 
 [dependency-groups]
 dev = [
     "cadgpt-engine",
     "cadgpt-api",
+    "cadgpt-regulations",
     "pytest>=8.0",
     "pytest-django>=4.9",
     "pytest-cov>=5.0",
@@ -21,6 +23,7 @@ dev = [
     "django-stubs[compatible-mypy]>=5.1",
     "djangorestframework-stubs[compatible-mypy]>=3.15",
     "types-python-dateutil>=2.9",
+    "types-jsonschema>=4.23",
     "factory-boy>=3.3",
 ]
 
@@ -55,6 +58,7 @@ ignore = [
 "**/tests/**" = ["S105", "S106", "ARG001", "ARG002"]
 "**/conftest.py" = ["S105", "S106", "ARG001", "ARG002"]
 "packages/engine/src/cadgpt_engine/cli.py" = ["T20"]
+"packages/regulations/src/cadgpt_regulations/cli.py" = ["T20"]
 "packages/engine/tests/fixtures/make_fixtures.py" = ["T20"]
 "services/api/cadgpt/config/settings/*" = ["F403", "F405"]
 
@@ -104,7 +108,7 @@ ignore_errors = true
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "cadgpt.config.settings.test"
 pythonpath = ["services/api"]
-testpaths = ["packages/engine/tests", "services/api/cadgpt"]
+testpaths = ["packages/engine/tests", "packages/regulations/tests", "services/api/cadgpt"]
 addopts = "-q --strict-markers"
 markers = [
     "integration: enters at a real entry point over real files and exits at a real output",
@@ -117,7 +121,7 @@ filterwarnings = ["error::DeprecationWarning:cadgpt.*"]
 # ---------------------------------------------------------------------------
 
 [tool.importlinter]
-root_packages = ["cadgpt_engine", "cadgpt"]
+root_packages = ["cadgpt_engine", "cadgpt_regulations", "cadgpt"]
 include_external_packages = true
 
 # I1 - rule evaluation is deterministic code. The engine cannot reach an inference client,
@@ -145,6 +149,19 @@ name = "The engine knows nothing about the service that hosts it"
 type = "forbidden"
 source_modules = ["cadgpt_engine"]
 forbidden_modules = ["cadgpt"]
+
+# Corpus acquisition may gain network and inference adapters, while evaluation never may.
+# Keeping the sibling packages independent prevents either concern leaking across that seam.
+[[tool.importlinter.contracts]]
+name = "Regulation acquisition and checking engine are independent"
+type = "independence"
+modules = ["cadgpt_regulations", "cadgpt_engine"]
+
+[[tool.importlinter.contracts]]
+name = "Regulation corpus core has no service or framework dependencies"
+type = "forbidden"
+source_modules = ["cadgpt_regulations"]
+forbidden_modules = ["cadgpt", "django", "rest_framework", "celery"]
 
 # Feature apps stack. A lower layer may not import a higher one, so a change to review/
 # can never ripple down into base/ and tenancy/.

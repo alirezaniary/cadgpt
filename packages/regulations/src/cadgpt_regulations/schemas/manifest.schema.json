@@ -1,0 +1,560 @@
+{
+  "$id": "https://cadgpt.local/schemas/regulation-manifest-1.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/artifact"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "catalog": {
+      "additionalProperties": false,
+      "properties": {
+        "catalog_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "provenance": {
+          "items": {
+            "$ref": "#/$defs/evidence"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "schema_version": {
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "type": "string"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "required": [
+        "catalog_id",
+        "schema_version",
+        "sha256",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "summary": {
+      "additionalProperties": false,
+      "properties": {
+        "artifacts_accounted": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "expected_artifacts": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "files_discovered": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "missing": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "needs_review": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pdf_pages": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "quarantined": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unaccounted": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "valid_pdfs": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "expected_artifacts",
+        "files_discovered",
+        "artifacts_accounted",
+        "valid_pdfs",
+        "quarantined",
+        "missing",
+        "unaccounted",
+        "needs_review",
+        "pdf_pages"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "catalog",
+    "summary",
+    "artifacts"
+  ],
+  "type": "object",
+  "$defs": {
+    "artifact": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_state": {
+          "enum": [
+            "ready",
+            "quarantined",
+            "pending"
+          ]
+        },
+        "bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "catalog_key": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "catalog_order": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "detected_media_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "document_kind": {
+          "enum": [
+            "numbered_volume",
+            "appendix",
+            "mandatory_appendix",
+            "amendment",
+            "clarification",
+            "circular",
+            "guide",
+            "handbook",
+            "unclassified"
+          ]
+        },
+        "edition": {
+          "$ref": "#/$defs/edition"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/error"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/evidence"
+          },
+          "type": "array"
+        },
+        "expected_media_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "expected_sha256": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "legal_status": {
+          "enum": [
+            "binding_regulation",
+            "binding_appendix",
+            "official_amendment",
+            "official_clarification",
+            "official_circular",
+            "supplementary_nonbinding",
+            "draft_nonbinding",
+            "unknown"
+          ]
+        },
+        "original_filename": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "pdf_page_count": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "present": {
+          "type": "boolean"
+        },
+        "relationships": {
+          "items": {
+            "$ref": "#/$defs/relationship"
+          },
+          "type": "array"
+        },
+        "review_flags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "review_status": {
+          "enum": [
+            "accepted",
+            "needs_review"
+          ]
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_urls": {
+          "items": {
+            "format": "iri",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "title_en": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title_fa": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "translation_provenance": {
+          "enum": [
+            "official",
+            "cover_translation",
+            "curated",
+            null
+          ]
+        },
+        "volume": {
+          "anyOf": [
+            {
+              "maximum": 24,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "catalog_key",
+        "catalog_order",
+        "original_filename",
+        "expected_media_type",
+        "expected_sha256",
+        "document_kind",
+        "volume",
+        "title_fa",
+        "title_en",
+        "translation_provenance",
+        "edition",
+        "legal_status",
+        "relationships",
+        "source_urls",
+        "evidence",
+        "review_status",
+        "review_flags",
+        "present",
+        "sha256",
+        "bytes",
+        "detected_media_type",
+        "artifact_state",
+        "pdf_page_count",
+        "error"
+      ],
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "artifact_state": {
+                "const": "ready"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "detected_media_type": {
+                "const": "application/pdf"
+              },
+              "error": {
+                "type": "null"
+              },
+              "bytes": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "pdf_page_count": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "present": {
+                "const": true
+              },
+              "sha256": {
+                "$ref": "#/$defs/sha256"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "artifact_state": {
+                "const": "quarantined"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "error": {
+                "$ref": "#/$defs/error"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "review_status": {
+                "const": "accepted"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "review_flags": {
+                "maxItems": 0
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "review_flags": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "present": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "bytes": {
+                "type": "null"
+              },
+              "detected_media_type": {
+                "type": "null"
+              },
+              "error": {
+                "properties": {
+                  "code": {
+                    "const": "EXPECTED_ARTIFACT_MISSING"
+                  }
+                }
+              },
+              "pdf_page_count": {
+                "type": "null"
+              },
+              "sha256": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "edition": {
+      "additionalProperties": false,
+      "properties": {
+        "edition_number": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "label_en": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "label_fa": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "publication_date_shamsi": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "publication_year_shamsi": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "label_fa",
+        "label_en",
+        "edition_number",
+        "publication_year_shamsi",
+        "publication_date_shamsi"
+      ],
+      "type": "object"
+    },
+    "error": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "MEDIA_TYPE_MISMATCH",
+            "PDFINFO_FAILED",
+            "PDFINFO_UNAVAILABLE",
+            "PDF_ENCRYPTED",
+            "UNSUPPORTED_MEDIA_TYPE",
+            "EXPECTED_ARTIFACT_MISSING",
+            "UNACCOUNTED_ARTIFACT",
+            "FILE_READ_FAILED",
+            "FILE_CHANGED_DURING_READ",
+            "UNSUPPORTED_FILE_TYPE",
+            "SOURCE_HASH_MISMATCH"
+          ]
+        },
+        "diagnostic": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "diagnostic"
+      ],
+      "type": "object"
+    },
+    "evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "note": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "url": {
+          "format": "iri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "url",
+        "note"
+      ],
+      "type": "object"
+    },
+    "relationship": {
+      "additionalProperties": false,
+      "properties": {
+        "order": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "target": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "EDITION_OF",
+            "APPENDIX_OF",
+            "MANDATORY_APPENDIX_OF",
+            "AMENDS",
+            "CLARIFIES",
+            "SUPERSEDES",
+            "GUIDE_FOR",
+            "DRAFT_OF",
+            "REFERENCES",
+            "EXPLAINS"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "target",
+        "order"
+      ],
+      "type": "object"
+    },
+    "sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    }
+  }
+}

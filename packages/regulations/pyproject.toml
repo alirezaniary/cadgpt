@@ -1,0 +1,19 @@
+[project]
+name = "cadgpt-regulations"
+version = "0.1.0"
+description = "Deterministic inventory and provenance contracts for regulation corpora."
+requires-python = ">=3.12"
+dependencies = [
+    "jsonschema>=4.23,<5.0",
+]
+
+[project.scripts]
+cadgpt-regulations = "cadgpt_regulations.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cadgpt_regulations"]
+

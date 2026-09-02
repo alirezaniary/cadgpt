@@ -359,3 +359,32 @@ people who are not us. That list is in `prd.md` 6 and is still unclaimed.
 
 **Reopens if:** one of them acquires a maintained release and solves something `prd.md` 6 does
 not already cover. Three of the five had their first and last commit on the same day.
+
+## 2026-09-02 — Extract regulations beside the engine, fail closed, and defer review
+
+The Iranian regulation corpus is now in scope as an offline authoring input, not as code baked
+into `cadgpt_engine`. A new package beside the engine will preserve the publications' source
+order, editions, appendices, amendments, prose, tables, and mathematics as structured,
+source-anchored data. Converting accepted semantics into buildingSMART IDS is explicitly not
+part of this workstream yet.
+
+The pipeline runs automatically until every document, page, chunk, and assertion reaches a
+terminal state. It never pauses the corpus run for human input. Ambiguous OCR, conflicting
+workers, uncertain legal relationships, and critical formula questions are accumulated in an
+append-only review queue and excluded from publishable data until reviewed later. This does
+not promise that models make no mistakes; it enforces the useful guarantee that no unsupported
+or unresolved assertion can silently cross the publication boundary.
+
+Official web material corroborates or contradicts the PDFs in a separately versioned evidence
+layer. Search results and unofficial mirrors may locate a source but are not evidence, and web
+content never silently rewrites the primary artifact. The checking engine remains deterministic,
+network-free, inference-free, and jurisdiction-agnostic.
+
+**Reopens if:** source licensing prevents retaining the required evidence artifacts, or a later
+ratification study shows that the fail-closed contract cannot support usable coverage.
+
+The first corpus contract uses JSON Schema Draft 2020-12, validated by the narrowly pinned
+`jsonschema` library, rather than introducing a model framework. Schemas are public artifacts
+that later non-Python workers can consume, reject unknown fields recursively, and make every
+contract version explicit. Poppler's existing `pdfinfo` executable remains the authoritative
+page-count source; this phase adds no PDF parser, OCR stack, network client, or inference SDK.

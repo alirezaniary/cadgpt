@@ -1,0 +1,412 @@
+{
+  "$id": "https://cadgpt.local/schemas/regulation-catalog-1.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/catalogArtifact"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "catalog_id": {
+      "const": "inbr-national-building-regulations"
+    },
+    "families": {
+      "items": {
+        "$ref": "#/$defs/family"
+      },
+      "maxItems": 24,
+      "minItems": 24,
+      "type": "array"
+    },
+    "provenance": {
+      "items": {
+        "$ref": "#/$defs/evidence"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    }
+  },
+  "required": [
+    "schema_version",
+    "catalog_id",
+    "provenance",
+    "families",
+    "artifacts"
+  ],
+  "type": "object",
+  "$defs": {
+    "catalogArtifact": {
+      "additionalProperties": false,
+      "properties": {
+        "catalog_key": {
+          "$ref": "#/$defs/key"
+        },
+        "catalog_order": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "document_kind": {
+          "$ref": "#/$defs/documentKind"
+        },
+        "edition": {
+          "$ref": "#/$defs/edition"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/evidence"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "expected_media_type": {
+          "const": "application/pdf"
+        },
+        "expected_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "legal_status": {
+          "$ref": "#/$defs/legalStatus"
+        },
+        "original_filename": {
+          "minLength": 1,
+          "pattern": "^[^/\\\\]+$",
+          "type": "string"
+        },
+        "relationships": {
+          "items": {
+            "$ref": "#/$defs/relationship"
+          },
+          "type": "array"
+        },
+        "review_flags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "review_status": {
+          "enum": [
+            "accepted",
+            "needs_review"
+          ]
+        },
+        "source_urls": {
+          "items": {
+            "format": "iri",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "title_en": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "title_fa": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "translation_provenance": {
+          "$ref": "#/$defs/translationProvenance"
+        },
+        "volume": {
+          "anyOf": [
+            {
+              "maximum": 24,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "catalog_key",
+        "catalog_order",
+        "original_filename",
+        "expected_media_type",
+        "expected_sha256",
+        "document_kind",
+        "volume",
+        "title_fa",
+        "title_en",
+        "translation_provenance",
+        "edition",
+        "legal_status",
+        "relationships",
+        "source_urls",
+        "evidence",
+        "review_status",
+        "review_flags"
+      ],
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "review_status": {
+                "const": "accepted"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "review_flags": {
+                "maxItems": 0
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "review_flags": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "document_kind": {
+                "const": "numbered_volume"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "legal_status": {
+                "const": "binding_regulation"
+              },
+              "volume": {
+                "maximum": 24,
+                "minimum": 1,
+                "type": "integer"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "documentKind": {
+      "enum": [
+        "numbered_volume",
+        "appendix",
+        "mandatory_appendix",
+        "amendment",
+        "clarification",
+        "circular",
+        "guide",
+        "handbook"
+      ]
+    },
+    "edition": {
+      "additionalProperties": false,
+      "properties": {
+        "edition_number": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "label_en": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "label_fa": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "publication_date_shamsi": {
+          "pattern": "^[0-9]{4}/[0-9]{2}/[0-9]{2}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "publication_year_shamsi": {
+          "pattern": "^[0-9]{4}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "label_fa",
+        "label_en",
+        "edition_number",
+        "publication_year_shamsi",
+        "publication_date_shamsi"
+      ],
+      "type": "object"
+    },
+    "evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "official_catalog",
+            "official_rest_record",
+            "official_historical_metadata",
+            "official_document_cover",
+            "official_post",
+            "source_url"
+          ]
+        },
+        "note": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "url": {
+          "format": "iri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "url",
+        "note"
+      ],
+      "type": "object"
+    },
+    "family": {
+      "additionalProperties": false,
+      "properties": {
+        "catalog_key": {
+          "$ref": "#/$defs/key"
+        },
+        "catalog_order": {
+          "maximum": 24,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/evidence"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "source_urls": {
+          "items": {
+            "format": "iri",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "title_en": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "title_fa": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "translation_provenance": {
+          "$ref": "#/$defs/translationProvenance"
+        },
+        "volume": {
+          "maximum": 24,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "catalog_key",
+        "catalog_order",
+        "volume",
+        "title_fa",
+        "title_en",
+        "translation_provenance",
+        "source_urls",
+        "evidence"
+      ],
+      "type": "object"
+    },
+    "key": {
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "legalStatus": {
+      "enum": [
+        "binding_regulation",
+        "binding_appendix",
+        "official_amendment",
+        "official_clarification",
+        "official_circular",
+        "supplementary_nonbinding",
+        "draft_nonbinding",
+        "unknown"
+      ]
+    },
+    "relationship": {
+      "additionalProperties": false,
+      "properties": {
+        "order": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target": {
+          "$ref": "#/$defs/key"
+        },
+        "type": {
+          "enum": [
+            "EDITION_OF",
+            "APPENDIX_OF",
+            "MANDATORY_APPENDIX_OF",
+            "AMENDS",
+            "CLARIFIES",
+            "SUPERSEDES",
+            "GUIDE_FOR",
+            "DRAFT_OF",
+            "REFERENCES",
+            "EXPLAINS"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "target",
+        "order"
+      ],
+      "type": "object"
+    },
+    "sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "translationProvenance": {
+      "enum": [
+        "official",
+        "cover_translation",
+        "curated"
+      ]
+    }
+  }
+}
