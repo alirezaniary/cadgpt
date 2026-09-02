@@ -310,3 +310,52 @@ otherwise ten queries failing together fire ten refreshes and rotate the token o
 under nine of them.
 
 **Reopens if:** a native client needs a token the browser rules do not fit.
+
+## 2026-09-02 — Five agentic-BIM repositories evaluated; one kept as a reference, none as a dependency
+
+Checked against the "inherit before writing" rule, to be sure the connector and agent work is
+not reinventing something that already exists: `SquareZero-Inc/bibim-revit`,
+`tell2jyoti/RevitBIMIntelligence`, `Daviidro/ifcopenshell-mcp`, `ZihanDDD/BIMgent`,
+`mac999/BIM_graph_agent`. Metadata, file trees and the load-bearing source files were read, not
+just the descriptions.
+
+**Kept: bibim-revit as a packaging reference only** (Apache-2.0 — GitHub reports `NOASSERTION`,
+which is a false flag from an appended copyright block; the LICENSE is the standard text). Its
+architecture is natural language to C#, compiled by Roslyn and executed inside Revit, which is
+exactly what `prd.md` 5.9 forbids; its `LocalRevitRagService` exists to stop the model
+hallucinating Revit API methods, a mitigation a closed enumerated tool surface does not need.
+What is worth keeping is the part nobody enjoys writing: `.addin` manifests, the dockable panel
+provider, per-user installation, and a React frontend hosted inside a Revit pane. The pre-flight
+tool needs all four. Consult it then; do not depend on it.
+
+**RevitBIMIntelligence: read one file as a negative example.** It is the closest of the five in
+philosophy — typed C# tools, deterministic counts, no code generation — and its
+`RoomDataEventHandler.cs` is the UI-thread marshalling of `prd.md` 5.10. It is also broken in
+the way that section predicts. `_pendingRequest` is a single static slot rather than a queue, so
+a second concurrent request overwrites the first and the abandoned `TaskCompletionSource` never
+completes; there is no synchronization on it; on its five-second timeout it silently returns
+stale cached room data as though it were fresh, handing the model stale state; and it subscribes
+to `Idling` permanently while the class named `ExternalEventManager` is left as a no-op shim.
+Copy the shape, never the file.
+
+**Dropped: ifcopenshell-mcp** — eight thin wrappers over `ifcopenshell` we would each write in a
+few lines, a `validate_ifc_model` returning PASS/FAIL/WARNING rather than our three values, and
+a problem we do not have, since the agent reaches our engine in-process and MCP is for the host.
+
+**Dropped: BIMgent** — VLM computer-use driving a CAD GUI, plus a CNN that generates floorplans
+from raster images. The generated floorplan is `prd.md` 10's non-goal and "measure, never invent"
+in one component. GPL-3.0 would additionally be live here, because connector code ships to user
+machines — the condition `prd.md` 6 names for licence terms mattering at all.
+
+**Dropped: BIM_graph_agent** — IFC to Neo4j to LLM Cypher. It is the concrete instance of the
+rejection recorded at `prd.md` 5.4: a second store to keep in sync with the model, answering
+nothing that topologicpy's dual graph and `Related` observations do not.
+
+The conclusion that matters is where the leverage actually is. None of these five reduces the
+code we write. `pyRevit` alone removes the add-in bootstrap, per-user install and Python hosting
+that bibim-revit spends fifty-two C# files on, and `ifcpatch`, `ifc5d.qto`, `topologicpy`, the
+`ifctester` reporters, `ids-light-editor` and IDS-Audit-tool are all maintained upstream by
+people who are not us. That list is in `prd.md` 6 and is still unclaimed.
+
+**Reopens if:** one of them acquires a maintained release and solves something `prd.md` 6 does
+not already cover. Three of the five had their first and last commit on the same day.
