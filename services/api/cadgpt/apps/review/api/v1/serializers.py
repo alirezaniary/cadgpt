@@ -58,6 +58,7 @@ class CheckRunDetailSerializer(CheckRunSummarySerializer):
             "report",
             "model_checksum",
             "rule_set_checksum",
+            "rule_pack_selection",
         )
         read_only_fields = fields
 
@@ -93,15 +94,18 @@ class ReviewSerializer(serializers.ModelSerializer[Review]):
 
 
 class ReviewCreateSerializer(serializers.Serializer[Any]):
-    """References an uploaded model and a registered rule set by UUID.
+    """References an uploaded model, and either a registered rule set or the catalogue.
 
-    Both are resolved through the tenant-scoped queryset rather than trusted from the
-    payload, so naming another tenant's file is a 404 and not a leak.
+    `rule_set` is optional: a review created without one has no rule source of its own,
+    and each check against it must be given a catalogue selection when requested
+    (`CheckRequestSerializer`, T-0031). Both `model_file` and `rule_set` are resolved
+    through the tenant-scoped queryset rather than trusted from the payload, so naming
+    another tenant's file is a 404 and not a leak.
     """
 
     name = serializers.CharField(max_length=255)
     model_file = serializers.UUIDField(write_only=True)
-    rule_set = serializers.UUIDField(write_only=True)
+    rule_set = serializers.UUIDField(write_only=True, required=False, allow_null=True)
 
     def create(self, validated_data: dict[str, Any]) -> Review:
         request = self.context["request"]
@@ -114,13 +118,16 @@ class ReviewCreateSerializer(serializers.Serializer[Any]):
         if media is None:
             raise NotFoundError(_("That uploaded model does not exist."))
 
-        rule_set = (
-            RuleSet.objects.for_tenant(request.tenant)
-            .filter(uuid=validated_data["rule_set"])
-            .first()
-        )
-        if rule_set is None:
-            raise NotFoundError(_("That rule set does not exist."))
+        rule_set = None
+        rule_set_uuid = validated_data.get("rule_set")
+        if rule_set_uuid is not None:
+            rule_set = (
+                RuleSet.objects.for_tenant(request.tenant)
+                .filter(uuid=rule_set_uuid)
+                .first()
+            )
+            if rule_set is None:
+                raise NotFoundError(_("That rule set does not exist."))
 
         return ReviewService(tenant=request.tenant).create(
             name=validated_data["name"],
@@ -134,12 +141,25 @@ class ReviewCreateSerializer(serializers.Serializer[Any]):
 
 
 class CheckRequestSerializer(serializers.Serializer[Any]):
-    """Starting a check takes no input; the review already names its own inputs."""
+    """Starting a check takes no input when the review names an uploaded rule set.
 
-    def create(self, validated_data: dict[str, Any]) -> CheckRun:  # noqa: ARG002
+    `rule_packs` is the catalogue selection, required only when the review has none --
+    `ReviewService.request_check` (`_resolve_selection`) is where that is enforced and
+    where an unknown or ambiguous pack is refused, because that validation is business
+    logic and belongs in the service, not here. This serializer only carries the raw
+    input across the boundary.
+    """
+
+    rule_packs = serializers.ListField(
+        child=serializers.UUIDField(), required=False, default=list
+    )
+
+    def create(self, validated_data: dict[str, Any]) -> CheckRun:
         request = self.context["request"]
         return ReviewService(tenant=request.tenant).request_check(
-            review=self.context["review"], requested_by=request.user
+            review=self.context["review"],
+            requested_by=request.user,
+            rule_pack_uuids=[str(uuid) for uuid in validated_data.get("rule_packs", [])],
         )
 
     def to_representation(self, instance: CheckRun) -> dict[str, Any]:

@@ -34,6 +34,15 @@ class CheckRunFailure(models.TextChoices):
     INVALID_RULE_SET = "invalid_rule_set", _("The rule set could not be read")
     STALLED = "stalled", _("The check stopped responding and was ended")
     INTERNAL_ERROR = "internal_error", _("The check failed unexpectedly")
+    #: A cited catalogue pack's bytes no longer match the checksum this run recorded at
+    #: dispatch (T-0031's `RulePackService.checksum_of`, compared at execution). Distinct
+    #: from `INVALID_RULE_SET`: the file parses fine, it is simply not the file the
+    #: citation named -- the run must never silently check something else and still claim
+    #: it checked what it cited.
+    RULE_PACK_MODIFIED = (
+        "rule_pack_modified",
+        _("A cited rule pack no longer matches the bytes this run recorded"),
+    )
 
 
 class OutcomeStatus(models.TextChoices):

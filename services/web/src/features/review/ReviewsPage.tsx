@@ -4,9 +4,16 @@
  * Everything that takes time is asynchronous by construction. Starting a check returns a
  * queued run immediately and the page polls it; nothing here waits on a request that
  * could take minutes.
+ *
+ * A review checks against either an uploaded rule set (unchanged since before T-0031) or
+ * the shipped catalogue. The catalogue path is selected by leaving the rule set picker on
+ * its first option at review-creation time; the actual packs are chosen per check, in the
+ * picker rendered beside a review that has none of its own -- `docs/tasks/
+ * T-0031-rule-selection-on-the-run.md`, "the API accepting a selection when a check is
+ * requested".
  */
 
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ApiError } from "@/api/client";
@@ -16,6 +23,7 @@ import {
   useCreateReview,
   useCreateRuleSet,
   useReviews,
+  useRulePacks,
   useRuleSets,
   useStartCheck,
 } from "@/api/queries";
@@ -30,6 +38,7 @@ export function ReviewsPage() {
 
   const reviews = useReviews(slug);
   const ruleSets = useRuleSets(slug);
+  const rulePacks = useRulePacks(slug);
   const createRuleSet = useCreateRuleSet(slug);
   const createReview = useCreateReview(slug);
   const startCheck = useStartCheck(slug);
@@ -38,7 +47,26 @@ export function ReviewsPage() {
   const [openRun, setOpenRun] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // The packs picked for each catalogue-only review, keyed by review uuid -- a selection
+  // made per check request, not stored on the review (T-0031).
+  const [selection, setSelection] = useState<Record<string, string[]>>({});
+  const [catalogueFilter, setCatalogueFilter] = useState({
+    jurisdiction: "",
+    region: "",
+    version: "",
+  });
+
   const run = useCheckRun(openReview ?? "", openRun);
+
+  const filteredPacks = useMemo(() => {
+    const packs = rulePacks.data?.results ?? [];
+    return packs.filter(
+      (pack) =>
+        pack.jurisdiction.toLowerCase().includes(catalogueFilter.jurisdiction.toLowerCase()) &&
+        pack.region.toLowerCase().includes(catalogueFilter.region.toLowerCase()) &&
+        pack.version.toLowerCase().includes(catalogueFilter.version.toLowerCase()),
+    );
+  }, [rulePacks.data, catalogueFilter]);
 
   function report(caught: unknown) {
     setError(caught instanceof ApiError ? caught.message : t("error.generic"));
@@ -76,10 +104,22 @@ export function ReviewsPage() {
     }
   }
 
-  async function onCheck(reviewUuid: string) {
+  function togglePack(reviewUuid: string, packUuid: string, checked: boolean) {
+    setSelection((current) => {
+      const picked = new Set(current[reviewUuid] ?? []);
+      if (checked) picked.add(packUuid);
+      else picked.delete(packUuid);
+      return { ...current, [reviewUuid]: [...picked] };
+    });
+  }
+
+  async function onCheck(reviewUuid: string, rulePacksForReview?: string[]) {
     setError(null);
     try {
-      const queued = await startCheck.mutateAsync(reviewUuid);
+      const queued = await startCheck.mutateAsync({
+        reviewUuid,
+        rulePacks: rulePacksForReview,
+      });
       setOpenReview(reviewUuid);
       setOpenRun(queued.uuid);
     } catch (caught) {
@@ -117,10 +157,8 @@ export function ReviewsPage() {
         <h2>{t("review.title")}</h2>
         <form className="row" onSubmit={onCreateReview}>
           <input name="name" placeholder={t("review.name")} required />
-          <select name="rule_set" required defaultValue="">
-            <option value="" disabled>
-              {t("review.ruleSet")}
-            </option>
+          <select name="rule_set" defaultValue="">
+            <option value="">{t("review.ruleSetNone")}</option>
             {ruleSets.data?.results.map((ruleSet) => (
               <option key={ruleSet.uuid} value={ruleSet.uuid}>
                 {ruleSet.name}
@@ -139,6 +177,9 @@ export function ReviewsPage() {
           {reviews.data?.results.map((review) => {
             const latest = review.latest_run;
             const busy = latest !== null && !isTerminal(latest.status);
+            const usesCatalogue = review.rule_set === null;
+            const picked = selection[review.uuid] ?? [];
+
             return (
               <li key={review.uuid} className="review">
                 <div className="review__head">
@@ -155,13 +196,15 @@ export function ReviewsPage() {
                     ) : (
                       <span className="muted">{t("review.neverRun")}</span>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => void onCheck(review.uuid)}
-                      disabled={busy || startCheck.isPending}
-                    >
-                      {busy ? t("review.checking") : t("review.check")}
-                    </button>
+                    {!usesCatalogue && (
+                      <button
+                        type="button"
+                        onClick={() => void onCheck(review.uuid)}
+                        disabled={busy || startCheck.isPending}
+                      >
+                        {busy ? t("review.checking") : t("review.check")}
+                      </button>
+                    )}
                     {latest && isTerminal(latest.status) && (
                       <button
                         type="button"
@@ -175,6 +218,67 @@ export function ReviewsPage() {
                     )}
                   </div>
                 </div>
+
+                {usesCatalogue && (
+                  <div className="review__catalogue" data-testid="catalogue-picker">
+                    <p className="muted">{t("review.catalogue.title")}</p>
+                    <div className="row">
+                      <input
+                        placeholder={t("review.catalogue.jurisdiction")}
+                        value={catalogueFilter.jurisdiction}
+                        onChange={(e) =>
+                          setCatalogueFilter((f) => ({ ...f, jurisdiction: e.target.value }))
+                        }
+                      />
+                      <input
+                        placeholder={t("review.catalogue.region")}
+                        value={catalogueFilter.region}
+                        onChange={(e) =>
+                          setCatalogueFilter((f) => ({ ...f, region: e.target.value }))
+                        }
+                      />
+                      <input
+                        placeholder={t("review.catalogue.version")}
+                        value={catalogueFilter.version}
+                        onChange={(e) =>
+                          setCatalogueFilter((f) => ({ ...f, version: e.target.value }))
+                        }
+                      />
+                    </div>
+                    {filteredPacks.length === 0 && (
+                      <p className="muted">{t("review.catalogue.empty")}</p>
+                    )}
+                    <ul className="list">
+                      {filteredPacks.map((pack) => (
+                        <li key={pack.uuid}>
+                          <label>
+                            <input
+                              type="checkbox"
+                              checked={picked.includes(pack.uuid)}
+                              onChange={(e) =>
+                                togglePack(review.uuid, pack.uuid, e.target.checked)
+                              }
+                            />
+                            {" "}
+                            {pack.name}
+                            <span className="muted">
+                              {" "}
+                              — {pack.jurisdiction}
+                              {pack.region ? `/${pack.region}` : ""} v{pack.version}
+                            </span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      type="button"
+                      onClick={() => void onCheck(review.uuid, picked)}
+                      disabled={busy || picked.length === 0 || startCheck.isPending}
+                    >
+                      {busy ? t("review.checking") : t("review.catalogue.checkSelected")}
+                    </button>
+                  </div>
+                )}
 
                 {latest && latest.status === "succeeded" && (
                   <p className="muted">
@@ -190,7 +294,9 @@ export function ReviewsPage() {
         </ul>
       </section>
 
-      {run.data?.report && <ReportView report={run.data.report} />}
+      {run.data?.report && (
+        <ReportView report={run.data.report} rulePackSelection={run.data.rule_pack_selection} />
+      )}
     </main>
   );
 }

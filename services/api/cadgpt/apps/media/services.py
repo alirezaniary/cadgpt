@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
-import shutil
-import tempfile
 from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -16,6 +14,7 @@ from django.utils.translation import gettext_lazy as _
 
 from cadgpt.apps.account.models import User
 from cadgpt.apps.base.exceptions import ValidationError
+from cadgpt.apps.base.files import local_path as _local_path
 from cadgpt.apps.base.services import BaseTenantAwareService
 from cadgpt.apps.media.constants import ALLOWED_EXTENSIONS, CHECKSUM_CHUNK_BYTES, MAX_BYTES
 from cadgpt.apps.media.models import Media
@@ -53,43 +52,14 @@ class MediaService(BaseTenantAwareService):
     def local_path(self, media: Media) -> Iterator[Path]:
         """Yield a filesystem path for `media`, downloading it only if it is remote.
 
-        The checking engine works on paths, because `ifcopenshell` parses from a file. On
-        a local filesystem backend this hands over the real path and copies nothing; on
-        object storage it streams to a temporary file and deletes it afterwards. Callers
-        get one contract either way, so the worker does not have to know where files live.
-
-        The shortcut requires a file that is actually readable, not a backend that merely
-        offers a `path` attribute. Django's in-memory storage offers one and writes
-        nothing behind it, and an S3 backend can be configured with a location too -- so
-        trusting the attribute yields a path to a file that is not there, and the caller
-        gets a parse error about the user's upload instead of about our storage.
+        The checking engine works on paths, because `ifcopenshell` parses from a file.
+        Callers get one contract either way, so the worker does not have to know where
+        files live. The actual fallback -- stream to a temporary file only when the
+        storage backend offers no real path -- lives in `cadgpt.apps.base.files`, shared
+        with `rulepack.services.RulePackService.local_path` for the same reason.
         """
-        storage_path = self._readable_path(media)
-        if storage_path is not None:
-            yield storage_path
-            return
-
-        suffix = PurePosixPath(media.original_name).suffix.lower()[:16]
-        handle = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)  # noqa: SIM115
-        try:
-            with handle:
-                media.file.open("rb")
-                try:
-                    shutil.copyfileobj(media.file, handle, CHECKSUM_CHUNK_BYTES)
-                finally:
-                    media.file.close()
-            yield Path(handle.name)
-        finally:
-            Path(handle.name).unlink(missing_ok=True)
-
-    @staticmethod
-    def _readable_path(media: Media) -> Path | None:
-        """The backing file's own path, but only if it exists and can be opened."""
-        try:
-            candidate = Path(media.file.path)
-        except (NotImplementedError, ValueError, AttributeError):
-            return None
-        return candidate if candidate.is_file() else None
+        with _local_path(media.file, media.original_name) as path:
+            yield path
 
     def _validate(self, upload: UploadedFile[Any], kind: str) -> None:
         if kind not in ALLOWED_EXTENSIONS:

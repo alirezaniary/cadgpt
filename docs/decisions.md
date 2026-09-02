@@ -624,3 +624,53 @@ jurisdiction, region or version for a pack that does not exist is refused; "samp
 plainly what these three rows are, and the product owner's real packs — Iranian building code
 first — replace nothing here, they are simply seeded beside them under their own real
 jurisdiction values.
+
+## A selection of several packs is one run with several rule sources
+
+*2026-09-02, decided while building T-0031.*
+
+`docs/tasks/T-0031-rule-selection-on-the-run.md` names the choice explicitly and asks it be
+decided deliberately: several packs against one model is either one `CheckRun` citing all of
+them, or several `CheckRun`s, one per pack. **One run.** `CheckRunExecutor._evaluate_selection`
+calls `cadgpt_engine.run_check` once per selected pack -- the engine keeps its existing
+single-IDS signature unchanged, so it still never learns what a `RulePack` is -- and
+`execution.py`'s new `_combine_reports` concatenates every pack's `Report.specifications` into
+one tuple and sums the six counts before the result is stored on a single `CheckRun.report`.
+
+The alternative, several runs, was rejected for the reason the task calls out by name: it makes
+"N of M specifications evaluated" a per-pack sentence again, silently reporting full coverage of
+whichever pack happened to render last while the others are a click away and easy to miss. One
+run keeps that sentence true across the whole selection, because it is read straight off
+`report.specifications.length` -- `services/web/src/components/ReportView.tsx`'s `evaluated`
+computation did not have to change at all for this to be true; it already summed over whatever
+`report.specifications` contained.
+
+The selection itself is never a foreign key. `CheckRun.rule_pack_selection` is a `JSONField`
+holding, per pack, the uuid, name, jurisdiction, region, version and a SHA-256 of the IDS file's
+bytes (`RulePackService.snapshot`), captured once at dispatch time in `ReviewService.
+request_check` before the run is created. A pack row is immutable once seeded (T-0030's
+idempotent seeder never overwrites), so in the ordinary case this is redundant with reading the
+row live -- but a run's own citation must not be able to go stale or be redefined by a later
+catalogue edit (a version bump is a new row, seeded beside the old one), and the redundancy is
+what keeps a completed run's report honest regardless of what the catalogue looks like by the
+time anyone reads it back. Verified against the real stack, not assumed: a pack's version was
+bumped (seeded as a new row) after a run completed, and the run's `rule_pack_selection` read
+back byte-identical to what it recorded at dispatch.
+
+An unknown or duplicate pack in a selection is refused outright rather than narrowed silently --
+"Unknown rule pack: `<uuid>`." and "The same rule pack was selected more than once, which is
+ambiguous: `<uuid>`." are both domain `ValidationError`s raised from `ReviewService.
+_resolve_selection` before any `CheckRun` row is created, matching I3's refusal-over-silent-
+narrowing stance for coverage the catalogue task (T-0030) already established for the store
+itself.
+
+A real-path defect this task's evidence run found and fixed, not merely a test failure: with
+`Review.rule_set` now nullable, `CheckRunExecutor._claim`'s `select_for_update()` over
+`select_related("review__rule_set")` became a lock across a LEFT OUTER JOIN, which Postgres
+refuses ("FOR UPDATE cannot be applied to the nullable side of an outer join") while sqlite --
+what the test settings use -- does not enforce at all. `make verify` was green throughout; only
+running the real check against the compose stack's real Postgres surfaced it. Fixed with
+`select_for_update(of=("self",))`, which restricts the row lock to `check_run` itself.
+
+**Reopens if:** a pack's own content ever needs to change without a new version number, which
+would make the stored checksum the only thing still telling the truth about what a run checked.

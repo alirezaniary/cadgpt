@@ -97,6 +97,7 @@ def test_the_run_records_the_exact_inputs_it_checked(
     run = CheckRun.objects.for_tenant(review.tenant).first()
 
     assert run is not None
+    assert review.rule_set is not None
     assert run.model_checksum == review.model_file.checksum_sha256
     assert run.rule_set_checksum == review.rule_set.source_file.checksum_sha256
 

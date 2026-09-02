@@ -228,6 +228,37 @@ msgstr "بررسی‌ای برای این مورد در حال اجراست."
 msgid "The model and the rule set must belong to this workspace."
 msgstr "مدل و مجموعه قواعد باید به این فضای کاری تعلق داشته باشند."
 
+#: cadgpt/apps/review/services/review.py (_resolve_selection: rule_set + rule_packs both given)
+msgid ""
+"This review already checks against an uploaded rule set; it cannot also "
+"select packs from the catalogue."
+msgstr ""
+"این بررسی از پیش با یک مجموعه قواعد بارگذاری‌شده بررسی می‌شود؛ نمی‌توان "
+"هم‌زمان بسته‌هایی هم از فهرست مقررات انتخاب کرد."
+
+#: cadgpt/apps/review/services/review.py (_resolve_selection: no rule set, no packs)
+msgid ""
+"This review has no uploaded rule set. Select at least one rule pack from "
+"the catalogue to check against."
+msgstr ""
+"این بررسی هیچ مجموعه قواعد بارگذاری‌شده‌ای ندارد. دست‌کم یک بسته مقرراتی "
+"از فهرست را برای بررسی انتخاب کنید."
+
+#: cadgpt/apps/review/services/review.py (_resolve_selection: same pack selected twice)
+msgid ""
+"The same rule pack was selected more than once, which is ambiguous: "
+"%(uuids)s."
+msgstr ""
+"یک بسته مقرراتی بیش از یک بار انتخاب شده که این کار مبهم است: %(uuids)s."
+
+#: cadgpt/apps/review/services/review.py (_resolve_selection: pack uuid not in the catalogue)
+msgid "Unknown rule pack: %(uuids)s."
+msgstr "بستهٔ مقرراتی ناشناخته: %(uuids)s."
+
+#: cadgpt/apps/review/choices.py (CheckRunFailure.RULE_PACK_MODIFIED -- T-0031 review, F1)
+msgid "A cited rule pack no longer matches the bytes this run recorded"
+msgstr "بسته مقرراتی استنادشده دیگر با بایت‌هایی که این بررسی ثبت کرده مطابقت ندارد"
+
 msgid "English"
 msgstr "انگلیسی"
 

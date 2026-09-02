@@ -24,7 +24,15 @@ from cadgpt.apps.tenancy.models import TenantOwnedModel
 
 
 class Review(TenantOwnedModel, SoftDeleteModelMixin, UuidBaseModel):
-    """One model checked against one rule set, over as many runs as it takes."""
+    """One model checked against a rule source, over as many runs as it takes.
+
+    That source is either an uploaded `RuleSet` -- carried here, unchanged since before
+    T-0031 -- or the shipped catalogue, selected per run rather than fixed on the review.
+    `rule_set` is therefore nullable: a review with no `rule_set` names no rule source of
+    its own, and each `CheckRun` beneath it must be given a catalogue selection when it is
+    requested (`ReviewService.request_check`, `CheckRun.rule_pack_selection`). A review
+    with a `rule_set` keeps working exactly as it always has -- that path is unchanged.
+    """
 
     tenant_related_name = "reviews"
 
@@ -40,6 +48,8 @@ class Review(TenantOwnedModel, SoftDeleteModelMixin, UuidBaseModel):
         on_delete=models.PROTECT,
         related_name="reviews",
         verbose_name=_("rule set"),
+        null=True,
+        blank=True,
     )
     created_by = models.ForeignKey(
         "account.User",
@@ -99,6 +109,16 @@ class CheckRun(TenantOwnedModel, UuidBaseModel):
     engine_version = models.CharField(_("engine version"), max_length=64, blank=True)
     model_checksum = models.CharField(_("model SHA-256"), max_length=64, blank=True)
     rule_set_checksum = models.CharField(_("rule set SHA-256"), max_length=64, blank=True)
+
+    #: The catalogue selection this run was dispatched with, captured at that moment as
+    #: plain data -- never a foreign key a later catalogue edit could redefine underneath
+    #: an already-dispatched run. Empty for a run against `review.rule_set` (the existing
+    #: single-upload path); one entry per selected pack otherwise, each carrying the
+    #: pack's uuid, name, jurisdiction, region, version and a content hash. See
+    #: `rulepack.services.RulePackService.snapshot` and `docs/decisions.md`.
+    rule_pack_selection = models.JSONField(
+        _("rule pack selection"), default=list, blank=True
+    )
 
     outcome = models.CharField(
         _("outcome"),

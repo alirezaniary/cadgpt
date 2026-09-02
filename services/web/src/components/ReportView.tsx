@@ -23,7 +23,13 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { EntityOutcome, Report, SpecificationOutcome, Status } from "@/api/types";
+import type {
+  EntityOutcome,
+  Report,
+  RulePackSelectionEntry,
+  SpecificationOutcome,
+  Status,
+} from "@/api/types";
 import { StatusPill } from "@/components/StatusPill";
 
 /** FAIL first, then INDETERMINATE, then PASS. INDETERMINATE never sorts under PASS. */
@@ -69,7 +75,17 @@ function isVisible(entity: EntityOutcome, filter: EntityFilter): boolean {
   return entity.status === "PASS" ? true : filter[entity.status];
 }
 
-export function ReportView({ report }: { report: Report }) {
+export function ReportView({
+  report,
+  rulePackSelection,
+}: {
+  report: Report;
+  /** The run's own citation (T-0031) -- empty for a run against an uploaded rule set,
+   * one entry per pack for a catalogue run. Rendered here, not composed from the
+   * catalogue's current state, so it keeps showing what the run actually checked even
+   * after the catalogue moves on. */
+  rulePackSelection?: RulePackSelectionEntry[];
+}) {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<EntityFilter>(ALL_VISIBLE);
 
@@ -113,6 +129,24 @@ export function ReportView({ report }: { report: Report }) {
         <h4>{report.disclosure_title}</h4>
         <p>{report.disclosure_text}</p>
       </section>
+
+      {rulePackSelection && rulePackSelection.length > 0 && (
+        <section className="selection" data-testid="rule-pack-selection">
+          <h4>{t("report.selection.title")}</h4>
+          <ul className="list">
+            {rulePackSelection.map((pack) => (
+              <li key={pack.uuid}>
+                {pack.name}
+                <span className="muted">
+                  {" "}
+                  — {pack.jurisdiction}
+                  {pack.region ? `/${pack.region}` : ""} v{pack.version}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="coverage" data-testid="coverage">
         <h4>{t("report.coverage.title")}</h4>

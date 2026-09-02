@@ -112,6 +112,15 @@ def review(tenant: Tenant, owner: User, ifc_media: Media, rule_set: RuleSet) -> 
 
 
 @pytest.fixture
+def catalogue_review(tenant: Tenant, owner: User, ifc_media: Media) -> Review:
+    """A review with no uploaded rule set -- checked against a catalogue selection
+    supplied per run instead (T-0031)."""
+    return ReviewService(tenant=tenant).create(
+        name="Ground floor (catalogue)", model_file=ifc_media, created_by=owner
+    )
+
+
+@pytest.fixture
 def api(owner: User, tenant: Tenant) -> APIClient:
     """A client authenticated as `owner`, acting in `tenant`.
 

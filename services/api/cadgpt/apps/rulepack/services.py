@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import contextlib
+import hashlib
+from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 from cadgpt_engine import InvalidIdsError, inspect_ruleset
 from django.core.files.base import ContentFile
@@ -11,6 +15,7 @@ from django.utils.translation import gettext_lazy as _
 
 from cadgpt.apps.account.models import User
 from cadgpt.apps.base.exceptions import ConflictError, ValidationError
+from cadgpt.apps.base.files import local_path as _local_path
 from cadgpt.apps.base.services import BaseService, BaseTenantAwareService
 from cadgpt.apps.media.choices import MediaKind
 from cadgpt.apps.media.models import Media
@@ -145,3 +150,54 @@ class RulePackService(BaseService):
             specifications=summary.specification_count,
         )
         return rule_pack, True
+
+    @contextlib.contextmanager
+    def local_path(self, rule_pack: RulePack) -> Iterator[Path]:
+        """Yield a filesystem path for `rule_pack`'s IDS file, the same contract
+        `media.services.MediaService.local_path` offers for an uploaded file -- both
+        delegate to `cadgpt.apps.base.files.local_path`, the one place that fallback
+        lives.
+        """
+        with _local_path(rule_pack.source_file, rule_pack.name) as path:
+            yield path
+
+    def checksum_of(self, rule_pack: RulePack) -> str:
+        """SHA-256 of `rule_pack`'s IDS bytes, read fresh from storage right now.
+
+        The one hashing primitive both `snapshot` (captured once, at dispatch) and
+        `CheckRunExecutor._evaluate_selection` (recomputed, at execution -- T-0031's
+        review, F1) share, so a citation's hash and the value it is checked against can
+        never disagree because of two hand-rolled loops drifting apart.
+        """
+        digest = hashlib.sha256()
+        rule_pack.source_file.open("rb")
+        try:
+            for chunk in rule_pack.source_file.chunks():
+                digest.update(chunk)
+        finally:
+            rule_pack.source_file.close()
+        return digest.hexdigest()
+
+    def snapshot(self, rule_pack: RulePack) -> dict[str, Any]:
+        """The self-contained citation a check run stores for reproducibility.
+
+        Captured at dispatch time as plain data, never a foreign key: `docs/tasks/
+        T-0031-rule-selection-on-the-run.md` is explicit that a later catalogue edit --
+        a version bumped and seeded as a new row, another pack added -- must never be
+        able to redefine what an already-dispatched run is understood to have checked.
+        The content hash is computed from the bytes themselves rather than trusted from
+        `rule_pack.version`, so the citation survives even a bug that reseeded a pack's
+        file under an unchanged version string -- and, since T-0031's review (F1),
+        `CheckRunExecutor` recomputes and compares this same hash at execution time
+        rather than only ever recording it, so a run whose cited bytes changed underneath
+        it refuses instead of silently evaluating whatever is there now.
+        """
+        return {
+            "uuid": str(rule_pack.uuid),
+            "name": rule_pack.name,
+            "jurisdiction": rule_pack.jurisdiction,
+            "region": rule_pack.region,
+            "version": rule_pack.version,
+            "specification_count": rule_pack.specification_count,
+            "checksum_sha256": self.checksum_of(rule_pack),
+        }

@@ -21,7 +21,7 @@ class ReviewManager(Manager.from_queryset(ReviewQuerySet)):  # type: ignore[misc
         tenant: Any,
         name: str,
         model_file: Any,
-        rule_set: Any,
+        rule_set: Any | None,
         created_by: Any | None,
     ) -> Review:
         review = self.model(
@@ -37,18 +37,33 @@ class ReviewManager(Manager.from_queryset(ReviewQuerySet)):  # type: ignore[misc
 
 
 class CheckRunManager(Manager.from_queryset(CheckRunQuerySet)):  # type: ignore[misc]
-    def create_run(self, *, review: Any, requested_by: Any | None) -> CheckRun:
-        """A run starts PENDING, carrying the checksums of the exact inputs it will read.
+    def create_run(
+        self,
+        *,
+        review: Any,
+        requested_by: Any | None,
+        rule_pack_selection: list[dict[str, Any]] | None = None,
+    ) -> CheckRun:
+        """A run starts PENDING, carrying a record of the exact rules it will read.
 
-        Recording them at creation rather than at execution is what lets a completed run
-        state which bytes it checked, even after the review is pointed at a new upload.
+        Recording it at creation rather than at execution is what lets a completed run
+        state which bytes it checked, even after the review is pointed at a new upload or
+        the catalogue gains a newer version of a selected pack. `rule_set_checksum` is set
+        only for the uploaded-rule-set path; a catalogue run's citation lives entirely in
+        `rule_pack_selection`, already resolved by the caller (`ReviewService.
+        request_check`) before this is called.
         """
         run = self.model(
             tenant=review.tenant,
             review=review,
             requested_by=requested_by,
             model_checksum=review.model_file.checksum_sha256,
-            rule_set_checksum=review.rule_set.source_file.checksum_sha256,
+            rule_set_checksum=(
+                review.rule_set.source_file.checksum_sha256
+                if review.rule_set_id is not None
+                else ""
+            ),
+            rule_pack_selection=rule_pack_selection or [],
         )
         run.save(using=self._db)
         return cast("CheckRun", run)

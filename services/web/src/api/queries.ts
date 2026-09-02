@@ -21,6 +21,7 @@ import type {
   Media,
   Page,
   Review,
+  RulePack,
   RuleSet,
   Tenant,
   User,
@@ -31,6 +32,7 @@ export const keys = {
   me: ["me"] as const,
   tenants: ["tenants"] as const,
   ruleSets: (tenant: string | null) => ["rule-sets", tenant] as const,
+  rulePacks: (tenant: string | null) => ["rule-packs", tenant] as const,
   reviews: (tenant: string | null) => ["reviews", tenant] as const,
   review: (uuid: string) => ["review", uuid] as const,
   run: (review: string, run: string) => ["run", review, run] as const,
@@ -57,6 +59,17 @@ export function useRuleSets(tenant: string | null): UseQueryResult<Page<RuleSet>
   return useQuery({
     queryKey: keys.ruleSets(tenant),
     queryFn: () => api.get<Page<RuleSet>>("/v1/rule-sets/"),
+    enabled: Boolean(tenant),
+  });
+}
+
+/** The catalogue (T-0030), read-only and the same for every tenant. Every user needs it
+ * the moment a review has no `rule_set` of its own -- fetched once and filtered on the
+ * client rather than refetched per review's picker. */
+export function useRulePacks(tenant: string | null): UseQueryResult<Page<RulePack>> {
+  return useQuery({
+    queryKey: keys.rulePacks(tenant),
+    queryFn: () => api.get<Page<RulePack>>("/v1/rule-packs/"),
     enabled: Boolean(tenant),
   });
 }
@@ -129,7 +142,9 @@ export function useCreateReview(
       return api.post<Review>("/v1/reviews/", {
         name,
         model_file: media.uuid,
-        rule_set: ruleSet,
+        // Empty selects the catalogue path: a review with no `rule_set` of its own,
+        // checked against a pack selection given per run instead (T-0031).
+        ...(ruleSet ? { rule_set: ruleSet } : {}),
       });
     },
     onSuccess: () => client.invalidateQueries({ queryKey: keys.reviews(tenant) }),
@@ -138,11 +153,17 @@ export function useCreateReview(
 
 export function useStartCheck(
   tenant: string | null,
-): UseMutationResult<CheckRunSummary, Error, string> {
+): UseMutationResult<
+  CheckRunSummary,
+  Error,
+  { reviewUuid: string; rulePacks: string[] | undefined }
+> {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (reviewUuid: string) =>
-      api.post<CheckRunSummary>(`/v1/reviews/${reviewUuid}/check/`),
+    mutationFn: ({ reviewUuid, rulePacks }) =>
+      api.post<CheckRunSummary>(`/v1/reviews/${reviewUuid}/check/`, {
+        rule_packs: rulePacks ?? [],
+      }),
     onSuccess: () => client.invalidateQueries({ queryKey: keys.reviews(tenant) }),
   });
 }

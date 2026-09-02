@@ -65,17 +65,23 @@ class ReviewViewSet(
         serializer.save()
         return self.respond(serializer, status=status.HTTP_201_CREATED)
 
-    @extend_schema(request=None, responses={202: CheckRunSummarySerializer})
+    @extend_schema(
+        request=CheckRequestSerializer, responses={202: CheckRunSummarySerializer}
+    )
     @action(detail=True, methods=["post"], throttle_classes=[])
     def check(self, request: Request, uuid: str) -> Response:  # noqa: ARG002
         """Queue a check of this review. Returns immediately with the run to poll.
 
         202, not 200: the work has been accepted, not done. A model of any real size takes
         seconds to minutes, which is past what a browser or a proxy will hold open.
+
+        The body is optional and, until T-0031, was always empty: a review with its own
+        `rule_set` still needs nothing here. It carries `rule_packs` -- the catalogue
+        selection -- only for a review with no `rule_set` of its own.
         """
         review = self.get_object()
         serializer = self.get_serializer(
-            data={}, context={**self.get_serializer_context(), "review": review}
+            data=request.data, context={**self.get_serializer_context(), "review": review}
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()

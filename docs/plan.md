@@ -331,6 +331,58 @@ the SPA's HTML), **T-0043** (the seeder's idempotence is an unlocked pre-check t
 across processes into an unhandled `IntegrityError` and an orphaned file) and **T-0044** (the
 seed manifest is hardcoded Python, so the first real pack requires an image rebuild).
 
+**T-0031 — rule selection on the run. Done 2026-09-03.** The MVP's middle clause: a review can
+now be created with no uploaded rule set and checked against packs picked from the catalogue,
+`POST /reviews/{uuid}/check/` with `rule_packs: [uuid...]`. The deliberate choice the task
+demanded be made explicitly is **one run with several rule sources**, not several runs —
+`_evaluate_selection` calls the engine's unchanged `run_check` once per pack and `_combine_reports`
+concatenates the specifications, so the coverage sentence counts across the whole selection instead
+of resetting per pack. `ReportView`'s `evaluated` computation needed no change to inherit that: it
+already sums over `report.specifications`, and a combined report simply hands it more of them.
+Unknown and duplicate packs are refused with named reasons — silently running fewer rules than
+asked for is the coverage failure this product exists to refuse.
+
+The selection is stored as **data, not a foreign key**: `CheckRun.rule_pack_selection` holds each
+pack's uuid, name, jurisdiction, region, version and a SHA-256 of its bytes, captured at dispatch
+before the run row exists. Found by running it rather than by the suite, for the fifth time in this
+repository: making `Review.rule_set` nullable turned `_claim`'s `select_for_update()` into a lock
+across a LEFT OUTER JOIN, which sqlite does not enforce and Postgres does — green suite, and the
+first real check against the compose stack raised `NotSupportedError`. Fixed with
+`select_for_update(of=("self",))`; the unguarded *class* of defect became **T-0050**.
+
+**Reviewed, and the review found the recording hollow while the intricate surfaces held.** Tenancy,
+the narrowed lock and the three-valued combination were all attacked and all cleared — the lock is
+the only `select_for_update` in the codebase, so nothing relied on the incidental locks it dropped,
+and `_status_from_counts` is line-for-line identical to the engine's `_aggregate`. The defect was
+that `checksum_sha256` was **written by one function and read by nobody**. Swap the bytes behind a
+cited uuid between dispatch and execution and the run succeeded, flipped `FAIL` to `PASS`, and
+stored a citation naming a pack and hash it had not checked. Not exploitable through the product as
+it stands — no path mutates a seeded pack's bytes — but the guarantee rested on a docstring while
+the column that could enforce it sat inert, and `docs/decisions.md` had already written down the
+condition under which the checksum would become "the only thing still telling the truth about what
+a run checked". Now verified at execution, refused as `CheckRunFailure.RULE_PACK_MODIFIED`.
+
+Two evidence items claimed proof they could not deliver, which is the half worth carrying forward.
+The worker log line was built from the citation, so it could only ever agree with the citation —
+the selection JSON echoed back and pasted as proof the check ran against those rules. And the
+reproducibility test mutated the catalogue by seeding a **new row**, which a plain `ForeignKey`
+passes identically; the only edit that distinguishes a snapshot from an FK is
+same-uuid-different-bytes, the exact case nothing tested. Both fixed, and the mutation re-run by
+the coordinator: disabling the checksum comparison fails the new test while the corrected log line
+prints `cited_name: "Accessible door width"` beside `evaluated_ids_title: "Door name recorded"` over
+an outcome of `PASS`. 208 tests, 5 contracts kept.
+
+Its remaining findings are all in the surfaces around the selection and are queued as **T-0045**
+(the picker fetches one 20-row page and filters it client-side, so a pack on page 2 reads as "no
+packs match this filter" — and the near-term plan is Iranian, then EU, then US), **T-0046**
+(`services/web` has no test runner at all despite `CLAUDE.md` calling it RTL-native; the picker has
+never been rendered and two defects wait in it), **T-0047** (`base/files.py` typed `Any` at a new
+shared boundary), **T-0048** (a failed run shows the tenant `list index out of range` and internal
+storage keys, and never shows what it was supposed to check), **T-0049** (no finding carries the
+pack identity that produced it, which `prd.md` §5.7 requires and which is what would make
+`source_citation` reachable at all) and **T-0050** (the sqlite test backend cannot see the
+Postgres-only defect class this task itself hit).
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -379,6 +431,13 @@ the first of them:
 - **T-0042** — the catalogue hands out a storage URL nothing authenticates.
 - **T-0043** — the seeder must survive a race and speak the application's error language.
 - **T-0044** — seeding real packs: a manifest, and knowing when the catalogue diverges from disk.
+
+- **T-0045** — the catalogue picker must show every pack, and filter on the server.
+- **T-0046** — the picker has never been rendered; `services/web` needs a component test runner.
+- **T-0047** — a typed boundary for the shared file helper.
+- **T-0048** — a failed run must say what it was for, and speak the application's error language.
+- **T-0049** — every finding carries the pack identity and version that produced it.
+- **T-0050** — the suite cannot catch the class of defect that only Postgres enforces.
 
 ## Phase 4 — Toward the PRD
 

@@ -60,6 +60,37 @@ export interface RuleSet {
   created_at: string;
 }
 
+/** A shipped pack from the catalogue (T-0030) -- belongs to no tenant, every tenant reads
+ * the same rows. Selected at check-request time rather than at review creation; see
+ * `RulePackSelectionEntry`. */
+export interface RulePack {
+  uuid: string;
+  name: string;
+  description: string;
+  jurisdiction: string;
+  region: string;
+  version: string;
+  title: string;
+  author: string;
+  specification_count: number;
+  source_citation: string;
+  source_file: string;
+  created_at: string;
+}
+
+/** One pack's citation as recorded on a `CheckRunDetail`, captured at dispatch time --
+ * never re-derived from the live catalogue, so a later catalogue edit cannot redefine what
+ * an already-dispatched run is understood to have checked (T-0031). */
+export interface RulePackSelectionEntry {
+  uuid: string;
+  name: string;
+  jurisdiction: string;
+  region: string;
+  version: string;
+  specification_count: number;
+  checksum_sha256: string;
+}
+
 export interface EntityOutcome {
   global_id: string | null;
   ifc_class: string;
@@ -173,13 +204,18 @@ export interface CheckRunDetail extends CheckRunSummary {
   report: Report | null;
   model_checksum: string;
   rule_set_checksum: string;
+  /** Empty for a run against `review.rule_set`; one entry per selected catalogue pack
+   * otherwise (T-0031). */
+  rule_pack_selection: RulePackSelectionEntry[];
 }
 
 export interface Review {
   uuid: string;
   name: string;
   model_file: Media;
-  rule_set: RuleSet;
+  /** `null` for a review with no uploaded rule set of its own -- its checks are given a
+   * catalogue selection per run instead (T-0031). */
+  rule_set: RuleSet | null;
   latest_run: CheckRunSummary | null;
   created_at: string;
   updated_at: string;

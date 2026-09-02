@@ -206,7 +206,7 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
   // the denominator for every report the engine can produce.
   const coverageSentence = report.locator('[data-testid="coverage"] > p').first();
   await expect(coverageSentence).toHaveText(
-    "2 of 3 specifications in this rule set were evaluated.",
+    "2 of 3 specifications were evaluated.",
   );
 
   // The "established nothing" block names exactly the one specification that matched

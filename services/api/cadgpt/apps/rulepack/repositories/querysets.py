@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, Any, Self
 
 from cadgpt.apps.base.querysets import BaseQuerySet, TenantScopedQuerySet
 
@@ -40,3 +40,10 @@ class RulePackQuerySet(BaseQuerySet["RulePack"]):
         return self.filter(
             jurisdiction=jurisdiction, region=region, version=version, name=name
         )
+
+    def selected(self, uuids: Any) -> Self:
+        """The rows a check-run selection names, for resolving and for re-fetching them
+        to execute against. `uuids` may repeat or be empty; the caller decides what that
+        means -- this only narrows the read.
+        """
+        return self.filter(uuid__in=uuids)

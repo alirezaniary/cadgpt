@@ -14,11 +14,20 @@
     "name": "Name",
     "model": "IFC model",
     "ruleSet": "Rule set",
+    "ruleSetNone": "No rule set — select packs from the catalogue instead",
     "create": "Create review",
     "check": "Run check",
     "checking": "Checking…",
     "empty": "No reviews yet. Upload a model and a rule set to start.",
-    "neverRun": "Not checked yet"
+    "neverRun": "Not checked yet",
+    "catalogue": {
+      "title": "Select rule packs from the catalogue to check against",
+      "jurisdiction": "Jurisdiction",
+      "region": "Region",
+      "version": "Version",
+      "empty": "No packs match this filter.",
+      "checkSelected": "Run check with selected packs"
+    }
   },
   "ruleSet": {
     "title": "Rule sets",
@@ -48,9 +57,12 @@
     "engine": "Engine {{version}}",
     "schema": "Model schema {{schema}}",
     "nothingChecked": "Nothing was checked",
+    "selection": {
+      "title": "Rule packs checked"
+    },
     "coverage": {
       "title": "Coverage",
-      "evaluated": "{{evaluated}} of {{total}} specifications in this rule set were evaluated.",
+      "evaluated": "{{evaluated}} of {{total}} specifications were evaluated.",
       "nothingEstablished_one": "{{count}} specification established nothing — it matched no elements, or its applicability could not be determined:",
       "nothingEstablished_other": "{{count}} specifications established nothing — they matched no elements, or their applicability could not be determined:"
     },
