@@ -167,6 +167,36 @@ ended, so the findings were lost. Re-dispatch before Phase 3 is marked complete 
 short version: the filter is the dangerous surface and the e2e spec drives exactly one of its
 states.
 
+**T-0028 — a requirement that evaluated nothing must not report PASS. Done 2026-09-02.**
+`_aggregate(failed, indeterminate)` became `_aggregate(passed, failed, indeterminate)`: a
+requirement whose counts are all zero is now `INDETERMINATE`, not `PASS`. This is I7 pushed down
+one level — `judge()` already refused to let a specification that checked nothing report a pass,
+and the reasoning had never reached the requirement, which is the row the architect actually
+reads. A prohibited specification's requirement now reads `INDETERMINATE | 0/0/0` under a
+correctly `FAIL` specification, while `door_width.ids` is byte-identical and a new
+`door_name_recorded.ids` fixture proves a requirement that genuinely evaluated three entities
+still reports `PASS`. 166 tests, 5 contracts kept.
+
+Reviewer-gated on the three-valued invariant, and the review earned it twice over. It proved the
+dangerous direction — that no genuine PASS becomes an unknown — **by exhaustion rather than by
+sampling**: `ifctester` writes `passed_entities` and `failures` only inside its
+`for element in applicable_entities` loop, guarded by `if self.maxOccurs != 0`, and our
+`classify()` never returns `PASS`, so a requirement reaches all-zero counts only when the
+specification is prohibited or matched nothing. Both genuinely evaluated nothing; there is no
+third way in. It then found the evidence block claiming the flipped status "renders through the
+existing `StatusPill` component" — it renders nowhere. `requirement.status` is produced by the
+engine, stored, serialised, typed at `types.ts:74`, and read by no component, test or spec. The
+claim was corrected in place rather than deleted, and the gap became **T-0037**: until a status
+pill sits beside the requirement description, this fix is real in the API and invisible in the
+browser.
+
+It also found the same class of defect still live one level up — `judge()` passes an *optional*
+specification with **zero requirement facets**, which asserted nothing and checked nothing, and
+the report calls it a PASS. Reachable from real user input; it validates against the
+buildingSMART XSD. **T-0038.** Two decisions were settled and logged: a requirement that
+evaluated nothing is *explained, never suppressed*, and a verdict-changing engine release *bumps
+the engine version* so a stored run says which engine judged it.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before

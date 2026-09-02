@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ids:ids xmlns:ids="http://standards.buildingsmart.org/IDS" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://standards.buildingsmart.org/IDS http://standards.buildingsmart.org/IDS/1.0/ids.xsd">
+	<ids:info>
+		<ids:title>Door name recorded</ids:title>
+		<ids:description>An ordinary rule every door in three_doors.ifc genuinely satisfies: each has a Name. There is no unknown case here on purpose -- this fixture exists to prove a requirement that really did evaluate entities and really did pass stays PASS.</ids:description>
+		<ids:date>2026-09-02</ids:date>
+	</ids:info>
+	<ids:specifications>
+		<ids:specification ifcVersion="IFC2X3 IFC4" name="Door name recorded">
+			<ids:applicability maxOccurs="unbounded">
+				<ids:entity>
+					<ids:name>
+						<ids:simpleValue>IFCDOOR</ids:simpleValue>
+					</ids:name>
+				</ids:entity>
+			</ids:applicability>
+			<ids:requirements>
+				<ids:attribute cardinality="required">
+					<ids:name>
+						<ids:simpleValue>Name</ids:simpleValue>
+					</ids:name>
+				</ids:attribute>
+			</ids:requirements>
+		</ids:specification>
+	</ids:specifications>
+</ids:ids>

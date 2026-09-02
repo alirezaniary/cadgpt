@@ -48,13 +48,23 @@ def engine_version() -> str:
         return "0+unknown"
 
 
-def _aggregate(failed: int, indeterminate: int) -> Status:
-    """A known violation decides FAIL; otherwise an unknown prevents PASS."""
+def _aggregate(passed: int, failed: int, indeterminate: int) -> Status:
+    """A known violation decides FAIL; otherwise an unknown prevents PASS.
+
+    `passed` distinguishes "everything that was evaluated passed" from "nothing was
+    evaluated at all". `failed == indeterminate == 0` is not by itself evidence of
+    compliance -- a specification whose applicability matched zero elements reaches this
+    function with every count at zero, and `ifctester` calls that a pass. It is not one:
+    see the module docstring and `status.py`'s `Status`. `passed` must be zero only when
+    nothing was evaluated; do not pass an entity count that double-counts across facets.
+    """
     if failed:
         return Status.FAIL
     if indeterminate:
         return Status.INDETERMINATE
-    return Status.PASS
+    if passed:
+        return Status.PASS
+    return Status.INDETERMINATE
 
 
 def _outcome(element: Any, reason: str) -> EntityOutcome:
@@ -70,6 +80,7 @@ def _outcome(element: Any, reason: str) -> EntityOutcome:
 
 def _requirement(facet: Any, specification: Any, entity_limit: int) -> RequirementOutcome:
     outcomes = tuple(_outcome(f["element"], f["reason"]) for f in facet.failures)
+    passed = len(facet.passed_entities)
     failed = sum(1 for e in outcomes if e.status is Status.FAIL)
     indeterminate = sum(1 for e in outcomes if e.status is Status.INDETERMINATE)
 
@@ -85,8 +96,8 @@ def _requirement(facet: Any, specification: Any, entity_limit: int) -> Requireme
 
     return RequirementOutcome(
         description=facet.to_string(clause_type, specification, facet),
-        status=_aggregate(failed, indeterminate),
-        passed=len(facet.passed_entities),
+        status=_aggregate(passed, failed, indeterminate),
+        passed=passed,
         failed=failed,
         indeterminate=indeterminate,
         entities=outcomes[:entity_limit],
@@ -141,7 +152,13 @@ def judge(
             ReasonCode.PROHIBITED_SUBJECTS_PRESENT,
         )
 
-    return Applicability.APPLIES, _aggregate(failed, indeterminate), None
+    # `matched` is guaranteed positive here -- the `matched == 0` branch above already
+    # returned. `failed` and `indeterminate` are summed across every requirement on this
+    # specification and can double-count an entity checked by more than one facet, so
+    # `matched - failed - indeterminate` is not a trustworthy passed count. It does not
+    # need to be: `_aggregate` only consults `passed` when `failed == indeterminate == 0`,
+    # and in that case `matched > 0` already proves something was evaluated and passed.
+    return Applicability.APPLIES, _aggregate(matched, failed, indeterminate), None
 
 
 def _specification(spec: Any, entity_limit: int) -> SpecificationOutcome:
@@ -207,6 +224,7 @@ def run_check(
 
     specifications = tuple(_specification(s, entity_limit) for s in specs.specifications)
     by_status = [s.status for s in specifications]
+    specs_passed = by_status.count(Status.PASS)
     specs_failed = by_status.count(Status.FAIL)
     specs_indeterminate = by_status.count(Status.INDETERMINATE)
 
@@ -215,8 +233,8 @@ def run_check(
         ifc_schema=str(model.schema),
         ids_title=str(specs.info.get("title", "")),
         engine_version=engine_version(),
-        status=_aggregate(specs_failed, specs_indeterminate),
-        specifications_passed=by_status.count(Status.PASS),
+        status=_aggregate(specs_passed, specs_failed, specs_indeterminate),
+        specifications_passed=specs_passed,
         specifications_failed=specs_failed,
         specifications_indeterminate=specs_indeterminate,
         passed=sum(s.passed for s in specifications),

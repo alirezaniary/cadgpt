@@ -510,3 +510,50 @@ resources must fail the run with a named reason instead of being redelivered for
 
 **Reopens if:** streaming or out-of-core extraction lands upstream in `ifcopenshell`, which
 would make the ceiling a throughput question rather than a memory one.
+
+## A requirement that evaluated nothing is explained, never suppressed
+
+*2026-09-02, forced by the T-0028 review.*
+
+Pushing `judge()`'s reasoning down to requirements (T-0028) produced a report shape that reads
+oddly at first glance: a prohibited specification matching nothing is judged `PASS` at the
+specification level — correctly, since nothing prohibited exists — while the requirement row
+beneath it now reads `INDETERMINATE`, because that requirement genuinely evaluated no entities.
+An `INDETERMINATE` row sitting under a green verdict looks like the contradiction
+`check.py:87-95` was written to prevent.
+
+It is not one. Both statements are true: the specification established its verdict, and the
+requirement established nothing. The obvious tidy-up — suppress the requirement row when the
+specification reached its verdict without evaluating requirements — is the wrong direction and
+is refused. Hiding a row because it says "nothing was checked here" is exactly the failure I7
+exists to close; it makes the report look cleaner by removing the sentence that tells the truth
+about coverage. A report is allowed to be uncomfortable to read. It is not allowed to be quiet
+about what it did not do.
+
+So the row stays and is made to explain itself: the reason a requirement evaluated nothing is
+carried down from the engine and rendered beside the status, rather than left for the reader to
+infer from a bare `INDETERMINATE`. That is a new field on `RequirementOutcome`, which is a wire
+format change and takes a `REPORT_SCHEMA_VERSION` bump with it. T-0037.
+
+## A verdict-changing engine release bumps the engine version
+
+*2026-09-02, forced by the T-0028 review.*
+
+T-0028 changed what a stored report *means* without changing its shape. Two `CheckRun` rows
+over the same model and the same rule set, one from each side of the change, disagree on
+`report.specifications[].requirements[].status`, and nothing in either document explains why:
+`REPORT_SCHEMA_VERSION` stays at `1` — correctly, the wire format did not move and
+`INDETERMINATE` was always a legal requirement status — and `CheckRun.engine_version` records
+`0.1.0` for both, because the engine package version was not bumped.
+
+`services/api/cadgpt/apps/review/models.py:98` already states the standard this falls short of:
+*an old run stays explainable only if it says so itself*. The rule, from here on: **a release
+that changes any verdict the engine can emit bumps the engine package version, whether or not
+the schema moved.** Schema version answers "can this be parsed"; engine version answers "would
+this be judged the same way today". They are different questions and the second is the one a
+plan reviewer asks. Re-running old reports is not the answer — a run is a record of what was
+said at the time, and rewriting it destroys the audit trail the attribution requirement in
+`prd.md` §5.7 depends on.
+
+This is retrospective for T-0028: the bump belongs with the fix that made it necessary, and is
+carried in T-0038 alongside the verdict change that task makes.

@@ -85,7 +85,7 @@ from the reason to the requirement. The engine names things; the service supplie
 ## How to prove it ran
 
 ```sh
-uv run cadgpt-engine check packages/engine/tests/fixtures/three_doors.ifc \
+uv run cadgpt-check packages/engine/tests/fixtures/three_doors.ifc \
                            packages/engine/tests/fixtures/door_width.ids --json
 make verify
 make up

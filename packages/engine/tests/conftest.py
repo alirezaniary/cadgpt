@@ -23,3 +23,9 @@ def door_width_ids() -> Path:
 def door_prohibited_ids() -> Path:
     """A prohibited-cardinality IDS: no IfcDoor may be present (minOccurs=maxOccurs=0)."""
     return FIXTURES / "door_prohibited.ids"
+
+
+@pytest.fixture(scope="session")
+def door_name_recorded_ids() -> Path:
+    """An IDS every door in `three_doors_ifc` genuinely satisfies: each has a Name."""
+    return FIXTURES / "door_name_recorded.ids"

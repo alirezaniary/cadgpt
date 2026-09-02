@@ -183,6 +183,44 @@ def test_an_unparseable_ifc_is_a_typed_error(door_width_ids: Path, tmp_path: Pat
         run_check(bad, door_width_ids)
 
 
+def test_a_requirement_that_evaluated_nothing_is_indeterminate_not_pass(
+    three_doors_ifc: Path, door_prohibited_ids: Path
+) -> None:
+    """I7 pushed down one level: `_aggregate` must not read `failed == indeterminate == 0`
+    as compliance when nothing was evaluated either.
+
+    `door_prohibited.ids` forbids `IfcDoor` outright. Its own requirement facet is never
+    run against the three doors that exist -- ifctester interprets a prohibited
+    specification as "the requirement does not apply", not "check it and see" -- so the
+    requirement reaches `_aggregate` with `passed == failed == indeterminate == 0`. The old
+    code read that as PASS: a requirement that checked nothing, reported green.
+    """
+    report = run_check(three_doors_ifc, door_prohibited_ids)
+    requirement = report.specifications[0].requirements[0]
+
+    assert (requirement.passed, requirement.failed, requirement.indeterminate) == (0, 0, 0)
+    assert requirement.status is Status.INDETERMINATE, (
+        "a requirement with zero outcomes has established no compliance"
+    )
+
+
+def test_a_requirement_that_genuinely_evaluated_entities_and_all_passed_stays_pass(
+    three_doors_ifc: Path, door_name_recorded_ids: Path
+) -> None:
+    """The direction this task must not break: real evidence, all of it a pass, is PASS.
+
+    Every door in `three_doors_ifc` genuinely has a `Name`, so this requirement matches
+    three real entities and passes all three -- unlike the prohibited-specification case
+    above, `passed` here is not zero.
+    """
+    report = run_check(three_doors_ifc, door_name_recorded_ids)
+    requirement = report.specifications[0].requirements[0]
+
+    assert (requirement.passed, requirement.failed, requirement.indeterminate) == (3, 0, 0)
+    assert requirement.status is Status.PASS
+    assert report.status is Status.PASS
+
+
 def test_the_report_can_be_told_what_to_call_the_model(
     three_doors_ifc: Path, door_width_ids: Path
 ) -> None:

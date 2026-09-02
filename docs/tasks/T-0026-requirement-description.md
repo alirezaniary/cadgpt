@@ -84,7 +84,7 @@ The engine has a CLI (`packages/engine/src/cadgpt_engine/cli.py`), so the first 
 direct and needs no stack:
 
 ```sh
-uv run cadgpt-engine check packages/engine/tests/fixtures/three_doors.ifc \
+uv run cadgpt-check packages/engine/tests/fixtures/three_doors.ifc \
                            packages/engine/tests/fixtures/door_width.ids
 make verify
 ```
