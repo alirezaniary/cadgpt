@@ -1,6 +1,6 @@
 # T-0030 — The rule catalogue: rules we ship, belonging to no tenant
 
-**Phase:** 3 — What the first real user needs   **Status:** built — review outstanding
+**Phase:** 3 — What the first real user needs   **Status:** done
 **Touches invariants:** **tenancy**, and the import contracts. **Reviewer-gated**, without
 exception — this is the one invariant this repository enforces structurally rather than by
 memory, and this task is the first thing that does not fit it.
@@ -382,51 +382,49 @@ not touched.
 
 ## Review
 
-**Review dispatched 2026-09-03 and lost when the coordinator session was ended for context.**
-The same thing happened to T-0025 twice; this note exists so the next dispatch does not have to
-re-derive what the review was for. `docs/agents.md` forbids a *second* review of a task — **this
-task has not had a first one.** Re-dispatch before Phase 3 is marked complete.
+**Verdict: FIX NOW — nothing.** Reviewed on opus, gated on tenancy. The review was dispatched as
+the session was ending and landed before it closed; an earlier note in this file said it had been
+lost, and that note was wrong and is removed.
 
-**Committed rather than held back** on the T-0025 precedent: it passes every gate and its
-evidence was independently re-verified by the coordinator. It is **not done** until the review
-runs.
+No invariant is violated and no claim in the evidence block is false — the first time this
+session that a review found neither. It did not take the evidence on trust: it re-registered
+**two tenants of its own** on the running stack and re-ran evidence items 2, 3 and 4 from
+scratch. Both tenants get `count: 3` and byte-identical UUID sets, matching what the database
+holds. Unauthenticated list and detail both 401. It also tested writes the evidence had **not** —
+`PUT`, and `POST` to the detail route — and got 405 on all of them.
 
-### What the coordinator verified independently, so the review need not redo it
+The write refusal is **by construction rather than convention**: `RulePackViewSet`
+(`api/v1/views.py:59`) mixes in only `ListModelMixin` and `RetrieveModelMixin` over
+`BaseViewSet`, with no `@action` and no need for `http_method_names` — the handlers do not exist,
+so no route, filter parameter or browsable-API form can reach a write. Evidence item 5's quoted
+test body is verbatim against the file. `git diff --numstat` on `models.py` is **72 added, 0
+deleted**: not one line of `RuleSet` changed, nothing under `apps/review/` touched, so selection
+is not wired into the run, and there is no clause, YAML or ratification code.
 
-- `RulePack` is `UuidBaseModel` only, **not** `TenantOwnedModel`. Storage partitions by
-  jurisdiction, never by tenant.
-- `GLOBAL_CATALOGUE_VIEWSETS` is **never consulted** by
-  `test_every_viewset_over_a_tenant_owned_model_is_tenant_scoped`; that test still skips only on
-  `model not in tenant_owned` and `SCOPED_BY_MEMBERSHIP`. **No escape hatch was added to it.**
-- Mutation re-run: making `RulePack` inherit `TenantOwnedModel` fails **four** tests, including
-  the *pre-existing* structural one — `RulePackViewSet (model RulePack)` is caught by the
-  original guarantee, which is what proves the exemption opened no hole — and the new
-  declaration test, with an actionable message. Restored, green.
-- Seed idempotence re-run: 3 rows, seed reports `0 created, 3 skipped`, still 3 rows. Seeded
-  under `jurisdiction="sample"`; no real jurisdiction was invented.
-- `make verify` exit 0 — 199 passed, **5 import contracts kept**, `mypy --strict` over 147
-  files. Unauthenticated `GET /api/v1/rule-packs/` returns 401.
+Six suspicions were tested and dropped. The serializer leaks no internal id or uploader
+(`read_only_fields = fields`, lookup by `uuid`, and `RulePack` has no `created_by` column at
+all). Filter abuse fails: `jurisdiction__icontains`, `ordering=source_file` and `page_size=1000`
+are all silently ignored, `ordering` is bounded by `ordering_fields`, page size is server-fixed.
+A forged `X-Tenant` is inert because the viewset never reads it, and a user with **no tenant at
+all** gets the same three rows — which is the intended "readable by all". Layering is clean:
+nothing substantive outside `services.py`. And **`source_citation` is genuinely enforced** — the
+reviewer probed `""`, `"   "` and `"\n\t "` and all three were refused with *This field cannot
+be blank*, because the manager strips before `full_clean`, so whitespace cannot slip through.
+The seeded citation is real and specific, naming the fixture path and stating plainly that it is
+not regulation. `prd.md` §5.7 holds and there is no placeholder.
 
-### What the review was asked to hunt, so the re-dispatch inherits it
+The `docs/decisions.md` entry was checked mechanically claim by claim and is accurate; it records
+the reasoning — why the nullable column was refused, why a declaration beats a skip list — rather
+than restating the outcome.
 
-1. **Is the catalogue unable to be written or to leak, by construction or only by convention?**
-   Whether `http_method_names` / a `ReadOnlyModelViewSet` base / a permission class does it;
-   whether any route, filter parameter or the browsable API form can reach a write; whether a
-   filter can enumerate or read what it should not; whether the serializer exposes the storage
-   path or an internal id.
-2. **The seeder's idempotence is a claim about a race, not just a re-run.** Sequential re-runs
-   are verified. Concurrent runs are not, and neither is a pack file *changing on disk* between
-   runs — the task required that it never "silently overwrite a pack a run already cites", and a
-   `get_or_create` keyed on the uniqueness constraint may or may not hold that line for a
-   completed `CheckRun` that depends on the pack for its explanation.
-3. **`source_citation` is `prd.md` §5.7 attribution.** Can a pack exist with an empty or
-   whitespace citation? What did the seeder actually write there for the sample packs —
-   something meaningful, or a placeholder that would ship as fake attribution? `CLAUDE.md`
-   forbids placeholders.
-4. **Layering.** The 5 contracts catch import direction, not misplaced logic. Is anything
-   substantive sitting in the serializer, view or model that belongs in `services.py`?
-5. **The decision the builder appended to `docs/decisions.md`** — accurate, matching what the
-   code does, and recording the reasoning rather than restating the outcome? **The coordinator
-   did not read this entry.**
-6. **The evidence block**, especially the HTTP responses and the two-tenant assertion, which the
-   coordinator did **not** independently re-run.
+### QUEUED — T-0042, T-0043, T-0044
+
+The findings are all about the surfaces *around* the catalogue, not the invariant it was gated
+on. Finding 1 (the serializer hands out a raw storage URL that `curl` fetches with **no
+Authorization header**, returning the IDS bytes — and which in production advertises a download
+that returns the SPA's HTML, because nginx has no `/media/` location) became **T-0042**.
+Findings 2, 3 and 6 (the seeder's idempotence is an unlocked pre-check that TOCTOUs across
+processes into an unhandled `IntegrityError` and an orphaned file, and the manager raises
+Django's `ValidationError` rather than the app's) became **T-0043**. Findings 4 and 5 (the seed
+manifest is hardcoded Python, and a pack whose source file changed is skipped silently and
+correctly but illegibly) became **T-0044**.

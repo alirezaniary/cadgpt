@@ -300,7 +300,7 @@ Queued as **T-0041**: a verdict is reachable without its scope. The reviews list
 "Complete · Fail · 1 / 1 / 1" before anyone opens the report, and that row is the surface a
 reader most plausibly screenshots into an email.
 
-**T-0030 — the rule catalogue. Built 2026-09-03, review outstanding.** A global `RulePack`
+**T-0030 — the rule catalogue. Done 2026-09-03.** A global `RulePack`
 beside the tenant-owned `RuleSet` — jurisdiction, region, version and a required source
 citation — with a read-only filterable API and an idempotent `seed_rule_packs` command. No rule
 content: seeded under `jurisdiction="sample"` from the repository's own fixtures, because the
@@ -316,12 +316,20 @@ test asserts the declaration stays true, failing the moment a model named there 
 including the *pre-existing* structural one, which is what proves no hole was opened. The
 guarantee is narrower after this task than before it, not wider.
 
-**Not done.** Its reviewer was dispatched and was still running when the coordinator session
-ended, so the findings were lost — the same way T-0025's were, twice. Re-dispatch before Phase 3
-is marked complete; the task file records what it was asked to hunt, so the next dispatch must
-not re-derive it. The short version: **the seeder's idempotence is proven for a re-run and not
-for a race or a changed file on disk, and `source_citation` is attribution that may be a
-placeholder.**
+**Reviewed, and the first review this session to find nothing to fix.** It re-registered two
+tenants of its own rather than trusting the evidence, re-ran the two-tenant and refusal
+assertions from scratch, and tested writes the evidence had not (`PUT`, detail `POST`) — 405 on
+all. The write refusal is by construction: the viewset mixes in only list and retrieve, so the
+write handlers do not exist. `source_citation` is genuinely enforced against empty and
+whitespace-only input, and the seeded citation is real attribution naming the fixture path and
+stating it is not regulation.
+
+Its findings are all about the surfaces *around* the catalogue rather than the invariant it was
+gated on, and are queued as **T-0042** (the serializer hands out a storage URL that `curl`
+fetches with no Authorization header, and which in production advertises a download that returns
+the SPA's HTML), **T-0043** (the seeder's idempotence is an unlocked pre-check that TOCTOUs
+across processes into an unhandled `IntegrityError` and an orphaned file) and **T-0044** (the
+seed manifest is hardcoded Python, so the first real pack requires an image rebuild).
 
 ### Queued
 
@@ -368,6 +376,9 @@ the first of them:
 - **T-0039** — the subject of a citation: structured in the engine, worded in the service.
 - **T-0040** — `localize_report` must degrade, not 500.
 - **T-0041** — a verdict is reachable without the statement of what was checked.
+- **T-0042** — the catalogue hands out a storage URL nothing authenticates.
+- **T-0043** — the seeder must survive a race and speak the application's error language.
+- **T-0044** — seeding real packs: a manifest, and knowing when the catalogue diverges from disk.
 
 ## Phase 4 — Toward the PRD
 
