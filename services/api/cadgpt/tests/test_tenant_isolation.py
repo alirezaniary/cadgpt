@@ -25,7 +25,7 @@ from rest_framework.test import APIClient
 from cadgpt.apps.base.querysets import TenantScopedQuerySet
 from cadgpt.apps.media.models import Media
 from cadgpt.apps.review.models import Review
-from cadgpt.apps.rulepack.models import RuleSet
+from cadgpt.apps.rulepack.models import RulePack, RuleSet
 from cadgpt.apps.tenancy.drf.views import TenantScopedViewSet
 from cadgpt.apps.tenancy.models import Tenant, TenantOwnedModel
 
@@ -37,6 +37,22 @@ SCOPED_BY_MEMBERSHIP = {
     "TenantViewSet",
     # Members of the tenant in the request header, scoped explicitly in get_queryset.
     "MembershipViewSet",
+}
+
+#: Viewsets that are legal without `TenantScopedViewSet` for a different reason again:
+#: the model behind them is not tenant data at all -- a catalogue we ship, belonging to
+#: no tenant (T-0030). `test_every_viewset_over_a_tenant_owned_model_is_tenant_scoped`
+#: already leaves a viewset like this alone, because its model is never a member of
+#: `_tenant_owned_models()` in the first place -- that is the declaration this dict names
+#: explicitly, rather than leaving it to be true only by the accident of what the model
+#: happens to inherit. `test_the_global_catalogue_declaration_names_no_tenant_owned_model`
+#: is what makes the declaration mean something: it fails the moment the named model ever
+#: gains a `tenant` column, which is exactly the case this whole file exists to catch.
+GLOBAL_CATALOGUE_VIEWSETS = {
+    # The rule pack catalogue: shipped packs belong to no tenant, every tenant reads the
+    # same rows. Covered below by test_the_rule_pack_catalogue_is_the_same_for_every_tenant
+    # and test_the_rule_pack_catalogue_refuses_every_write.
+    "RulePackViewSet",
 }
 
 
@@ -98,6 +114,33 @@ def test_every_viewset_over_a_tenant_owned_model_is_tenant_scoped() -> None:
         "so nothing narrows their queryset to the requesting tenant: "
         + ", ".join(offenders)
     )
+
+
+def test_the_global_catalogue_declaration_names_no_tenant_owned_model() -> None:
+    """The other half of the T-0030 exemption: it stays legal only as long as it is true.
+
+    A viewset in `GLOBAL_CATALOGUE_VIEWSETS` is exempt from the test above because its
+    model is not tenant-owned -- but that is a fact about the model, not about this set,
+    and nothing stops a future edit from giving that model a `tenant` column without
+    updating anything here. This is the check that would catch it: the moment a model
+    named here becomes a `TenantOwnedModel`, this fails, which is exactly the failure
+    mode the structural test above exists to produce. It does not widen what counts as
+    exempt; it narrows what the exemption is allowed to keep meaning.
+    """
+    viewsets = _registered_viewsets()
+    for name in GLOBAL_CATALOGUE_VIEWSETS:
+        cls = viewsets.get(name)
+        assert cls is not None, (
+            f"{name} is declared in GLOBAL_CATALOGUE_VIEWSETS but is not a registered "
+            "viewset -- the declaration is stale and should be removed."
+        )
+        model = cls.queryset.model
+        assert not issubclass(model, TenantOwnedModel), (
+            f"{name} is declared as a global catalogue viewset because {model.__name__} "
+            "was said to hold no tenant data, but it now inherits TenantOwnedModel. "
+            "Remove it from GLOBAL_CATALOGUE_VIEWSETS and make the viewset inherit "
+            "TenantScopedViewSet instead -- this model holds tenant data now."
+        )
 
 
 def test_for_tenant_with_no_tenant_returns_nothing_rather_than_everything() -> None:
@@ -165,3 +208,28 @@ def test_tenant_viewset_lists_only_own_tenants(
     assert response.status_code == 200
     slugs = {row["slug"] for row in response.data["results"]}
     assert tenant.slug not in slugs
+
+
+@pytest.mark.django_db
+def test_the_rule_pack_catalogue_is_the_same_for_every_tenant(
+    api: APIClient, rival_api: APIClient, rule_pack: RulePack
+) -> None:
+    """The T-0030 exemption's behavioural half: two unrelated tenants, one catalogue."""
+    for client in (api, rival_api):
+        response = client.get("/api/v1/rule-packs/")
+        assert response.status_code == 200
+        uuids = {row["uuid"] for row in response.data["results"]}
+        assert str(rule_pack.uuid) in uuids
+
+
+@pytest.mark.django_db
+def test_the_rule_pack_catalogue_refuses_every_write(
+    api: APIClient, rule_pack: RulePack
+) -> None:
+    """No tenant may write to the catalogue -- not even the one that can read it."""
+    assert api.post("/api/v1/rule-packs/", {"name": "hijacked"}).status_code == 405
+    assert (
+        api.patch(f"/api/v1/rule-packs/{rule_pack.uuid}/", {"name": "hijacked"}).status_code
+        == 405
+    )
+    assert api.delete(f"/api/v1/rule-packs/{rule_pack.uuid}/").status_code == 405

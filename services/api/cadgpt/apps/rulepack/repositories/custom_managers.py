@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING, Any, cast
 
 from django.db.models import Manager
 
-from cadgpt.apps.rulepack.repositories.querysets import RuleSetQuerySet
+from cadgpt.apps.rulepack.repositories.querysets import RulePackQuerySet, RuleSetQuerySet
 
 if TYPE_CHECKING:
-    from cadgpt.apps.rulepack.models import RuleSet
+    from cadgpt.apps.rulepack.models import RulePack, RuleSet
 
 _Unfiltered = Manager.from_queryset(RuleSetQuerySet)
 
@@ -61,3 +61,47 @@ class DeletedRuleSetManager(_Base):  # type: ignore[misc,valid-type]
 
 class AllRuleSetManager(_Base):  # type: ignore[misc,valid-type]
     """Every row, archived or not. What a completed run's report reads through."""
+
+
+_UnfilteredRulePack = Manager.from_queryset(RulePackQuerySet)
+
+if TYPE_CHECKING:
+    _RulePackBase = _UnfilteredRulePack["RulePack"]
+else:
+    _RulePackBase = _UnfilteredRulePack
+
+
+class RulePackManager(_RulePackBase):  # type: ignore[misc,valid-type]
+    """Thin write wrapper. Whether a pack belongs in the catalogue was decided by the
+    seeding service, never here -- this only persists what it is given.
+    """
+
+    def create_rule_pack(
+        self,
+        *,
+        name: str,
+        description: str,
+        jurisdiction: str,
+        region: str,
+        version: str,
+        source_file: Any,
+        source_citation: str,
+        title: str,
+        author: str,
+        specification_count: int,
+    ) -> RulePack:
+        rule_pack = self.model(
+            name=name.strip(),
+            description=description.strip(),
+            jurisdiction=jurisdiction.strip(),
+            region=region.strip(),
+            version=version.strip(),
+            source_citation=source_citation.strip(),
+            title=title[:255],
+            author=author[:255],
+            specification_count=specification_count,
+        )
+        rule_pack.source_file = source_file
+        rule_pack.full_clean(exclude=["source_file"])
+        rule_pack.save(using=self._db)
+        return cast("RulePack", rule_pack)

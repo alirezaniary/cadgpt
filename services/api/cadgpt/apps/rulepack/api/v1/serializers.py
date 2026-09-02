@@ -8,8 +8,32 @@ from rest_framework import serializers
 from cadgpt.apps.base.exceptions import NotFoundError
 from cadgpt.apps.media.api.v1.serializers import MediaSerializer
 from cadgpt.apps.media.models import Media
-from cadgpt.apps.rulepack.models import RuleSet
+from cadgpt.apps.rulepack.models import RulePack, RuleSet
 from cadgpt.apps.rulepack.services import RuleSetService
+
+
+class RulePackSerializer(serializers.ModelSerializer[RulePack]):
+    """Read-only: the catalogue is written by `manage.py seed_rule_packs`, never by a
+    request. See `RulePackViewSet`.
+    """
+
+    class Meta:
+        model = RulePack
+        fields = (
+            "uuid",
+            "name",
+            "description",
+            "jurisdiction",
+            "region",
+            "version",
+            "title",
+            "author",
+            "specification_count",
+            "source_citation",
+            "source_file",
+            "created_at",
+        )
+        read_only_fields = fields
 
 
 class RuleSetSerializer(serializers.ModelSerializer[RuleSet]):

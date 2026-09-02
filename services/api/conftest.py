@@ -20,8 +20,8 @@ from cadgpt.apps.media.models import Media
 from cadgpt.apps.media.services import MediaService
 from cadgpt.apps.review.models import Review
 from cadgpt.apps.review.services import ReviewService
-from cadgpt.apps.rulepack.models import RuleSet
-from cadgpt.apps.rulepack.services import RuleSetService
+from cadgpt.apps.rulepack.models import RulePack, RuleSet
+from cadgpt.apps.rulepack.services import RulePackService, RuleSetService
 from cadgpt.apps.tenancy.models import Tenant
 from cadgpt.apps.tenancy.services import TenantProvisioningService
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -89,6 +89,19 @@ def rule_set(tenant: Tenant, owner: User, ids_media: Media) -> RuleSet:
     return RuleSetService(tenant=tenant).create(
         source_file=ids_media, name="Accessible doors", created_by=owner
     )
+
+
+@pytest.fixture
+def rule_pack(db: Any) -> RulePack:
+    """A catalogue pack. Belongs to no tenant -- `db` is the only fixture it needs."""
+    pack, _ = RulePackService().seed(
+        ids_path=IDS_FIXTURE,
+        jurisdiction="sample",
+        region="",
+        version="0.1",
+        source_citation="test fixture, seeded for the test suite; not a real regulation.",
+    )
+    return pack
 
 
 @pytest.fixture

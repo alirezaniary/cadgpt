@@ -300,6 +300,29 @@ Queued as **T-0041**: a verdict is reachable without its scope. The reviews list
 "Complete · Fail · 1 / 1 / 1" before anyone opens the report, and that row is the surface a
 reader most plausibly screenshots into an email.
 
+**T-0030 — the rule catalogue. Built 2026-09-03, review outstanding.** A global `RulePack`
+beside the tenant-owned `RuleSet` — jurisdiction, region, version and a required source
+citation — with a read-only filterable API and an idempotent `seed_rule_packs` command. No rule
+content: seeded under `jurisdiction="sample"` from the repository's own fixtures, because the
+product owner authors the real packs in a separate thread and inventing a jurisdiction would be
+inventing a rule.
+
+The hard part was the invariant it does not fit. A shipped pack belongs to no tenant, so the
+catalogue needs a viewset that is deliberately *not* tenant-scoped — which is precisely what the
+structural test exists to fail. The answer holds: `GLOBAL_CATALOGUE_VIEWSETS` is a **declaration,
+not a skip list**. The original test never consults it and gained no new escape hatch; a second
+test asserts the declaration stays true, failing the moment a model named there acquires a
+`tenant` column. Verified by mutation — making `RulePack` tenant-owned fails four tests,
+including the *pre-existing* structural one, which is what proves no hole was opened. The
+guarantee is narrower after this task than before it, not wider.
+
+**Not done.** Its reviewer was dispatched and was still running when the coordinator session
+ended, so the findings were lost — the same way T-0025's were, twice. Re-dispatch before Phase 3
+is marked complete; the task file records what it was asked to hunt, so the next dispatch must
+not re-derive it. The short version: **the seeder's idempotence is proven for a re-run and not
+for a race or a changed file on disk, and `source_citation` is attribution that may be a
+placeholder.**
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before

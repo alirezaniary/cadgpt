@@ -589,3 +589,38 @@ The general rule, so this is decided once: **if a string will appear in the gene
 file, it is authored on the server.** The frontend catalogues hold UI chrome — labels, controls,
 headings that exist only on screen. Anything that is part of the report's own prose is the
 server's, because the report has two renderers and only one of them is a browser.
+
+## The catalogue's structural exemption is declared, not merely true by omission
+
+*2026-09-02, forced by T-0030.*
+
+`RulePack` is deliberately not `TenantOwnedModel`: it is a pack we ship, belonging to no
+tenant, beside the tenant-owned `RuleSet`. `RulePackViewSet` therefore does not inherit
+`TenantScopedViewSet` either, which is exactly the shape
+`test_every_viewset_over_a_tenant_owned_model_is_tenant_scoped`
+(`services/api/cadgpt/tests/test_tenant_isolation.py`) exists to fail — except that test's
+own scope is "every viewset **over a tenant-owned model**": it walks `_tenant_owned_models()`,
+built from `issubclass(model, TenantOwnedModel)`, and skips anything else before ever
+checking the viewset's base class. `RulePack` is outside that set by construction, so the
+test already leaves `RulePackViewSet` alone — no line of it needed to change, and none did.
+
+That left an honest gap: the reason the exemption is legal is a fact about `RulePack`
+(“this model owns no tenant data”), sitting nowhere the test suite could check it — a future
+edit could give `RulePack` a `tenant` column, and nothing would notice except the original
+test, tripping only once someone also forgot to update `RulePackViewSet` to match. So the
+exemption is now named explicitly: `GLOBAL_CATALOGUE_VIEWSETS = {"RulePackViewSet"}`, and a
+new test, `test_the_global_catalogue_declaration_names_no_tenant_owned_model`, asserts that
+every model named there is *not* a `TenantOwnedModel`. The declaration is self-invalidating —
+it fails the moment its premise stops being true — which is what makes it a declared category
+rather than an assumption resting on nobody looking. Mutating `RulePack` to inherit
+`TenantOwnedModel` fails both this new test and the original, untouched one; reverting passes
+both. Neither test was weakened to make room for the catalogue.
+
+The seeded rows themselves carry `jurisdiction="sample"`, an honest placeholder rather than a
+fabricated jurisdiction: the three packs seeded by `manage.py seed_rule_packs` come from
+`packages/engine/tests/fixtures/*.ids`, which are development fixtures, not authored
+regulation. `docs/tasks/T-0030-the-rule-catalogue.md` is explicit that inventing a real
+jurisdiction, region or version for a pack that does not exist is refused; "sample" says
+plainly what these three rows are, and the product owner's real packs — Iranian building code
+first — replace nothing here, they are simply seeded beside them under their own real
+jurisdiction values.
