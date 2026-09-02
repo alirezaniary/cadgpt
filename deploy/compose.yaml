@@ -1,0 +1,106 @@
+# The whole stack, as it actually runs: a database, a broker, the API, a worker that is
+# a separate process rather than a thread, and the SPA behind a proxy.
+#
+# The worker is the point. A 47MB model takes ten seconds to check and a large one takes
+# minutes, which is past what a browser or a proxy will hold open, so the check is queued
+# and polled rather than awaited inside the request.
+
+name: cadgpt
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: cadgpt
+      POSTGRES_PASSWORD: cadgpt
+      POSTGRES_DB: cadgpt
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      # Deliberately not 5432 on the host: a developer machine very often already runs a
+      # Postgres there, and a port clash on `make up` is a confusing first experience.
+      # Inside the compose network the service still answers on 5432.
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cadgpt -d cadgpt"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_HOST_PORT:-6380}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    # `image` is pinned to the same tag on both services on purpose. Without it Compose
+    # builds one image per service from the same Dockerfile and tags them separately, so
+    # rebuilding only `api` leaves the worker running older code -- which presents as a
+    # fix that works over HTTP and not in the queue. They are one image by construction.
+    image: cadgpt-api:latest
+    build: &api_build
+      context: ..
+      dockerfile: deploy/docker/api.Dockerfile
+    environment: &api_env
+      DJANGO_SETTINGS_MODULE: cadgpt.config.settings.local
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-only-not-a-secret-change-me}
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,api,web
+      DATABASE_URL: postgres://cadgpt:cadgpt@postgres:5432/cadgpt
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:8080
+      CSRF_TRUSTED_ORIGINS: http://localhost:5173,http://localhost:8080
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             gunicorn cadgpt.config.wsgi:application --bind 0.0.0.0:8000
+             --workers 3 --timeout 120 --access-logfile -"
+    volumes:
+      - media_data:/app/services/api/mediafiles
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+
+  worker:
+    image: cadgpt-api:latest
+    build: *api_build
+    environment: *api_env
+    # --concurrency 2: a check is CPU-bound geometry work, not a waiting HTTP call, so
+    # more workers than cores buys queueing rather than throughput.
+    command: >
+      celery -A cadgpt.config.celery worker
+      --queues checks,default --concurrency 2 --loglevel info
+    volumes:
+      - media_data:/app/services/api/mediafiles
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A cadgpt.config.celery inspect ping -d celery@$$HOSTNAME"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/docker/web.Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_data:

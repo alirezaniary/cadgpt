@@ -1,0 +1,53 @@
+{
+  "app": { "name": "CADGPT", "tagline": "Check a model against the rules that govern it" },
+  "auth": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "email": "Email",
+    "password": "Password",
+    "signingIn": "Signing in…"
+  },
+  "workspace": { "label": "Workspace", "none": "No workspace yet" },
+  "review": {
+    "title": "Reviews",
+    "new": "New review",
+    "name": "Name",
+    "model": "IFC model",
+    "ruleSet": "Rule set",
+    "create": "Create review",
+    "check": "Run check",
+    "checking": "Checking…",
+    "empty": "No reviews yet. Upload a model and a rule set to start.",
+    "neverRun": "Not checked yet"
+  },
+  "ruleSet": {
+    "title": "Rule sets",
+    "new": "Add rule set",
+    "file": "IDS file",
+    "specifications_one": "{{count}} specification",
+    "specifications_other": "{{count}} specifications"
+  },
+  "status": {
+    "PASS": "Pass",
+    "FAIL": "Fail",
+    "INDETERMINATE": "Indeterminate",
+    "pending": "Queued",
+    "running": "Running",
+    "succeeded": "Complete",
+    "failed": "Failed"
+  },
+  "report": {
+    "summary": "Summary",
+    "passed": "Passed",
+    "failed": "Failed",
+    "indeterminate": "Could not be determined",
+    "indeterminateNote": "These were not checked. They are not passes.",
+    "specifications": "Specifications",
+    "matched": "{{count}} element(s) matched",
+    "omitted": "{{count}} further element(s) counted but not listed",
+    "engine": "Engine {{version}}",
+    "schema": "Model schema {{schema}}",
+    "nothingChecked": "Nothing was checked"
+  },
+  "error": { "generic": "Something went wrong.", "retry": "Try again" }
+}

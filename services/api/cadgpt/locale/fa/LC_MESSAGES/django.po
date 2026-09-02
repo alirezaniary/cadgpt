@@ -1,0 +1,235 @@
+# Persian (fa) translation for CADGPT.
+#
+# Findings are translated here rather than in the frontend, because the wording
+# belongs with the rule vocabulary that produces it. The stored report holds only
+# reason codes, so the same run reads correctly in either language and a translation
+# fix does not require rewriting history.
+msgid ""
+msgstr ""
+"Project-Id-Version: cadgpt 0.1.0\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: fa\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: cadgpt/apps/review/reasons.py (ATTRIBUTE_MISSING)
+msgid "The attribute this rule needs is not present on the element."
+msgstr "ویژگی مورد نیاز این قاعده روی عضو موجود نیست."
+
+#: cadgpt/apps/review/reasons.py (ATTRIBUTE_EMPTY)
+msgid "The attribute is present but holds no value."
+msgstr "ویژگی موجود است ولی مقداری ندارد."
+
+#: cadgpt/apps/review/reasons.py (ATTRIBUTE_NAME_INVALID)
+msgid "The rule names an attribute that does not exist on this entity."
+msgstr "قاعده ویژگی‌ای را نام می‌برد که روی این موجودیت وجود ندارد."
+
+#: cadgpt/apps/review/reasons.py (CLASSIFICATION_MISSING)
+msgid "The element carries no classification."
+msgstr "عضو هیچ طبقه‌بندی‌ای ندارد."
+
+#: cadgpt/apps/review/reasons.py (RELATIONSHIP_MISSING)
+msgid "The element carries no such relationship."
+msgstr "عضو چنین رابطه‌ای ندارد."
+
+#: cadgpt/apps/review/reasons.py (PROPERTY_SET_MISSING)
+msgid "The property set this rule needs is not present."
+msgstr "مجموعه ویژگی مورد نیاز این قاعده موجود نیست."
+
+#: cadgpt/apps/review/reasons.py (PROPERTY_MISSING)
+msgid "The property set does not contain the property this rule needs."
+msgstr "مجموعه ویژگی، ویژگی مورد نیاز این قاعده را در بر ندارد."
+
+#: cadgpt/apps/review/reasons.py (DATA_TYPE_MISMATCH)
+msgid "The value is recorded in a data type the rule cannot compare."
+msgstr "مقدار با نوع داده‌ای ثبت شده که قاعده نمی‌تواند مقایسه‌اش کند."
+
+#: cadgpt/apps/review/reasons.py (MATERIAL_MISSING)
+msgid "The element has no material assigned."
+msgstr "به عضو هیچ مصالحی تخصیص نیافته است."
+
+#: cadgpt/apps/review/reasons.py (ENTITY_CLASS_MISMATCH)
+msgid "The element is not of the IFC class the rule requires."
+msgstr "عضو از کلاس IFC مورد نیاز قاعده نیست."
+
+#: cadgpt/apps/review/reasons.py (PREDEFINED_TYPE_MISMATCH)
+msgid "The predefined type is not the one the rule requires."
+msgstr "نوع از پیش تعریف‌شده همانی نیست که قاعده می‌خواهد."
+
+#: cadgpt/apps/review/reasons.py (ATTRIBUTE_VALUE_MISMATCH)
+msgid "The attribute value does not satisfy the rule."
+msgstr "مقدار ویژگی قاعده را برآورده نمی‌کند."
+
+#: cadgpt/apps/review/reasons.py (ATTRIBUTE_VALUE_PROHIBITED)
+msgid "The attribute value matches something the rule prohibits."
+msgstr "مقدار ویژگی با چیزی مطابقت دارد که قاعده منع کرده است."
+
+#: cadgpt/apps/review/reasons.py (CLASSIFICATION_REFERENCE_MISMATCH)
+msgid "The classification reference does not satisfy the rule."
+msgstr "ارجاع طبقه‌بندی قاعده را برآورده نمی‌کند."
+
+#: cadgpt/apps/review/reasons.py (CLASSIFICATION_SYSTEM_MISMATCH)
+msgid "The classification system is not the one the rule requires."
+msgstr "نظام طبقه‌بندی همانی نیست که قاعده می‌خواهد."
+
+#: cadgpt/apps/review/reasons.py (CLASSIFICATION_PROHIBITED)
+msgid "The classification matches something the rule prohibits."
+msgstr "طبقه‌بندی با چیزی مطابقت دارد که قاعده منع کرده است."
+
+#: cadgpt/apps/review/reasons.py (RELATIONSHIP_ENTITY_MISMATCH)
+msgid "The element is related to entities the rule does not allow."
+msgstr "عضو با موجودیت‌هایی مرتبط است که قاعده اجازه نمی‌دهد."
+
+#: cadgpt/apps/review/reasons.py (RELATIONSHIP_PREDEFINED_TYPE_MISMATCH)
+msgid "The related entity has a predefined type the rule does not allow."
+msgstr "موجودیت مرتبط نوعی از پیش تعریف‌شده دارد که قاعده اجازه نمی‌دهد."
+
+#: cadgpt/apps/review/reasons.py (RELATIONSHIP_PROHIBITED)
+msgid "The relationship matches something the rule prohibits."
+msgstr "رابطه با چیزی مطابقت دارد که قاعده منع کرده است."
+
+#: cadgpt/apps/review/reasons.py (PROPERTY_VALUE_MISMATCH)
+msgid "The property value does not satisfy the rule."
+msgstr "مقدار ویژگی قاعده را برآورده نمی‌کند."
+
+#: cadgpt/apps/review/reasons.py (PROPERTY_PROHIBITED)
+msgid "The property value matches something the rule prohibits."
+msgstr "مقدار ویژگی با چیزی مطابقت دارد که قاعده منع کرده است."
+
+#: cadgpt/apps/review/reasons.py (MATERIAL_MISMATCH)
+msgid "The material does not satisfy the rule."
+msgstr "مصالح قاعده را برآورده نمی‌کند."
+
+#: cadgpt/apps/review/reasons.py (MATERIAL_PROHIBITED)
+msgid "The material matches something the rule prohibits."
+msgstr "مصالح با چیزی مطابقت دارد که قاعده منع کرده است."
+
+#: cadgpt/apps/review/reasons.py (REASON_UNRECOGNISED)
+msgid "The checker reported a result this version of the engine does not recognise, so it is not asserted as a violation."
+msgstr "بررسی‌کننده نتیجه‌ای گزارش کرد که این نسخهٔ موتور آن را نمی‌شناسد، بنابراین به عنوان تخلف اعلام نمی‌شود."
+
+#: cadgpt/apps/review/reasons.py (SCHEMA_MISMATCH)
+msgid "This rule is written for a different IFC schema than the model uses, so whether it applies could not be established."
+msgstr "این قاعده برای شمای IFC دیگری نوشته شده است، بنابراین نمی‌توان تعیین کرد که آیا اعمال می‌شود یا نه."
+
+#: cadgpt/apps/review/reasons.py (NO_SUBJECTS_BUT_REQUIRED)
+msgid "This rule requires matching elements and the model contains none."
+msgstr "این قاعده اعضای منطبق را الزامی می‌کند و مدل هیچ‌کدام را ندارد."
+
+#: cadgpt/apps/review/reasons.py (NO_SUBJECTS_AND_PROHIBITED)
+msgid "This rule prohibits such elements and the model contains none."
+msgstr "این قاعده چنین اعضایی را منع می‌کند و مدل هیچ‌کدام را ندارد."
+
+#: cadgpt/apps/review/reasons.py (NO_SUBJECTS_NOTHING_CHECKED)
+msgid "No element matched this rule, so nothing was checked. The model may contain none, or may not describe them the way the rule expects."
+msgstr "هیچ عضوی با این قاعده منطبق نشد، بنابراین چیزی بررسی نشد. ممکن است مدل هیچ‌کدام را نداشته باشد یا آنها را آن‌گونه که قاعده انتظار دارد توصیف نکند."
+
+#: cadgpt/apps/review/reasons.py (PROHIBITED_SUBJECTS_PRESENT)
+msgid "This rule prohibits these elements and the model contains them."
+msgstr "این قاعده این اعضا را منع می‌کند و مدل آنها را دارد."
+
+msgid "The request could not be completed."
+msgstr "درخواست کامل نشد."
+
+msgid "The submitted data is not valid."
+msgstr "داده‌های ارسالی معتبر نیست."
+
+msgid "The requested resource does not exist."
+msgstr "منبع درخواستی وجود ندارد."
+
+msgid "You do not have permission to perform this action."
+msgstr "اجازهٔ انجام این کار را ندارید."
+
+msgid "The resource is not in a state that allows this action."
+msgstr "منبع در وضعیتی نیست که این کار را ممکن کند."
+
+msgid "The email address or password is not correct."
+msgstr "رایانامه یا گذرواژه درست نیست."
+
+msgid "The password is not acceptable."
+msgstr "گذرواژه پذیرفتنی نیست."
+
+msgid "The current password is not correct."
+msgstr "گذرواژهٔ فعلی درست نیست."
+
+msgid "The password was changed."
+msgstr "گذرواژه تغییر کرد."
+
+msgid "This account cannot be created."
+msgstr "این حساب ایجاد نمی‌شود."
+
+msgid "No session to refresh."
+msgstr "نشستی برای تازه‌سازی وجود ندارد."
+
+msgid "The session has expired. Sign in again."
+msgstr "نشست منقضی شده است. دوباره وارد شوید."
+
+msgid "This workspace is not available to you."
+msgstr "این فضای کاری در دسترس شما نیست."
+
+msgid "You are not a member of this workspace."
+msgstr "شما عضو این فضای کاری نیستید."
+
+msgid "Only an administrator may add members."
+msgstr "تنها مدیر می‌تواند عضو اضافه کند."
+
+msgid "Only an administrator may remove members."
+msgstr "تنها مدیر می‌تواند عضو حذف کند."
+
+msgid "Only an owner may grant ownership."
+msgstr "تنها مالک می‌تواند مالکیت اعطا کند."
+
+msgid "This person is already a member."
+msgstr "این شخص از پیش عضو است."
+
+msgid "That membership does not exist."
+msgstr "چنین عضویتی وجود ندارد."
+
+msgid "A workspace must keep at least one owner."
+msgstr "هر فضای کاری باید دست‌کم یک مالک داشته باشد."
+
+msgid "A tenant with this identifier already exists."
+msgstr "مستأجری با این شناسه از پیش وجود دارد."
+
+msgid "That kind of file is not accepted."
+msgstr "این نوع پرونده پذیرفته نمی‌شود."
+
+msgid "The uploaded file is empty."
+msgstr "پروندهٔ بارگذاری‌شده خالی است."
+
+msgid "That file was not uploaded as a rule set."
+msgstr "این پرونده به عنوان مجموعه قواعد بارگذاری نشده است."
+
+msgid "That file was not uploaded as a model."
+msgstr "این پرونده به عنوان مدل بارگذاری نشده است."
+
+msgid "This file is not a valid IDS rule set."
+msgstr "این پرونده یک مجموعه قواعد IDS معتبر نیست."
+
+msgid "A rule set with this name already exists in this workspace."
+msgstr "مجموعه قواعدی با این نام در این فضای کاری از پیش وجود دارد."
+
+msgid "That uploaded file does not exist."
+msgstr "پروندهٔ بارگذاری‌شده وجود ندارد."
+
+msgid "That uploaded model does not exist."
+msgstr "مدل بارگذاری‌شده وجود ندارد."
+
+msgid "That rule set does not exist."
+msgstr "چنین مجموعه قواعدی وجود ندارد."
+
+msgid "No account exists for that email address."
+msgstr "حسابی با این رایانامه وجود ندارد."
+
+msgid "A check is already running for this review."
+msgstr "بررسی‌ای برای این مورد در حال اجراست."
+
+msgid "The model and the rule set must belong to this workspace."
+msgstr "مدل و مجموعه قواعد باید به این فضای کاری تعلق داشته باشند."
+
+msgid "English"
+msgstr "انگلیسی"
+
+msgid "Persian"
+msgstr "فارسی"

@@ -157,3 +157,156 @@ discarded work by reading it, not by measuring it.
 **Recovery:** `git checkout backup/pre-reset-20260901`.
 
 **Reopens if:** never. Rebuilding the harness before the product it guards is what produced this.
+
+---
+
+## 2026-09-02 — A base built to be continued, not a prototype to be thrown away
+
+**Problem.** The plan called for the thinnest possible web app: one Django screen,
+synchronous evaluation, no tenancy, no queue, no separate frontend, "each returns when
+there is something to protect". That is the correct instinct against speculative
+complexity, and it was the wrong call here for one reason: the things it deferred are
+one-way doors. A custom user model, a tenant foreign key on every table, and an async job
+boundary are all cheap now and expensive to retrofit, because retrofitting them means
+rewriting every table, every queryset and every view that was written without them. A
+synchronous checker that becomes asynchronous later is not an addition; it is a rewrite of
+every call path that assumed a result was available when the function returned.
+
+**Decision.** A modular monorepo, built to be continued.
+
+```
+packages/engine/   cadgpt_engine — deterministic checking. No framework, no network.
+services/api/      Django + DRF + Celery. Six apps, layered by an import contract.
+services/web/      React + Vite + TanStack Query, TypeScript, RTL-native.
+deploy/            Dockerfiles and the compose stack.
+```
+
+Modular, not a monolith with folders: the boundaries are import contracts checked by
+`make verify`, not conventions. A lower app cannot import a higher one, a service cannot
+import the transport that called it, a model cannot import a service, and nothing in the
+engine can reach Django, the network, or an inference client.
+
+**What was not built** is as deliberate: no row-level security, no outbox, no WebSockets,
+no admin UI, no agent layer. The line is one-way doors, not sophistication.
+
+**Reopens if:** never in shape. Individual pieces move as measurement demands.
+
+## Tenancy is a foreign key and a scoped queryset, not row-level security
+
+Every tenant-owned table carries `tenant_id` and inherits `TenantOwnedModel`. Every read
+goes through `TenantScopedQuerySet.for_tenant`, and `for_tenant(None)` returns nothing
+rather than everything, so a bug that loses the tenant surfaces as an empty list rather
+than a cross-tenant leak.
+
+Chosen over PostgreSQL RLS and over schema-per-tenant for the simplicity of one migration
+set and one connection path. The cost is real and named: with a plain foreign key, one
+forgotten filter is one firm reading another firm's unpublished drawings, and the database
+will not stop it.
+
+So the guard is structural instead. `services/api/cadgpt/tests/test_tenant_isolation.py`
+walks every model in the project and every viewset reachable through the URL configuration,
+and fails the build if a tenant-owned model has an unscoped default manager or is served by
+a viewset that does not inherit `TenantScopedViewSet`. Two viewsets are exempted by name,
+each with a reason and a behavioural test of its own. A reviewer noticing a missing filter
+is not a control; this is.
+
+**Reopens if:** a compliance conversation requires database-enforced isolation, or the
+tenant count and data sensitivity make a leak's blast radius unacceptable. The migration
+path is additive — RLS policies over the existing `tenant_id` columns — which is why the
+column is on every table from the first migration.
+
+## Tenant resolution happens after authentication, not in middleware
+
+Written first as middleware reading `request.user`, which could never have worked:
+authentication is a bearer token that DRF checks inside the view, so every middleware runs
+against `AnonymousUser` and resolves no tenant at all. It presented as a permissions bug
+and was an ordering bug.
+
+Resolution now happens on first demand from a permission class or a viewset — both of which
+run after authentication — and caches on the request. `cadgpt.apps.tenancy.resolution`.
+
+Found by running the stack, not by the test suite, which authenticated with
+`force_authenticate` and never exercised the real path. Recorded because the shape of the
+mistake recurs: any component that needs the authenticated user cannot be middleware in a
+token-authenticated API.
+
+**Reopens if:** never.
+
+## Checks are asynchronous from the first version
+
+A 47MB model completes in 9.9s, which does fit inside an HTTP request — the earlier decision
+to evaluate synchronously was correct about the measurement and wrong about the horizon. A
+real permit-set model is larger, the derivation layer of `prd.md` 5.4 is pure added compute,
+and the request timeout is not a limit that can be raised.
+
+`POST /reviews/{uuid}/check/` returns `202` with a run to poll. Celery over Redis, one
+worker container.
+
+Three properties make it safe rather than merely asynchronous:
+
+- **Dispatch happens on commit.** Enqueuing inside the transaction that created the run lets
+  a worker pick the message up before the row is visible to any other connection.
+- **The task is idempotent.** `acks_late` means a message survives a dead worker and is
+  delivered again; a run that is already terminal is returned untouched.
+- **Stalled runs are reaped.** A run left RUNNING by a dead worker reads as work in progress
+  and blocks its review from ever being re-checked, which is worse than a failure.
+
+**Reopens if:** never. The direction of travel is more asynchronous work, not less.
+
+## The engine names its reasons; Django translates them
+
+The engine imports no web framework, so it cannot call `gettext`. It emits a `ReasonCode`
+for every outcome and `cadgpt.apps.review.reasons` supplies the wording, resolved in the
+reader's language when a report is read.
+
+Stored reports therefore hold codes and no prose. One run reads correctly in Persian for the
+architect and in English for a consultant, from one document; improving a translation does
+not require rewriting history; and `prd.md` 5.7's requirement that INDETERMINATE carry a
+machine-readable reason is satisfied by construction rather than by parsing English.
+
+A test asserts the mapping is total over `ReasonCode` in both directions, so an engine
+upgrade that adds a code cannot ship wording-less, and dead wording cannot accumulate.
+
+**Reopens if:** never.
+
+## The report is one JSON document, not a row per finding
+
+A real rule set against a real model produced 3,623 non-passing entities on one
+specification. That is a document to read, not a table to join. `CheckRun.report` is a
+`JSONField`; the six counts are denormalized alongside it so a list view never parses it,
+and list endpoints `defer()` it so a page of runs never loads megabytes to render numbers.
+
+The itemised entity list is capped at 500 per requirement; counts stay exact and
+`entities_omitted` states the size of what was dropped. Truncating the detail is permitted;
+moving a count is not.
+
+Findings become rows when they need identity across runs — when dispositions arrive
+(`prd.md` 5.7) — and not before.
+
+**Reopens if:** dispositions, or a query pattern that filters across runs by finding.
+
+## uv workspace, not Poetry; readable enum values, not three-letter codes
+
+The workspace was already on uv with one lockfile, and a monorepo where the service depends
+on a local engine package is exactly what uv workspaces are for. Members resolve each other
+without publishing and CI installs in seconds.
+
+Status values are stored as readable words — `pending`, `succeeded`, `PASS` — rather than
+the three-letter codes of the reference standards document this project's conventions were
+drawn from. Those values appear in the HTTP API, in log lines, and in a database somebody
+debugs under pressure; the bytes saved are not worth what they cost to read.
+
+**Reopens if:** never for uv while the evaluation stack is Python.
+
+## The refresh token is an httpOnly cookie; the access token lives only in memory
+
+The SPA holds its access token in a module-scoped variable, never in `localStorage`. The
+refresh token is set as an httpOnly, SameSite cookie scoped to the refresh endpoint, which
+JavaScript cannot read. A cross-site scripting flaw in the frontend can then make requests
+while the page is open, but cannot lift a credential that outlives it.
+
+The client refreshes at most once for any number of concurrent 401s, sharing one promise —
+otherwise ten queries failing together fire ten refreshes and rotate the token out from
+under nine of them.
+
+**Reopens if:** a native client needs a token the browser rules do not fit.

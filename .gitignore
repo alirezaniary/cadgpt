@@ -4,3 +4,21 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+
+# Compiled message catalogues: generated from the .po files, which are the source.
+*.mo
+
+# Local environment. .env.example is the template that is committed.
+.env
+services/api/.env
+
+# Uploaded models and generated static files.
+services/api/mediafiles/
+services/api/staticfiles/
+
+# Node
+node_modules/
+dist/
+
+# Editor
+.idea/

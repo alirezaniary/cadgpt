@@ -1,0 +1,53 @@
+{
+  "app": { "name": "کدجی‌پی‌تی", "tagline": "بررسی مدل در برابر مقررات حاکم بر آن" },
+  "auth": {
+    "signIn": "ورود",
+    "signOut": "خروج",
+    "email": "رایانامه",
+    "password": "گذرواژه",
+    "signingIn": "در حال ورود…"
+  },
+  "workspace": { "label": "فضای کاری", "none": "هنوز فضای کاری ندارید" },
+  "review": {
+    "title": "بررسی‌ها",
+    "new": "بررسی تازه",
+    "name": "نام",
+    "model": "مدل IFC",
+    "ruleSet": "مجموعه قواعد",
+    "create": "ایجاد بررسی",
+    "check": "اجرای بررسی",
+    "checking": "در حال بررسی…",
+    "empty": "هنوز بررسی‌ای نیست. برای شروع یک مدل و یک مجموعه قواعد بارگذاری کنید.",
+    "neverRun": "هنوز بررسی نشده"
+  },
+  "ruleSet": {
+    "title": "مجموعه‌های قواعد",
+    "new": "افزودن مجموعه قواعد",
+    "file": "پرونده IDS",
+    "specifications_one": "{{count}} مشخصه",
+    "specifications_other": "{{count}} مشخصه"
+  },
+  "status": {
+    "PASS": "قبول",
+    "FAIL": "مردود",
+    "INDETERMINATE": "نامشخص",
+    "pending": "در صف",
+    "running": "در حال اجرا",
+    "succeeded": "تمام‌شده",
+    "failed": "ناموفق"
+  },
+  "report": {
+    "summary": "خلاصه",
+    "passed": "قبول",
+    "failed": "مردود",
+    "indeterminate": "قابل تعیین نبود",
+    "indeterminateNote": "این موارد بررسی نشدند و قبول به شمار نمی‌آیند.",
+    "specifications": "مشخصه‌ها",
+    "matched": "{{count}} عضو منطبق",
+    "omitted": "{{count}} عضو دیگر شمرده شد ولی فهرست نشد",
+    "engine": "موتور {{version}}",
+    "schema": "شمای مدل {{schema}}",
+    "nothingChecked": "چیزی بررسی نشد"
+  },
+  "error": { "generic": "خطایی رخ داد.", "retry": "تلاش دوباره" }
+}

@@ -1,0 +1,10 @@
+from __future__ import annotations
+
+from django.apps import AppConfig
+
+
+class ReviewConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "cadgpt.apps.review"
+    label = "review"
+    verbose_name = "Reviews"

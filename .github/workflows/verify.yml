@@ -1,0 +1,66 @@
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - run: uv sync --all-packages --frozen
+
+      - name: Lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Types
+        run: uv run mypy packages/engine/src services/api/cadgpt
+
+      # The one guard the whole product rests on: no inference client, no web framework
+      # and no network reaches the checking engine.
+      - name: Import contracts
+        run: uv run lint-imports --no-cache
+
+      - name: Tests
+        run: uv run pytest
+
+      # A model change with no migration passes every test above and fails on deploy.
+      - name: No missing migrations
+        working-directory: services/api
+        env:
+          DJANGO_SETTINGS_MODULE: cadgpt.config.settings.test
+        run: uv run --project .. python manage.py makemigrations --check --dry-run
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: services/web/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run verify

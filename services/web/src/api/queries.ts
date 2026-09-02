@@ -1,0 +1,148 @@
+/**
+ * Server state, owned by TanStack Query. There is no client-side store mirroring it.
+ *
+ * The polling rule is the interesting part: a run is polled while it is pending or
+ * running and never once it is terminal. A fixed interval would keep asking about a
+ * result that cannot change, for as long as the tab is open.
+ */
+
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationResult,
+  type UseQueryResult,
+} from "@tanstack/react-query";
+
+import { api } from "@/api/client";
+import type {
+  CheckRunDetail,
+  CheckRunSummary,
+  Media,
+  Page,
+  Review,
+  RuleSet,
+  Tenant,
+  User,
+} from "@/api/types";
+import { isTerminal } from "@/api/types";
+
+export const keys = {
+  me: ["me"] as const,
+  tenants: ["tenants"] as const,
+  ruleSets: (tenant: string | null) => ["rule-sets", tenant] as const,
+  reviews: (tenant: string | null) => ["reviews", tenant] as const,
+  review: (uuid: string) => ["review", uuid] as const,
+  run: (review: string, run: string) => ["run", review, run] as const,
+};
+
+export function useMe(enabled: boolean): UseQueryResult<User> {
+  return useQuery({
+    queryKey: keys.me,
+    queryFn: () => api.get<User>("/v1/me/"),
+    enabled,
+    retry: false,
+  });
+}
+
+export function useTenants(enabled: boolean): UseQueryResult<Page<Tenant>> {
+  return useQuery({
+    queryKey: keys.tenants,
+    queryFn: () => api.get<Page<Tenant>>("/v1/tenants/"),
+    enabled,
+  });
+}
+
+export function useRuleSets(tenant: string | null): UseQueryResult<Page<RuleSet>> {
+  return useQuery({
+    queryKey: keys.ruleSets(tenant),
+    queryFn: () => api.get<Page<RuleSet>>("/v1/rule-sets/"),
+    enabled: Boolean(tenant),
+  });
+}
+
+export function useReviews(tenant: string | null): UseQueryResult<Page<Review>> {
+  return useQuery({
+    queryKey: keys.reviews(tenant),
+    queryFn: () => api.get<Page<Review>>("/v1/reviews/"),
+    enabled: Boolean(tenant),
+    // A review's latest run changes while a check is in flight, so the list refreshes
+    // itself only while at least one is unfinished.
+    refetchInterval: (query) => {
+      const page = query.state.data;
+      if (!page) return false;
+      const busy = page.results.some(
+        (review) => review.latest_run && !isTerminal(review.latest_run.status),
+      );
+      return busy ? 2000 : false;
+    },
+  });
+}
+
+export function useCheckRun(
+  reviewUuid: string,
+  runUuid: string | null,
+): UseQueryResult<CheckRunDetail> {
+  return useQuery({
+    queryKey: keys.run(reviewUuid, runUuid ?? ""),
+    queryFn: () => api.get<CheckRunDetail>(`/v1/reviews/${reviewUuid}/runs/${runUuid}/`),
+    enabled: Boolean(runUuid),
+    refetchInterval: (query) => {
+      const run = query.state.data;
+      // Stop the moment the answer is final; a finished run cannot become a different one.
+      return run && isTerminal(run.status) ? false : 1500;
+    },
+  });
+}
+
+async function uploadMedia(file: File, kind: Media["kind"]): Promise<Media> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("kind", kind);
+  return api.post<Media>("/v1/media/", form);
+}
+
+export function useCreateRuleSet(
+  tenant: string | null,
+): UseMutationResult<RuleSet, Error, { file: File; name: string }> {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ file, name }) => {
+      // Two steps on purpose: a name collision must not cost the upload again.
+      const media = await uploadMedia(file, "ids_ruleset");
+      return api.post<RuleSet>("/v1/rule-sets/", {
+        source_file: media.uuid,
+        name,
+      });
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.ruleSets(tenant) }),
+  });
+}
+
+export function useCreateReview(
+  tenant: string | null,
+): UseMutationResult<Review, Error, { file: File; name: string; ruleSet: string }> {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ file, name, ruleSet }) => {
+      const media = await uploadMedia(file, "ifc_model");
+      return api.post<Review>("/v1/reviews/", {
+        name,
+        model_file: media.uuid,
+        rule_set: ruleSet,
+      });
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.reviews(tenant) }),
+  });
+}
+
+export function useStartCheck(
+  tenant: string | null,
+): UseMutationResult<CheckRunSummary, Error, string> {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (reviewUuid: string) =>
+      api.post<CheckRunSummary>(`/v1/reviews/${reviewUuid}/check/`),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.reviews(tenant) }),
+  });
+}

@@ -1,0 +1,187 @@
+/*
+ * Written in logical properties throughout -- inline-start, margin-inline, padding-block --
+ * so the whole interface mirrors when `dir` flips to rtl and no component has to know
+ * which way the page runs.
+ *
+ * The `.ltr` class is the exception that proves it: an email address, an IFC class name
+ * and a GlobalId are identifiers, not prose, and they read left to right inside a
+ * right-to-left page.
+ */
+
+:root {
+  --bg: #ffffff;
+  --fg: #16181d;
+  --muted: #62666f;
+  --line: #e2e5ea;
+  --card: #f8f9fb;
+  --pass: #1a7f4b;
+  --pass-bg: #e6f4ec;
+  --fail: #b4232a;
+  --fail-bg: #fbeaea;
+  --indeterminate: #8a5a00;
+  --indeterminate-bg: #fdf3e0;
+  --accent: #2b5ce6;
+  --radius: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #eceef2;
+    --muted: #9aa0ab;
+    --line: #2a2e36;
+    --card: #1b1e24;
+    --pass-bg: #113023;
+    --fail-bg: #3a1618;
+    --indeterminate-bg: #382a10;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Vazirmatn, Tahoma, sans-serif;
+}
+
+:lang(fa) body { font-family: Vazirmatn, Tahoma, system-ui, sans-serif; }
+
+.ltr { direction: ltr; unicode-bidi: isolate; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88em; }
+.muted { color: var(--muted); }
+.spacer { flex: 1; }
+
+.sr-only {
+  position: absolute;
+  inline-size: 1px; block-size: 1px;
+  overflow: hidden; clip-path: inset(50%);
+}
+
+.shell { min-block-size: 100vh; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  border-block-end: 1px solid var(--line);
+}
+
+.page {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  max-inline-size: 72rem;
+  margin-inline: auto;
+}
+
+.centered {
+  min-block-size: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  display: grid;
+  gap: 0.75rem;
+  min-inline-size: min(24rem, 100%);
+}
+
+h1, h2, h3, h4 { margin: 0; font-weight: 620; }
+
+label { font-size: 0.85rem; color: var(--muted); }
+
+input, select, button {
+  font: inherit;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+button {
+  cursor: pointer;
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+}
+button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+
+.review { border-block-start: 1px solid var(--line); padding-block-start: 0.6rem; }
+.review__head { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.review__state { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+
+.pill {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.pill--pass { color: var(--pass); background: var(--pass-bg); }
+.pill--fail { color: var(--fail); background: var(--fail-bg); }
+.pill--indeterminate { color: var(--indeterminate); background: var(--indeterminate-bg); }
+
+.error { color: var(--fail); }
+
+.notice {
+  margin: 0;
+  padding: 0.5rem 0.7rem;
+  border-radius: 6px;
+  background: var(--indeterminate-bg);
+  color: var(--indeterminate);
+  font-size: 0.9rem;
+}
+
+.report {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  max-inline-size: 72rem;
+  margin-inline: auto;
+}
+.report__header { display: flex; justify-content: space-between; gap: 1rem; align-items: start; }
+
+/* Three columns, never two: indeterminate is displayed at the same weight as the other
+   two so it cannot be read past. */
+.counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+.count {
+  padding: 0.85rem;
+  border-radius: var(--radius);
+  display: grid;
+  gap: 0.15rem;
+}
+.count__value { font-size: 1.7rem; font-weight: 680; line-height: 1; }
+.count__label { font-size: 0.82rem; }
+.count--pass { background: var(--pass-bg); color: var(--pass); }
+.count--fail { background: var(--fail-bg); color: var(--fail); }
+.count--indeterminate { background: var(--indeterminate-bg); color: var(--indeterminate); }
+
+.specs { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
+.spec { border: 1px solid var(--line); border-radius: var(--radius); padding: 0.9rem; }
+.spec__head { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
+
+.requirement { margin-block-start: 0.7rem; }
+.requirement__description { margin: 0 0 0.4rem; font-size: 0.9rem; }
+
+.entities { inline-size: 100%; border-collapse: collapse; font-size: 0.87rem; }
+.entities td {
+  padding: 0.35rem 0.5rem;
+  border-block-start: 1px solid var(--line);
+  vertical-align: top;
+  text-align: start;
+}
