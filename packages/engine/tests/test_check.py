@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -53,6 +54,59 @@ def test_the_real_path_separates_a_violation_from_missing_data(
     unknown = outcomes["3worKcMPzD8x0Y1nJVBqA3"]
     assert unknown.status is Status.INDETERMINATE
     assert unknown.reason_code is ReasonCode.ATTRIBUTE_EMPTY
+
+
+def test_the_requirement_description_is_the_rule_in_words_not_an_object_repr(
+    three_doors_ifc: Path, door_width_ids: Path
+) -> None:
+    """I5: a finding cites a resolvable basis, and a CPython object address is not one.
+
+    `ifctester` renders every facet's own template via `to_string`; the engine must call
+    it with the real `Specification` in scope rather than falling back to `str(facet)`,
+    which is the default `object.__repr__` because no facet defines `__str__`.
+    """
+    report = run_check(three_doors_ifc, door_width_ids)
+    requirement = report.specifications[0].requirements[0]
+
+    assert requirement.description == "The OverallWidth shall be {'minInclusive': '900'}"
+
+    for spec in report.specifications:
+        for req in spec.requirements:
+            assert not re.search(r"<.* object at 0x", req.description), (
+                "a facet whose template is lost renders as a memory address, not text"
+            )
+
+
+def test_a_prohibited_specifications_requirement_line_never_contradicts_its_verdict(
+    three_doors_ifc: Path, door_prohibited_ids: Path
+) -> None:
+    """I5/I7: a requirement line must never say the opposite of the verdict beside it.
+
+    `Facet.to_string("requirement", specification, ...)` short-circuits to the literal
+    "The requirement is not applicable" whenever `specification.maxOccurs == 0` -- true of
+    every facet on a prohibited specification, regardless of that facet's own cardinality.
+    Threading the real `Specification` into a plain `to_string("requirement", ...)` call
+    would put that literal directly under a FAIL verdict reporting
+    `PROHIBITED_SUBJECTS_PRESENT` -- a line that reads as a limitation-shaped pass while the
+    spec beside it failed. This
+    is the one input where passing the real specification and passing `None` produce
+    different text, so it is the regression guard the fix needs: `door_prohibited.ids`
+    prohibits `IfcDoor` outright (`minOccurs="0" maxOccurs="0"`), and `three_doors.ifc` has
+    three of them.
+    """
+    report = run_check(three_doors_ifc, door_prohibited_ids)
+    spec = report.specifications[0]
+
+    assert spec.applicability is Applicability.APPLIES
+    assert spec.status is Status.FAIL
+    assert spec.reason_code is ReasonCode.PROHIBITED_SUBJECTS_PRESENT
+    assert spec.matched == 3
+
+    requirement = spec.requirements[0]
+    assert requirement.description == "The OverallWidth shall not be provided"
+    assert "not applicable" not in requirement.description, (
+        "a requirement line must never contradict the FAIL verdict beside it"
+    )
 
 
 def test_indeterminate_is_never_counted_as_a_pass(

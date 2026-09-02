@@ -115,12 +115,41 @@ That is I5's resolvable basis rendering as a memory address, and it is the fourt
 repository has found by running the stack rather than by its suite. **T-0026**, sequenced
 ahead of T-0025 — ranking a memory address by severity is not worth doing.
 
+**T-0026 — the requirement a finding cites, in words. Done 2026-09-02.** `str(facet)` became
+`facet.to_string(...)`, ifctester's own renderer, with the real `Specification` threaded
+through. Reviewer-gated on I5, and the review earned its dispatch: threading the specification
+activated an upstream early return that made a *prohibited* specification render "The
+requirement is not applicable" directly under a FAIL verdict — a requirement line contradicting
+the verdict beside it. Fixed in the same task by selecting `to_string`'s `applicability` clause
+type for `maxOccurs == 0`, which is the branch upstream wrote for that case; a prohibited spec
+now reads "The OverallWidth shall not be provided".
+
+The review also caught the first round's test passing with its own fix reverted, and a false
+paragraph in its evidence. Both corrected: there is now a real `door_prohibited.ids` fixture,
+and the coordinator re-ran the mutation independently rather than accepting the claim — revert
+the fix and `test_a_prohibited_specifications_requirement_line_never_contradicts_its_verdict`
+fails on exactly the contradicting string. `ruff format` no longer scans `docs/**`, because it
+was rewriting quoted defects inside task files into different code, and a task file's code
+quote is evidence that must stay byte-identical to what it quotes.
+
 ### Queued
 
-- **T-0026** — the requirement description, from `ifctester`'s own `to_string`. Next.
 - **T-0025** — report presentation: coverage above findings, severity ordering
   (FAIL, INDETERMINATE, PASS — `docs/decisions.md`), and a status filter that cannot hide an
-  unknown. Reviewer-gated: it touches three-valued results and I7.
+  unknown. Reviewer-gated: it touches three-valued results and I7. Next.
+- **T-0027** — the requirement as structured data the service localizes. T-0026 replaced an
+  object address with upstream's English sentence, which made the gettext gap load-bearing:
+  the line an architect reads first is now the one line that cannot be translated, against
+  `presentation.py`'s stated design that the document holds codes and the service supplies
+  wording. Carries two more I5 gaps with the same root — the bound renders as
+  `{'minInclusive': '900'}` with no unit while the failing row reports a bare `800.0`, and the
+  report never states what a rule applies to, because we drop the applicability facets
+  ifctester does render. Reviewer-gated.
+- **T-0028** — a requirement that evaluated nothing reports `PASS`. `_aggregate(0, 0)` returns
+  `PASS`, so the prohibited specification above carries a green requirement over zero
+  evaluations. `judge()` already applies this reasoning at the specification level and it was
+  never pushed down to requirements — which is the row the architect actually reads.
+  Pre-existing, found by the T-0026 reviewer. Reviewer-gated.
 
 ## Phase 4 — Toward the PRD
 

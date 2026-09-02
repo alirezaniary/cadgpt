@@ -28,6 +28,16 @@ dev = [
 line-length = 92
 extend-exclude = ["**/migrations/*"]
 
+# `ruff format` also reformats fenced ```python blocks inside Markdown. A task file under
+# docs/tasks/ quotes buggy code as evidence -- e.g. `description=str(facet),` -- and that
+# quote must stay byte-identical to what it describes, not get silently rewritten into a
+# different, syntactically-valid statement (a fragment with a trailing comma parses as a
+# one-element tuple assignment, which is not what the quoted line says). Scoped to `format`
+# only: `ruff check` finds no lint issues in docs/ today and this is a formatting-only
+# footgun.
+[tool.ruff.format]
+exclude = ["docs/**"]
+
 [tool.ruff.lint]
 select = [
     "E",    # pycodestyle errors

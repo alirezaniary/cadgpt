@@ -68,12 +68,23 @@ def _outcome(element: Any, reason: str) -> EntityOutcome:
     )
 
 
-def _requirement(facet: Any, entity_limit: int) -> RequirementOutcome:
+def _requirement(facet: Any, specification: Any, entity_limit: int) -> RequirementOutcome:
     outcomes = tuple(_outcome(f["element"], f["reason"]) for f in facet.failures)
     failed = sum(1 for e in outcomes if e.status is Status.FAIL)
     indeterminate = sum(1 for e in outcomes if e.status is Status.INDETERMINATE)
+
+    # `Facet.to_string("requirement", spec, ...)` short-circuits to the literal "The
+    # requirement is not applicable" whenever `spec.maxOccurs == 0` -- true regardless of
+    # this facet's own cardinality -- which would sit a not-applicable sentence directly
+    # under a FAIL verdict for a prohibited specification (I5/I7: a requirement line must
+    # never contradict the verdict beside it). `to_string`'s own "applicability" branch
+    # makes the same `maxOccurs == 0` check but substitutes its `prohibited_templates`
+    # instead, rendering what was actually prohibited. Same upstream method, the clause
+    # type it was written to answer this case with.
+    clause_type = "applicability" if specification.maxOccurs == 0 else "requirement"
+
     return RequirementOutcome(
-        description=str(facet),
+        description=facet.to_string(clause_type, specification, facet),
         status=_aggregate(failed, indeterminate),
         passed=len(facet.passed_entities),
         failed=failed,
@@ -134,7 +145,7 @@ def judge(
 
 
 def _specification(spec: Any, entity_limit: int) -> SpecificationOutcome:
-    requirements = tuple(_requirement(f, entity_limit) for f in spec.requirements)
+    requirements = tuple(_requirement(f, spec, entity_limit) for f in spec.requirements)
     failed = sum(r.failed for r in requirements)
     indeterminate = sum(r.indeterminate for r in requirements)
     matched = len(spec.applicable_entities)

@@ -91,6 +91,14 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
     "ATTRIBUTE_EMPTY",
   );
 
+  // T-0026: the requirement line is the rule in words, from ifctester's own `to_string`,
+  // never the CPython object repr `str(facet)` produced before this fix.
+  const requirementDescription = report.locator(".requirement__description");
+  await expect(requirementDescription).toHaveText(
+    "The OverallWidth shall be {'minInclusive': '900'}",
+  );
+  await expect(requirementDescription).not.toContainText("object at 0x");
+
   await page.screenshot({
     path: path.resolve(__dirname, "screenshots/report.png"),
     fullPage: true,
