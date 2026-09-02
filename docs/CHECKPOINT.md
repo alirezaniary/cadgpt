@@ -1,8 +1,7 @@
 # Checkpoint — 2026-09-03, end of coordinator session 3
 
-Session 2 settled scope and moved no code. **Session 3 ran the loop and closed four tasks with
-their reviews** (T-0025, T-0028, T-0027, T-0029) and built a fifth (T-0030) whose review was
-lost. Ended for context, not because anything is broken: `main` is green and every task file
+Session 2 settled scope and moved no code. **Session 3 ran the loop and closed five tasks with
+their reviews** — T-0025, T-0028, T-0027, T-0029 and T-0030. Ended for context, not because anything is broken: `main` is green and every task file
 carries its evidence. `docs/plan.md` is the route and `docs/tasks/` holds
 the detail; this file only records where the loop is and what is unresolved.
 
@@ -27,30 +26,28 @@ Full reasoning in `docs/decisions.md` and `prd.md` §12.
 | T-0025 — report presentation | done, reviewed, fix-now applied | `ec9b761` |
 | T-0027 — requirement as structured citation | done, reviewed, fix-now applied | `f66a136` |
 | T-0029 — say what was checked | done, reviewed, fix-now applied | `3a87ef5` |
-| T-0030 — the rule catalogue | **built, review lost with the session** | `9faf208` |
+| T-0030 — the rule catalogue | done, reviewed — **no fix-now** | `9faf208` |
 | T-0031 — rule selection on the run | open, **task file written** | — |
 | T-0032 — the Markdown report file | open, **task file written** | — |
 | T-0033 — the measured upload ceiling | open, task file not yet written | — |
-| T-0034 … T-0041 | queued from reviews, behind the MVP tasks | — |
+| T-0034 … T-0044 | queued from reviews, behind the MVP tasks | — |
 
-Numbering continues at **T-0042**.
+Numbering continues at **T-0045**.
 
 `make verify` at last run: ruff clean, `mypy --strict` over 147 files, **5 import contracts
 kept**, **199 tests passed**, frontend build green. `make e2e` green.
 
-## The one unresolved thing
+## Nothing is unresolved
 
-**T-0030's review was dispatched and lost when this session ended** — exactly what happened to
-T-0025 twice. `docs/agents.md` forbids a *second* review; this task has not had a first one.
-`docs/tasks/T-0030-the-rule-catalogue.md` records what the review was asked to hunt and what the
-coordinator already verified independently, so the re-dispatch must not re-derive either. Short
-version: **the seeder's idempotence is proven for a sequential re-run and not for a race or a
-changed file on disk, `source_citation` is `prd.md` §5.7 attribution that may be a placeholder,
-and the builder's `docs/decisions.md` entry was never read by the coordinator.**
+Every task this session closed with its review. **Phase 3 is not complete** — T-0031, T-0032 and
+T-0033 remain, and T-0033's task file is not yet written — but nothing is half-finished and no
+review is outstanding. The MVP's remaining clauses are selection (T-0031) and the report file
+(T-0032); both have task files written and ready to dispatch.
 
-T-0030 was committed rather than held back on the T-0025 precedent: it passes every gate and its
-evidence was independently re-verified. It is **not done**, and Phase 3 must not be marked
-complete until that review runs.
+T-0030's review nearly *was* lost — it was dispatched as the session ended and landed in the last
+moments. A note claiming it had been lost was written and is now removed. The near-miss is worth
+remembering: **dispatch a review with enough session left to receive it**, or the task carries an
+unreviewed commit into the next session, which is what happened to T-0025 twice.
 
 ## What the reviews changed, so nobody re-derives it
 
