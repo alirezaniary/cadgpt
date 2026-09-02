@@ -75,9 +75,20 @@ Driven by use, not anticipation. In rough order of what a design office hits fir
 - **Report presentation.** Findings grouped by severity, filtered by status, with the
   coverage statement above the findings rather than below them (`prd.md` 5.7). The current
   report view is honest but flat.
+- **Say what was checked.** Every report names the model it checked and states plainly that
+  it checked the model, not the submitted drawing set (`prd.md` 5.7). An office that models
+  its geometry and drafts its documentation in 2D can submit sheets that diverge from what
+  we measured, and I7 forbids letting "the model complies" be read as "the submission
+  complies". This is a line of report copy and it is the difference between decision support
+  and an implied compliance claim.
 - **The web overlay.** A findings list is a document an architect skims; errors drawn on the
   model they just finished is something they act on. ThatOpen Engine or xeokit, both open
   source, both already load BCF viewpoints (`prd.md` 5.8).
+- **Marked sheets.** Plan projection per storey with findings drawn on it, SVG and PDF, from
+  `ifcopenshell.draw` (`prd.md` 5.8). Listed after the overlay on merit, but gate 2 can
+  reorder it: in a market that models geometry and drafts its sheets, generated sheets are
+  the submission artifact, and leading with them closes the model-to-sheet gap by
+  construction rather than by disclosure.
 - **BCF and PDF export**, through `ifctester`'s own reporters, with a fixture test of our own
   over the BCF output — that reporter has had open defects.
 - **Large-model behaviour.** 47MB completes in ten seconds; the failure modes at 500MB are
@@ -92,7 +103,10 @@ each of which the current architecture was shaped to receive:
 
 - **The derivation layer** (`prd.md` 5.4) — ifcpatch recipes producing observations, so
   geometric rules become IDS bounds checks. It enters as a package beside the engine and is
-  called before `run_check`.
+  called before `run_check`. The observations it writes are the only queryable artifact
+  there will be — the enriched model plus its relations, not a store standing beside it, and
+  specifically not a graph database: topologicpy's dual graph and the `Related` observations
+  already are the property graph.
 - **Rule packs** (`prd.md` 5.5) — a pack is many IDS files plus clause records, not the
   single file `RuleSet` holds today. `RuleSet` was shaped to grow into it.
 - **The coverage manifest** (`prd.md` 5.7) — which clauses were evaluated and which were not.
@@ -102,9 +116,62 @@ each of which the current architecture was shaped to receive:
 
 ---
 
+## Constraints on what is not built yet
+
+Added when `prd.md` was revised on 2026-09-02. They are recorded here rather than left in the
+PRD because none of them is retrofittable — each decides the shape of a component before it
+is written, and discovering it afterwards means writing the component twice.
+
+- **The connector is a queue, not a thread pool.** Desktop CAD hosts run their API on the UI
+  thread and crash or deadlock when it is called from anywhere else, while the connector's
+  inbound channel is asynchronous by construction. Every host call is marshalled through the
+  one idiom that host names, and long reads are chunked and cancellable: a read-only
+  inspector that locks the host for two minutes is uninstalled before it finds anything
+  (`prd.md` 5.10).
+- **The agent's tool surface is closed and typed.** No evaluate-script tool, no pass-through
+  to a host's macro engine, and a call that fails schema validation is rejected rather than
+  coerced into something that will run. This is I2 at the transport: a model that cannot
+  author geometry but can hand a script to the host authors geometry anyway (`prd.md` 5.9).
+- **The assistance layer may not hold a model handle.** The data boundary is enforced the way
+  I1 already is here, by an import contract rather than by policy, so the agent gets a
+  contract of its own the day it lands. Pointing inference at an external endpoint is
+  deployment configuration — never a per-request choice, never a default (`prd.md` 5.9).
+- **Writes are named host transactions, and the check reports rather than reverts.** The
+  rollback mechanism is the user's own undo stack with our move named in it. The findings
+  delta is presented for them to decide on: a legitimate move can resolve a serious finding
+  and raise a lesser one, and auto-reverting that hands the evaluator a veto over what may
+  exist. Automatic revert is only for a write that failed or cannot be measured (`prd.md`
+  5.11).
+- **Repair never supplies geometry.** Where the write direction helps with a model missing
+  its spaces, it may select the host's own room command and navigate to the place; it may
+  never supply that command's geometric arguments, because computing the boundary is
+  authoring the space no matter who clicks (`prd.md` 5.2, 5.11).
+
 ## Deliberately not built yet
 
 PostgreSQL row-level security, WebSocket progress, S3 multipart upload authorization, a
 transactional outbox, per-tenant rate limits, an admin UI, the agent layer, the connector.
 Each is a real concern; none is on the path to the first user. They return when there is
 something to protect or someone asking.
+
+One item on that list is not deferred by choice: **the read-only pre-flight tool** is part of
+PRD v0, not of a later phase (`prd.md` 5.2, 9), and this plan does not carry it yet. It waits
+on gate 3, which is what says whether real models need it and what it would cost the designer.
+It is also the first slice of the connector, so it inherits the queue constraint above from
+its first day.
+
+## The five questions this roadmap is still guessing at
+
+`prd.md` 11 names five gates and says everything downstream of them is ordinary engineering.
+None has been answered. Recorded here so the plan does not read as more certain than it is.
+
+| Gate | Question | What it decides here |
+|---|---|---|
+| 1 | Ratification throughput, and how often an encoded bound disagrees with its source quote | Whether corpus coverage is a schedule at all, and the size of the confident-wrong-PASS risk |
+| 2 | Do offices model, draft, or model then draft? | Whether Phase 3 leads with the overlay or with marked sheets, and whether the connector has a market |
+| 3 | Do five real models from five offices derive, and what does pre-flight cost the designer? | Whether Phase 4's derivation layer meets models it can measure, and when pre-flight joins the plan |
+| 4 | Can cadastral and zoning data be obtained and joined for a real parcel? | Whether two of the highest-frequency v0 checks exist at all |
+| 5 | What does a first coverage manifest actually say in front of a real architect? | Whether an INDETERMINATE-dominated first run reads as honesty or as a broken tool |
+
+Gates 1 and 2 are cheap, need no code, and are the two that would most change what gets built
+next. Nothing in Phase 3 is blocked on them; most of Phase 4 is.

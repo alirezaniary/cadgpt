@@ -2,7 +2,7 @@
 
 `prd.md` is the product source of truth. This file is the engineering rules. Both are short
 on purpose. Decisions go in `docs/decisions.md`; the route is `docs/plan.md`; what we use
-and why is `docs/stack.md`.
+and why is `docs/stack.md`; how the build itself is run is `docs/agents.md`.
 
 ## What we are building
 
@@ -65,6 +65,11 @@ deploy/            Dockerfiles and the compose stack.
   input and show the output. A green test suite is not evidence — this repository has a
   documented history of suites passing while nothing worked, and the last three defects here
   were all found by running the stack, not by the tests.
+- **The build runs as the loop in `docs/agents.md`.** A coordinator holds the plan and writes
+  no production code; a builder takes one task file and must prove the real path ran; a
+  reviewer is gated on invariants and milestones, returns findings only, and is never
+  dispatched twice on the same task. Every task is a file under `docs/tasks/`, written before
+  the work starts and carrying the evidence after.
 - When a decision is settled, append a paragraph to `docs/decisions.md` so it survives
   context loss. When something is genuinely a direction question — two answers give two
   different products — ask. Otherwise decide and log it.
