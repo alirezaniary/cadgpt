@@ -23,6 +23,20 @@ const FIXTURES_DIR = path.resolve(__dirname, "../../../packages/engine/tests/fix
 const IDS_FILE = path.join(FIXTURES_DIR, "door_width.ids");
 const IFC_FILE = path.join(FIXTURES_DIR, "three_doors.ifc");
 
+// T-0025 fix-now round: the coverage sentence and `establishedNothing()` were both wrong,
+// and neither defect was reachable from the fixture above -- it has one specification that
+// matches everything. This fixture matches nothing on purpose, against the same IFC:
+//   "Door name recorded"       -- applies to the 3 doors, all pass. A real evaluation.
+//   "Wall fire rating recorded" -- optional cardinality, matches 0 walls (there are none).
+//                                   DOES_NOT_APPLY / INDETERMINATE / NO_SUBJECTS_NOTHING_CHECKED:
+//                                   this is the one specification that genuinely established
+//                                   nothing.
+//   "Wall count required"      -- required cardinality, also matches 0 walls, but an absent
+//                                   required element is a real finding, not an absence of
+//                                   evidence: APPLIES / FAIL / NO_SUBJECTS_BUT_REQUIRED. It
+//                                   must never be named alongside the specification above.
+const NOTHING_ESTABLISHED_IDS_FILE = path.join(__dirname, "fixtures", "nothing_established.ids");
+
 test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the browser", async ({
   page,
   account,
@@ -135,4 +149,55 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
   await expect(report.locator('[data-testid="filter-banner"]')).toContainText(
     "Showing 1 of 2",
   );
+
+  // T-0025 fix-now: a second rule set that has a specification matching nothing, run
+  // against the same model, in the same session -- this is the branch F1 and F2 shipped
+  // broken on because nothing in this spec previously reached it.
+  const nothingRuleSetName = `nothing-established-${Date.now()}`;
+  await ruleSetsCard.getByPlaceholder("Name").fill(nothingRuleSetName);
+  await ruleSetsCard.locator('input[type="file"]').setInputFiles(NOTHING_ESTABLISHED_IDS_FILE);
+  await ruleSetsCard.getByRole("button", { name: "Add rule set" }).click();
+  await expect(ruleSetsCard.getByText(nothingRuleSetName)).toBeVisible();
+
+  const nothingReviewName = `three-doors-nothing-${Date.now()}`;
+  await reviewsCard.getByPlaceholder("Name").fill(nothingReviewName);
+  await reviewsCard
+    .locator('select[name="rule_set"]')
+    .selectOption({ label: nothingRuleSetName });
+  await reviewsCard.locator('input[type="file"]').setInputFiles(IFC_FILE);
+  await reviewsCard.getByRole("button", { name: "Create review" }).click();
+
+  const nothingReviewRow = reviewsCard.locator("li.review", { hasText: nothingReviewName });
+  await expect(nothingReviewRow).toBeVisible();
+  await nothingReviewRow.getByRole("button", { name: "Run check" }).click();
+
+  const nothingSummaryButton = nothingReviewRow.getByRole("button", { name: "Summary" });
+  await expect(nothingSummaryButton).toBeVisible({ timeout: 30_000 });
+  await nothingSummaryButton.click();
+
+  // F1: 1 of the 3 specifications established nothing, so the sentence must read "2 of 3",
+  // never "3 of 3" -- the bug was that the old numerator was arithmetically identical to
+  // the denominator for every report the engine can produce.
+  const coverageSentence = report.locator('[data-testid="coverage"] > p').first();
+  await expect(coverageSentence).toHaveText(
+    "2 of 3 specifications in this rule set were evaluated.",
+  );
+
+  // The "established nothing" block names exactly the one specification that matched
+  // nothing under optional cardinality -- never the one the engine judged FAIL.
+  const nothingEstablishedBlock = report.locator('[data-testid="coverage-nothing-established"]');
+  await expect(nothingEstablishedBlock).toBeVisible();
+  const nothingEstablishedItems = nothingEstablishedBlock.locator("li");
+  await expect(nothingEstablishedItems).toHaveCount(1);
+  await expect(nothingEstablishedItems.first()).toHaveText("Wall fire rating recorded");
+
+  // F2: the specification the engine judged FAIL (a required element is absent) is a real
+  // finding, not an absence of evidence -- it must not be named here.
+  await expect(nothingEstablishedBlock).not.toContainText("Wall count required");
+
+  // That FAIL specification is genuinely rendered as a finding, with its own pill, so F2's
+  // fix is not merely hiding the specification -- it appears in the findings list below.
+  const wallCountRequiredSpec = report.locator("li.spec", { hasText: "Wall count required" });
+  await expect(wallCountRequiredSpec).toBeVisible();
+  await expect(wallCountRequiredSpec.locator(".pill--fail")).toHaveText("Fail");
 });

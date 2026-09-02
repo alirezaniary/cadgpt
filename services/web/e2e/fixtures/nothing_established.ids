@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ids:ids xmlns:ids="http://standards.buildingsmart.org/IDS" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://standards.buildingsmart.org/IDS http://standards.buildingsmart.org/IDS/1.0/ids.xsd">
+	<ids:info>
+		<ids:title>Coverage against a rule set that partly matches nothing</ids:title>
+		<ids:description>T-0025 fix-now (F1/F2): three specifications against three_doors.ifc,
+		which has no IfcWall at all. "Door name recorded" applies to the three doors and
+		passes -- a real evaluation. "Wall fire rating recorded" has optional cardinality and
+		matches zero walls -- applicability DOES_NOT_APPLY, status INDETERMINATE, reason
+		NO_SUBJECTS_NOTHING_CHECKED: this is the one specification that genuinely established
+		nothing. "Wall count required" has required cardinality (minOccurs="1") and also
+		matches zero walls, but required elements being absent is an established violation --
+		applicability APPLIES, status FAIL, reason NO_SUBJECTS_BUT_REQUIRED -- and must never
+		be named alongside the specification that established nothing.</ids:description>
+		<ids:date>2026-09-02</ids:date>
+	</ids:info>
+	<ids:specifications>
+		<ids:specification ifcVersion="IFC2X3 IFC4" name="Door name recorded">
+			<ids:applicability maxOccurs="unbounded">
+				<ids:entity>
+					<ids:name>
+						<ids:simpleValue>IFCDOOR</ids:simpleValue>
+					</ids:name>
+				</ids:entity>
+			</ids:applicability>
+			<ids:requirements>
+				<ids:attribute cardinality="required">
+					<ids:name>
+						<ids:simpleValue>Name</ids:simpleValue>
+					</ids:name>
+				</ids:attribute>
+			</ids:requirements>
+		</ids:specification>
+		<ids:specification ifcVersion="IFC2X3 IFC4" name="Wall fire rating recorded">
+			<ids:applicability minOccurs="0" maxOccurs="unbounded">
+				<ids:entity>
+					<ids:name>
+						<ids:simpleValue>IFCWALL</ids:simpleValue>
+					</ids:name>
+				</ids:entity>
+			</ids:applicability>
+			<ids:requirements>
+				<ids:property cardinality="required">
+					<ids:propertySet>
+						<ids:simpleValue>Pset_WallCommon</ids:simpleValue>
+					</ids:propertySet>
+					<ids:baseName>
+						<ids:simpleValue>FireRating</ids:simpleValue>
+					</ids:baseName>
+				</ids:property>
+			</ids:requirements>
+		</ids:specification>
+		<ids:specification ifcVersion="IFC2X3 IFC4" name="Wall count required">
+			<ids:applicability minOccurs="1" maxOccurs="unbounded">
+				<ids:entity>
+					<ids:name>
+						<ids:simpleValue>IFCWALL</ids:simpleValue>
+					</ids:name>
+				</ids:entity>
+			</ids:applicability>
+			<ids:requirements>
+				<ids:property cardinality="required">
+					<ids:propertySet>
+						<ids:simpleValue>Pset_WallCommon</ids:simpleValue>
+					</ids:propertySet>
+					<ids:baseName>
+						<ids:simpleValue>FireRating</ids:simpleValue>
+					</ids:baseName>
+				</ids:property>
+			</ids:requirements>
+		</ids:specification>
+	</ids:specifications>
+</ids:ids>

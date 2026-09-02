@@ -30,10 +30,25 @@ function bySeverity<T extends { status: Status }>(items: readonly T[]): T[] {
     .map(({ item }) => item);
 }
 
-/** A specification whose applicability or subject count means it established no compliance,
- * however its own status reads — see `judge()` in `packages/engine/src/cadgpt_engine/check.py`. */
+/** Reason codes `judge()` (`packages/engine/src/cadgpt_engine/check.py`) assigns only when a
+ * specification's own applicability meant it established no compliance at all — a schema
+ * mismatch, or an optional-cardinality specification that matched zero subjects. These are the
+ * only two reason codes `judge()` pairs with an applicability other than `APPLIES`.
+ *
+ * A `matched == 0` specification that came back FAIL (`NO_SUBJECTS_BUT_REQUIRED` — a required
+ * element is absent) or PASS (`NO_SUBJECTS_AND_PROHIBITED` — a prohibited element is confirmed
+ * absent) is deliberately excluded: those are real, established verdicts the engine reached by
+ * judging the model, not an absence of evidence, and naming either here beside "established
+ * nothing" would contradict the very verdict rendered a few lines below it. Reading the reason
+ * code the engine already assigned, rather than re-deriving `matched`/cardinality logic here,
+ * is what keeps this predicate from silently diverging from `judge()` the next time it changes. */
+const NOTHING_ESTABLISHED_REASONS: ReadonlySet<string> = new Set([
+  "SCHEMA_MISMATCH",
+  "NO_SUBJECTS_NOTHING_CHECKED",
+]);
+
 function establishedNothing(spec: SpecificationOutcome): boolean {
-  return spec.applicability !== "APPLIES" || spec.matched === 0;
+  return spec.reason_code !== null && NOTHING_ESTABLISHED_REASONS.has(spec.reason_code);
 }
 
 interface EntityFilter {
@@ -56,10 +71,16 @@ export function ReportView({ report }: { report: Report }) {
     () => report.specifications.filter(establishedNothing),
     [report.specifications],
   );
-  const evaluated =
-    report.specifications_passed +
-    report.specifications_failed +
-    report.specifications_indeterminate;
+  // F1: a specification that established nothing was never evaluated, whatever status it
+  // came back with. `specifications_passed + specifications_failed + specifications_indeterminate`
+  // is identically `specifications.length` for every report the engine can produce
+  // (`check.py`'s `_specification` assigns exactly one of the three statuses to every
+  // specification, and `_aggregate`'s fallback is INDETERMINATE, never a fourth outcome) — so
+  // that sum could never have been a measurement of coverage; it always read "N of N" even
+  // when most of the rule set matched nothing. Deriving `evaluated` from the same predicate
+  // as the "established nothing" list below ties the two together by construction: they
+  // cannot disagree on screen, because they are counted from the same set.
+  const evaluated = report.specifications.length - nothingEstablished.length;
 
   const allEntities = useMemo(
     () => report.specifications.flatMap((s) => s.requirements.flatMap((r) => r.entities)),

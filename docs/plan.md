@@ -161,11 +161,44 @@ render empty and read as "no passes found". The filter cannot touch the summary:
 are counts of the run, not of the view, and the e2e spec asserts that unchecking Indeterminate
 leaves its count at 1.
 
-**Not done.** Its reviewer was dispatched and was still running when the coordinator session
-ended, so the findings were lost. Re-dispatch before Phase 3 is marked complete — see
-`docs/CHECKPOINT.md` and the task file, which records what the review was asked to hunt. The
-short version: the filter is the dangerous surface and the e2e spec drives exactly one of its
-states.
+**Reviewed and closed 2026-09-02**, on the third attempt to run that review — it was lost with
+one session and pre-empted in another. It was worth recovering. The hunt list was right about
+where the danger was, and wrong about which surface: the filter, which the review was written
+to distrust, came back clean under reasoning about all four of its undriven states — nothing
+renders as clean, empty or passing, a specification whose rows are all hidden still shows its
+pill and matched count, the count band reads payload fields and never the filtered array, and
+`bySeverity` is stable and correct over a shuffled seven-item input. The two defects were in
+**coverage**, the thing the task existed to add.
+
+**The coverage headline was a constant, not a measurement.**
+`specifications_passed + specifications_failed + specifications_indeterminate` is identically
+`specifications.length` for every report the engine can produce — `_specification` assigns
+exactly one of three statuses to every specification and `_aggregate` has no fourth outcome —
+so the sentence read "N of N" always. A run where 79 of 80 provisions matched nothing still
+claimed eighty of eighty evaluated, directly above a block naming the ones that checked
+nothing. That is `prd.md` §5.7's named failure — *coverage improves by narrowing applicability
+while checking less* — shipped as the headline of the report.
+
+**And `establishedNothing()` was naming a definite FAIL.** Its `matched === 0` disjunct
+swallowed `NO_SUBJECTS_BUT_REQUIRED`: a required element that is *absent* is an established
+violation, not an absence of evidence. The coverage block called it unevaluated while the
+findings list below showed it with a red Fail pill.
+
+Both fixed by making the two numbers come from one predicate — `evaluated` is now
+`specifications.length - nothingEstablished.length`, and the predicate reads the reason code
+`judge()` already assigned rather than re-deriving the engine's judgement in TypeScript, so the
+frontend cannot silently diverge from it. A new `nothing_established.ids` fixture reaches the
+branch with three specifications: one that passes, one optional that genuinely establishes
+nothing, and one required over the same absent entity that is a real FAIL. The mutation was
+re-run by the coordinator against the rebuilt container: the old numerator renders
+"3 of 3 specifications in this rule set were evaluated" where the fix renders "2 of 3".
+
+The review's remaining findings became **T-0034** (the filter banner states the filter's total
+as 500 on a run with 3,623 findings, conflating what the filter hid with what the engine
+capped), **T-0035** (one unknown status value makes the severity comparator non-transitive and
+silently unsorts the whole list; a colliding React key on null-`global_id` rows) and **T-0036**
+(RTL is claimed but never rendered under `fa` by any test, and `{spec.cardinality}` renders a
+raw English payload value).
 
 **T-0028 — a requirement that evaluated nothing must not report PASS. Done 2026-09-02.**
 `_aggregate(failed, indeterminate)` became `_aggregate(passed, failed, indeterminate)`: a
@@ -224,6 +257,21 @@ report is now the whole product.
 - **T-0032** — the generated Markdown report and its URL on the job record.
 - **T-0033** — the measured upload ceiling, and a resource-exceeded run that fails with a named
   reason instead of being redelivered forever.
+
+Added 2026-09-02 from the T-0025 and T-0028 reviews. They sit behind the MVP tasks above —
+none blocks the report shipping, and the two that touch honesty directly (T-0037, T-0038) are
+the first of them:
+
+- **T-0037** — the requirement verdict reaches the screen, and says why it evaluated nothing.
+  `requirement.status` is produced, stored, serialised, typed and read by nobody, so T-0028's
+  fix is invisible in the browser. Carries the reason down so a row that evaluated nothing
+  explains itself. Wire format change; `REPORT_SCHEMA_VERSION` bump.
+- **T-0038** — a specification that asserted nothing must not report PASS either. `judge()`
+  passes an *optional* specification with zero requirement facets. Same I7 failure as T-0028,
+  one level up. First application of the engine-version bump decision.
+- **T-0034** — the filter banner must not claim credit for what the engine capped.
+- **T-0035** — two latent report-view defects: an unsortable list and a colliding key.
+- **T-0036** — the Persian report: prove RTL, and stop rendering a raw payload value.
 
 ## Phase 4 — Toward the PRD
 
