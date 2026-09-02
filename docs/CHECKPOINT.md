@@ -1,104 +1,74 @@
-# Checkpoint — 2026-09-02, end of coordinator session 2
+# Checkpoint — 2026-09-02, coordinator session 3
 
-Session 2 was spent settling scope, not building. Four direction questions were put to the
-product owner, answered, and written into `docs/decisions.md` and `prd.md` 12; `docs/plan.md`
-Phase 3 was re-cut against the answers. Commit `7be0faf`. **No production code changed in this
-session and no agent was dispatched.**
+Session 2 settled scope and moved no code. **Session 3 is running the loop.** Two tasks closed
+with their reviews, three commits on `main`. `docs/plan.md` is the route and `docs/tasks/` holds
+the detail; this file only records where the loop is and what is unresolved.
 
-`docs/plan.md` is the route and `docs/tasks/` holds the detail. This file only records where
-the loop is and what is unresolved.
-
-## The MVP, now that it is settled
+## The MVP, settled in session 2 — do not re-litigate
 
 > The user uploads a model, picks which rules to run it against, and gets back a report file.
 
-Four answers got it there. Full reasoning is in `docs/decisions.md` — do not re-litigate:
+Rules are a catalogue we ship, not a file the architect uploads (the catalogue is a **separate
+model** from the tenant-owned `RuleSet`, so `for_tenant` stays total). The first iteration
+**reports and does not act** — overlay, marked sheets and BCF are out by decision, which takes
+gate 2 off the critical path. The deliverable is a generated **Markdown** report whose URL sits
+on the job record. The upload ceiling is **measured against peak worker memory**, not chosen.
+Full reasoning in `docs/decisions.md` and `prd.md` §12.
 
-- **Rules are a catalogue we ship, not a file the architect uploads.** Seeded from existing
-  public IDS sets so development never waits on authoring. The user selects by jurisdiction,
-  region and version, and the selection is part of the job record. The product owner authors
-  packs in a separate thread — Iranian building code first, then EU and US. **This loop builds
-  the store, metadata, selection and seeding path, and no rule content.** User-uploaded rule
-  sets already work, are not being removed, and are out of MVP scope as the primary path.
-- **The first iteration reports and does not act.** Overlay, marked sheets and BCF export are
-  out by decision. Acting on findings arrives with the agent layer and its permission levels
-  (auto, edit, ask-first). This takes **gate 2 off the MVP's critical path**.
-- **The deliverable is a generated Markdown report whose URL sits on the job record.** The
-  in-app React view stays beside it, not under it.
-- **The upload ceiling is measured against peak worker memory, not chosen.** Async removed the
-  time constraint, not the memory one.
-
-## Where the loop stopped
-
-Phase 3 in progress. Unchanged from session 1 in code terms — session 2 moved the plan, not
-the build.
+## Where the loop is
 
 | Task | State | Commit |
 |---|---|---|
-| T-0024 — browser evidence harness | **done** | `c9d351f` |
-| T-0026 — requirement description from `to_string` | **done**, reviewed, fix-now applied | `b38b15a` |
-| T-0025 — report presentation | **built, review still outstanding** | `aa03fb4` |
-| T-0027 — requirement as structured citation | open, specified | — |
-| T-0028 — a requirement that evaluated nothing must not report PASS | open, specified | — |
-| T-0029 … T-0033 | named in `docs/plan.md` "Queued", task files **not yet written** | — |
+| T-0024 — browser evidence harness | done | `c9d351f` |
+| T-0026 — requirement description from `to_string` | done, reviewed | `b38b15a` |
+| T-0028 — a requirement that evaluated nothing must not report PASS | **done, reviewed** | `6e64ce2` |
+| T-0025 — report presentation | **done, reviewed, fix-now applied** | `ec9b761` |
+| T-0027 — requirement as structured citation | **builder dispatched** | — |
+| T-0029 … T-0033 | MVP queue, in `docs/plan.md` order | — |
+| T-0034 … T-0038 | queued from the two reviews, behind the MVP tasks | — |
 
-Numbering continues at **T-0029**.
+Numbering continues at **T-0039**.
 
-## The one unresolved thing, carried over unchanged
+## What the two reviews changed, so nobody re-derives it
 
-**T-0025's review has still never run.** It was dispatched in session 1 and lost when that
-session ended; session 2 announced the re-dispatch and was redirected before it happened.
-`docs/agents.md` forbids a *second* review of a task — this task has not had a first one.
-`docs/tasks/T-0025-report-presentation.md` records exactly what the review was asked to hunt,
-so the next dispatch must not re-derive it. Short version: **the filter is the dangerous
-surface and the e2e spec drives exactly one of its states.**
+**T-0025's review finally ran** — it had been lost with session 1 and pre-empted in session 2.
+Worth recovering, and instructive about where to point a reviewer: the **filter**, which the
+hunt list was written to distrust, came back clean under all four of its undriven states. Both
+defects were in **coverage**, the thing the task existed to add. The headline sentence was a
+constant — `specifications_passed + specifications_failed + specifications_indeterminate` is
+identically `specifications.length` for every report the engine can produce — so it read "N of
+N" always, claiming full coverage above a block naming the specifications that checked nothing.
+And `establishedNothing()`'s `matched === 0` disjunct swallowed `NO_SUBJECTS_BUT_REQUIRED`,
+labelling an established FAIL as unevaluated. Both now derive from **one predicate**, so they
+cannot disagree on screen, and the predicate reads the reason code `judge()` already assigned
+rather than holding a second copy of the engine's judgement in TypeScript.
 
-T-0025 was committed rather than held back because it passes every gate and its evidence was
-independently verified by the coordinator — but it is **not done**, and Phase 3 must not be
-marked complete until that review runs.
+**T-0028's review proved the dangerous direction by exhaustion, not sampling** — a requirement
+can reach all-zero counts only via a prohibited specification or an empty applicable set, both
+of which genuinely evaluated nothing, so no real PASS can become an unknown. It then found the
+evidence block's claim that the flipped status "renders through the existing `StatusPill`"
+to be false: `requirement.status` is read by **no component**. T-0028 is real in the API and
+invisible in the browser until **T-0037**.
 
-## Order of work, and why
+## Two decisions settled this session, in `docs/decisions.md`
 
-T-0027 and T-0028 were written before the scope was settled and both survive it. They lead the
-queue ahead of all new surface, because they are defects in the report's honesty and the report
-is now the entire product. T-0028 in particular is I7 inside the engine.
-
-Then: T-0029 disclosure copy → T-0030 rule catalogue → T-0031 rule selection → T-0032 the
-Markdown report file → T-0033 the measured ceiling.
-
-## The structural consequence to honour when T-0030 is written
-
-A rule pack we ship belongs to no tenant. Making `RuleSet.tenant` nullable to fit it would put
-a nullable column at the centre of the one invariant this repository enforces structurally —
-every tenant-owned row reads through `for_tenant`. The catalogue is therefore a **separate
-model** from the tenant-owned `RuleSet`, so `for_tenant` stays total with no exception to
-reason about. `RuleSet` today is at `services/api/cadgpt/apps/rulepack/models.py` and is
-`TenantOwnedModel` + FK to `media.Media`.
-
-## The correction recorded against the ceiling instruction
-
-The instruction was "time is not the constraint, we use async jobs". Half of that holds.
-Asynchronous execution removes the wall-clock constraint; it does **not** remove the memory
-one. `ifcopenshell` loads the whole model into RAM, and `acks_late` redelivers the message that
-killed its worker — so one oversized model is a poison message that takes the worker down
-repeatedly and starves every other tenant's queue. T-0033 must **measure** peak resident memory
-in the worker container across increasing model sizes, set the ceiling below the cliff, paste
-the measurement as evidence, and make a resource-exceeded run fail with a named reason rather
-than be redelivered forever.
+- **A requirement that evaluated nothing is explained, never suppressed.** The tidy-up — hiding
+  the row when the specification reached its verdict without evaluating requirements — is
+  refused. Hiding a row that says "nothing was checked here" is the failure I7 exists to close.
+- **A verdict-changing engine release bumps the engine version.** Schema version answers "can
+  this be parsed"; engine version answers "would this be judged the same way today". Old runs
+  are never re-run to match — a run is a record of what was said at the time.
 
 ## Do not take a builder's evidence on trust
 
-The argument for the whole loop, from session 1, unchanged:
+Still the argument for the whole loop, and it kept earning its keep this session. Of the last
+five evidence blocks: two contained tests that passed with their own fix reverted, and **three
+contained a claim that was false** — most recently a Python test asserted to exercise a
+TypeScript function, and a `StatusPill` rendering path that has never existed.
 
-- T-0024's harness rendered its first report and the requirement line read
-  `<ifctester.facet.Attribute object at 0x76f24ab599a0>` — in every report the product had ever
-  produced. Became T-0026.
-- T-0026's reviewer found the fix *introduced* a regression: a prohibited specification rendered
-  "The requirement is not applicable" directly under a FAIL verdict.
-- Two builders in a row wrote a test that passed with its own fix reverted, and one wrote an
-  evidence claim that was impossible (`git stash` on an untracked file).
-
-**Re-run the mutation yourself. Open the screenshot.**
+**Re-run the mutation yourself. Open the screenshot.** Both were done for T-0025 and T-0028 and
+both reproduced exactly — `3 of 3` where the fix renders `2 of 3`, and `Status.PASS` over
+`0/0/0` with the engine fix reverted.
 
 ## Environment notes that cost time to discover
 
@@ -106,10 +76,15 @@ The argument for the whole loop, from session 1, unchanged:
   dispatchable types in this harness. Dispatch `general-purpose` and instruct it to read
   `.claude/agents/builder.md` or `reviewer.md` as its role contract. Builder on sonnet,
   reviewer on opus.
-- The compose stack may still be **up** from session 1. `docker compose -f deploy/compose.yaml
-  ps` to confirm; `make up` rebuilds, which is required for a frontend change to reach the
-  served container.
-- `ruff format` no longer scans `docs/**` (`pyproject.toml`). It was rewriting quoted defects
-  inside task files into different code. A code quote in a task file is evidence.
-- `make verify` at the last full run: ruff clean, `mypy --strict` over 138 source files,
-  **5 import contracts kept**, **164 tests passed**.
+- **The engine CLI is `uv run cadgpt-check <model.ifc> <rules.ids> --json`.** T-0026, T-0027 and
+  T-0028 all shipped a task file instructing the builder to run `cadgpt-engine check`, which
+  does not exist. Fixed in all three; do not reintroduce it.
+- A frontend change reaches the served page only after
+  `docker compose -f deploy/compose.yaml up -d --build web`. That invocation also rebuilds and
+  recreates `cadgpt-api-1`, so it picks up `services/api` and `packages/engine` too.
+- `ruff format` no longer scans `docs/**`. It was rewriting quoted defects inside task files
+  into different code, and a code quote in a task file is evidence.
+- A long-running builder can be killed mid-task by a session usage limit. Its working tree
+  survives intact; resume the same agent rather than re-dispatching, so its context is not lost.
+- `make verify` at last full run: ruff clean, `mypy --strict` over 138 files, **5 import
+  contracts kept**, **166 tests passed**, frontend build green.

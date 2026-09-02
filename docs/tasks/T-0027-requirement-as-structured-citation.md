@@ -82,6 +82,19 @@ from the reason to the requirement. The engine names things; the service supplie
 - No new engine abstraction beyond the dataclass fields. One facet type is enough to ship this;
   do not build a renderer registry for facet types the fixtures do not exercise.
 
+## Sequencing note — added 2026-09-02 by the coordinator
+
+**T-0037 lands immediately after this task and touches the same three places**:
+`RequirementOutcome`, `presentation.py`, and the requirement's rendering in `ReportView.tsx`.
+It carries a `reason_code` down to the requirement so that a row which evaluated nothing says
+*why*, and it puts a `StatusPill` beside the requirement description — `requirement.status` is
+currently read by no component at all, which is why T-0028's fix is invisible in the browser.
+
+Shape the dataclass and the localization path to receive that field, so it is added rather than
+restructured. **Do not implement T-0037 here** — it is a separate task with its own review, and
+widening this one is how a task stops being finishable. If a choice in this task would make
+T-0037 awkward, note it in the evidence rather than pre-building for it.
+
 ## How to prove it ran
 
 ```sh
