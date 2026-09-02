@@ -1,7 +1,8 @@
-# Checkpoint — 2026-09-03, end of coordinator session 3
+# Checkpoint — 2026-09-03, coordinator session 4 in progress
 
-Session 2 settled scope and moved no code. **Session 3 ran the loop and closed five tasks with
-their reviews** — T-0025, T-0028, T-0027, T-0029 and T-0030. Ended for context, not because anything is broken: `main` is green and every task file
+Session 2 settled scope and moved no code. Session 3 closed five tasks with their reviews —
+T-0025, T-0028, T-0027, T-0029 and T-0030. **Session 4 closed T-0031 with its review (`25e49ac`),
+wrote T-0033's task file, and dispatched T-0032's builder.** `main` is green and every task file
 carries its evidence. `docs/plan.md` is the route and `docs/tasks/` holds
 the detail; this file only records where the loop is and what is unresolved.
 
@@ -27,22 +28,31 @@ Full reasoning in `docs/decisions.md` and `prd.md` §12.
 | T-0027 — requirement as structured citation | done, reviewed, fix-now applied | `f66a136` |
 | T-0029 — say what was checked | done, reviewed, fix-now applied | `3a87ef5` |
 | T-0030 — the rule catalogue | done, reviewed — **no fix-now** | `9faf208` |
-| T-0031 — rule selection on the run | open, **task file written** | — |
-| T-0032 — the Markdown report file | open, **task file written** | — |
-| T-0033 — the measured upload ceiling | open, task file not yet written | — |
-| T-0034 … T-0044 | queued from reviews, behind the MVP tasks | — |
+| T-0031 — rule selection on the run | done, reviewed, 4 fix-now applied | `25e49ac` |
+| T-0032 — the Markdown report file | **builder dispatched, in flight** | — |
+| T-0033 — the measured upload ceiling | open, **task file written** | — |
+| T-0034 … T-0050 | queued from reviews, behind the MVP tasks | — |
 
-Numbering continues at **T-0045**.
+Numbering continues at **T-0051**.
 
-`make verify` at last run: ruff clean, `mypy --strict` over 147 files, **5 import contracts
-kept**, **199 tests passed**, frontend build green. `make e2e` green.
+**If session 4 ended mid-T-0032:** its builder was dispatched with the task file as its whole
+contract, so nothing is lost that the task file does not already carry. Check `git status` — an
+uncommitted working tree is that builder's output and should be judged on its evidence block, not
+discarded. T-0032 is reviewer-gated on I7, three-valued results and tenancy.
+
+`make verify` at last run (after T-0031): ruff clean, `mypy --strict` over 149 files, **5 import
+contracts kept**, **208 tests passed**, frontend build green. `make e2e` green.
 
 ## Nothing is unresolved
 
-Every task this session closed with its review. **Phase 3 is not complete** — T-0031, T-0032 and
-T-0033 remain, and T-0033's task file is not yet written — but nothing is half-finished and no
-review is outstanding. The MVP's remaining clauses are selection (T-0031) and the report file
-(T-0032); both have task files written and ready to dispatch.
+Every closed task carries its review. **Phase 3 is not complete** — T-0032 is in flight and
+T-0033 is written and undispatched — but nothing is half-finished and no review is outstanding.
+The MVP's last clause is the report file (T-0032). After it, Phase 3's remaining work is T-0033
+and then the seventeen queued review findings, none of which blocks the MVP.
+
+**T-0031 is worth reading before T-0032**, because T-0032 inherits its shape: a run may now cite
+either an uploaded `RuleSet` or a `rule_pack_selection` snapshot, and the generated report has to
+be correct for both. `review.rule_set` is nullable now.
 
 T-0030's review nearly *was* lost — it was dispatched as the session ended and landed in the last
 moments. A note claiming it had been lost was written and is now removed. The near-miss is worth
@@ -69,6 +79,34 @@ of which genuinely evaluated nothing, so no real PASS can become an unknown. It 
 evidence block's claim that the flipped status "renders through the existing `StatusPill`"
 to be false: `requirement.status` is read by **no component**. T-0028 is real in the API and
 invisible in the browser until **T-0037**.
+
+## What session 4's review found, added to the pattern
+
+T-0031's review repeated session 3's shape exactly and sharpened it. **The mechanism was sound and
+the intricate surfaces held under attack** — tenancy, the narrowed `select_for_update(of=("self",))`,
+and the three-valued combination across packs were all specifically hunted and all came back
+clean. **The defect was in a claim about honesty**, again, and again the suite was green over it:
+`checksum_sha256` was written by one function and read by nobody, so a run could succeed, flip
+`FAIL` to `PASS`, and store a citation naming a pack and hash it had not checked.
+
+The new lesson is about **evidence that cannot fail**. Two of T-0031's evidence items asserted
+proof they were structurally incapable of delivering:
+
+- the worker log line that proved "the check ran against the cited rules" was **built from the
+  citation**, so it could only ever agree with the citation — the selection JSON echoed back;
+- the reproducibility test mutated the catalogue by seeding a **new row**, which a plain
+  `ForeignKey` would pass identically, so it established nothing about the snapshot-versus-FK
+  choice it existed to justify.
+
+Neither was a lie about what was run. Both were real commands with real output that could not have
+come out differently if the code were broken. **Ask of every evidence item what it would look like
+if the thing were broken** — if the answer is "the same", it is not evidence. This is a sharper
+test than "did the builder actually run it", and it caught what re-running would not have.
+
+Both are now fixed: the log line carries the produced report's own `ids_title` and specification
+names beside the cited identity, so it *can* disagree, and disabling the checksum comparison
+prints `cited_name: "Accessible door width"` against `evaluated_ids_title: "Door name recorded"`
+over an outcome of `PASS`.
 
 ## Two decisions settled this session, in `docs/decisions.md`
 
