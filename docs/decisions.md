@@ -359,3 +359,54 @@ people who are not us. That list is in `prd.md` 6 and is still unclaimed.
 
 **Reopens if:** one of them acquires a maintained release and solves something `prd.md` 6 does
 not already cover. Three of the five had their first and last commit on the same day.
+
+## A frontend change proves itself in a browser against the running stack
+
+Decided 2026-09-02, at the start of Phase 3.
+
+Phase 3 is mostly frontend, and `docs/agents.md` requires every task to prove the real path
+ran. `services/web` had no test runner at all: `make web-verify` was lint, typecheck and a
+production build, none of which renders a component. So the first Phase 3 task had no way to
+produce an evidence block, and every task after it would have had the same problem.
+
+Three ways out were considered. Vitest with React Testing Library over jsdom, rendering real
+engine JSON, is fast and would sit inside `make verify` — but it is a test harness, and this
+repository's documented history is green suites over a broken system. A jsdom render proves a
+component returns the elements a query can find; it does not prove the SPA the user loads over
+HTTP reaches the API, that the token survives, or that the report a real run produced arrives
+in the browser at all. Two of the three Phase 2 defects lived exactly there.
+
+**Playwright against the compose stack is the evidence mechanism.** A frontend task brings up
+`make up`, drives a real browser through the flow it changed, and pastes the assertions and a
+screenshot path into the task file. It costs a chromium download and a slower loop, and it
+requires the stack to be up per task. That is the price of the evidence rule, and this repo has
+already paid for the alternative. The end-to-end run is not wired into `make verify`, which
+stays fast and hermetic; it is the per-task real-path proof `docs/agents.md` asks for, run by
+the builder and pasted, exactly like `curl` against the API is for a backend task.
+
+The seam is deliberate: the harness seeds an account, a tenant and a session through the API,
+because the SPA has no registration or tenant-creation screen and inventing one to make the
+test convenient would be building a feature for the harness. Everything the UI can do, the
+harness does through the UI.
+
+**Reopens if:** a component grows logic that a browser test cannot reach cheaply — pure
+formatting or ordering with many cases. Vitest joins then, as a second gate under it, never as
+a replacement for it.
+
+## Severity, for a report built on IDS, is the three-valued status
+
+Decided 2026-09-02, writing T-0025.
+
+`docs/plan.md` calls for findings "grouped by severity". IDS carries no severity field, and
+neither `ifctester` nor our `Report` has one. Inventing a severity ranking — deriving it from
+IFC class, from reason code, from how bad a violation looks — would be the engine asserting an
+importance the rule author never stated, which is invention in the sense `CLAUDE.md` forbids.
+
+So severity **is** status, ordered FAIL, then INDETERMINATE, then PASS. FAIL leads because it
+is the only pile where the model carried the datum and broke the rule. INDETERMINATE sits above
+PASS rather than below it, because it is the pile the architect must act on and the one this
+product exists to separate — sorting it last would bury it under the passes and quietly restore
+the two-valued reading.
+
+Real severity arrives with rule packs (`prd.md` 5.5), where a clause record can carry the
+weight its source assigns. Until a rule author states it, we do not.
