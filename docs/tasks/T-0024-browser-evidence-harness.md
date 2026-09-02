@@ -1,6 +1,6 @@
 # T-0024 — An end-to-end browser harness that drives the real stack and proves a report reached the screen
 
-**Phase:** 3 — What the first real user needs   **Status:** open
+**Phase:** 3 — What the first real user needs   **Status:** done
 **Touches invariants:** none — this task adds no production behaviour. It builds the
 instrument every later Phase 3 task uses to produce its evidence block.
 
@@ -105,6 +105,198 @@ Known things that will bite, so you do not rediscover them:
 
 ## Evidence
 
-<!-- the builder writes this -->
+**`make verify` — passes clean, including `web-verify` with `@playwright/test` installed.**
+
+```
+$ make verify
+uv run ruff check .
+All checks passed!
+uv run ruff format --check .
+157 files already formatted
+uv run mypy packages/engine/src services/api/cadgpt
+Success: no issues found in 138 source files
+uv run lint-imports --no-cache
+Contracts: 5 kept, 0 broken.
+uv run pytest
+........................................................................ [ 44%]
+........................................................................ [ 88%]
+..................                                                       [100%]
+162 passed, 18 warnings in 2.88s
+cd services/web && pnpm install --frozen-lockfile && pnpm run verify
+Already up to date
+
+> @cadgpt/web@0.1.0 verify /home/alireza/Projects/cadgpt/services/web
+> pnpm run lint && pnpm run typecheck && pnpm run build
+
+> @cadgpt/web@0.1.0 lint
+> eslint .
+
+> @cadgpt/web@0.1.0 typecheck
+> tsc -b --noEmit
+
+> @cadgpt/web@0.1.0 build
+> tsc -b && vite build
+
+vite v6.4.3 building for production...
+✓ 105 modules transformed.
+dist/index.html                   0.40 kB │ gzip:  0.27 kB
+dist/assets/index-BlFZKBg_.css    3.69 kB │ gzip:  1.30 kB
+dist/assets/index-B-UsX-Yz.js   301.65 kB │ gzip: 94.27 kB │ map: 1,279.35 kB
+✓ built in 1.94s
+$ echo $?
+0
+```
+
+**Chromium install.** `pnpm exec playwright install chromium` (no `--with-deps`: this
+machine has no passwordless `sudo`, and a plain launch check proved the system libraries
+Chrome for Testing needs are already present — a real headless launch rendered
+`data:text/html,<h1>hello</h1>` and read back `hello` before any of the harness files were
+written). Chromium 151.0.7922.34 (playwright build v1234) downloaded to
+`/home/alireza/.cache/ms-playwright/chromium-1234`.
+
+**Real path: `make up` then `make e2e` against the running compose stack.**
+
+```
+$ docker compose -f deploy/compose.yaml ps
+NAME                IMAGE                COMMAND                  SERVICE    STATUS
+cadgpt-api-1        cadgpt-api:latest    "sh -c 'python manag…"   api        Up (healthy)
+cadgpt-postgres-1   postgres:17-alpine   "docker-entrypoint.s…"   postgres   Up (healthy)
+cadgpt-redis-1      redis:7-alpine       "docker-entrypoint.s…"   redis      Up (healthy)
+cadgpt-web-1        cadgpt-web           "/docker-entrypoint.…"   web        Up
+cadgpt-worker-1     cadgpt-api:latest    "celery -A cadgpt.co…"   worker     Up (healthy)
+
+$ make e2e
+cd services/web && pnpm exec playwright install chromium && pnpm run e2e
+> @cadgpt/web@0.1.0 e2e /home/alireza/Projects/cadgpt/services/web
+> playwright test
+Running 1 test using 1 worker
+  ✓  1 [chromium] › e2e/report.spec.ts:26:1 › a real check run reproduces 1 pass / 1 fail / 1
+     indeterminate in the browser (6.2s)
+  1 passed (7.4s)
+```
+
+Run twice in a row against the same, never-reset stack (unique email/tenant slug per run,
+per the fixture's design) — both passed, proving the harness is re-runnable without
+`make reset`:
+
+```
+$ pnpm run e2e   # first run
+  ✓  1 [chromium] › ... (7.8s)
+  1 passed (9.3s)
+$ pnpm run e2e   # second run, same containers, no reset in between
+  ✓  1 [chromium] › ... (6.1s)
+  1 passed (7.1s)
+```
+
+**The flow the spec actually drove**, entirely through the UI from sign-in onward: sign in
+with the API-seeded credentials, add a rule set from `door_width.ids`, create a review from
+`three_doors.ifc` against that rule set, click **Run check**, poll (via the app's own
+polling, not a fixed sleep) until **Summary** appears, open it, and read the rendered
+report.
+
+**The three assertions on `ReportView`, quoted from `services/web/e2e/report.spec.ts`:**
+
+```ts
+await expect(report.locator(".count--pass .count__value")).toHaveText("1");
+await expect(report.locator(".count--fail .count__value")).toHaveText("1");
+await expect(report.locator(".count--indeterminate .count__value")).toHaveText("1");
+...
+const failRow = report.locator('[data-testid="entity-row"][data-status="FAIL"]');
+await expect(failRow).toHaveCount(1);
+await expect(failRow.locator('[data-testid="reason"]')).toHaveAttribute(
+  "data-reason-code",
+  "ATTRIBUTE_VALUE_MISMATCH",
+);
+await expect(failRow.locator('[data-testid="detail"]')).toContainText("800");
+
+const indeterminateRow = report.locator(
+  '[data-testid="entity-row"][data-status="INDETERMINATE"]',
+);
+await expect(indeterminateRow).toHaveCount(1);
+await expect(indeterminateRow.locator('[data-testid="reason"]')).toHaveAttribute(
+  "data-reason-code",
+  "ATTRIBUTE_EMPTY",
+);
+```
+
+`data-testid`/`data-reason-code`/`data-status` were added to the entity row and its reason
+cell in `services/web/src/components/ReportView.tsx` — the one production change this task
+permits — because the rendered cell shows the *translated* reason label
+("The attribute value does not satisfy the rule.") and the stable `ReasonCode` string is
+otherwise not present in the DOM at all.
+
+**Screenshot:** `services/web/e2e/screenshots/report.png` (committed; run artifacts under
+`test-results/` are gitignored, not this file). Opened and confirmed it shows the actual
+rendered report, not an error or empty state: header "Accessible door width", a red **Fail**
+pill, three count tiles reading **1 / 1 / 1** ("Passed" / "Failed" / "Could not be
+determined"), the indeterminate notice "These were not checked. They are not passes.", and
+the specification's two listed entities — a **Fail** row for `IfcDoor` `...JVBqA2` with
+"The attribute value does not satisfy the rule." and detail `The attribute value "800.0"
+does not match the requirement`, and an **Indeterminate** row for `...JVBqA3` with "The
+attribute is present but holds no value." and detail `The attribute value "None" is empty`.
+The passing door (`...JVBqA1`, 1000mm) is counted in the summary tiles but not listed as a
+row, matching `ReportView`'s existing behaviour of only rendering non-passing entities.
+
+**Wiring.**
+
+`Makefile`:
+```
+e2e:  ## Run the Playwright suite against the stack `make up` already started
+	cd $(WEB) && pnpm exec playwright install chromium && pnpm run e2e
+```
+
+`services/web/playwright.config.ts`:
+```
+  testDir: "./e2e",
+  ...
+    baseURL: "http://localhost:8080",
+```
+
+`services/web/package.json`: `"e2e": "playwright test"` under `scripts`, invoked by the
+`Makefile` target above via `pnpm run e2e`.
+
+**What changed, file by file:**
+- `services/web/package.json` / `pnpm-lock.yaml` — `@playwright/test` devDependency, `e2e`
+  script.
+- `services/web/playwright.config.ts` — new.
+- `services/web/e2e/fixtures.ts` — new. Seeds a unique account + tenant through
+  `POST /api/v1/auth/register/`, `POST /api/v1/auth/login/`, `POST /api/v1/tenants/` on
+  `http://localhost:8000` directly (not through the `web` container's proxy), so the
+  seed step puts rows in the database without exercising the SPA.
+- `services/web/e2e/report.spec.ts` — new. The flow described above.
+- `services/web/eslint.config.js` — a file-scoped override turning off
+  `react-hooks/rules-of-hooks` for `e2e/**/*.ts`: the plugin mistook Playwright's fixture
+  callback argument `use` for React 19's built-in `use` hook. Tooling config, not
+  production behaviour.
+- `services/web/src/components/ReportView.tsx` — `data-testid`/`data-status` on the entity
+  `<tr>`, `data-testid`/`data-reason-code` on the reason `<td>`, `data-testid` on the
+  detail `<td>`. No visible change; text content is unchanged.
+- `services/web/.gitignore` — ignore `test-results/` and `playwright-report/`.
+- `Makefile` — `e2e` target added to `.PHONY` and defined; **not** added to the `verify`
+  target's dependency list.
+- `services/web/e2e/screenshots/report.png` — committed evidence screenshot.
+
+**Not part of `make verify`, confirmed:** `verify: lint types contracts test web-verify` in
+the `Makefile` is unchanged; `e2e` is a separate target.
 
 ## Review
+
+**Reviewer not dispatched — the gate did not fire.** No invariant is touched: the only
+production change is three data attributes on an existing `<tr>` and two `<td>`s, with no
+text content, ordering or count altered. It is not a milestone boundary. The evidence block
+is complete and the coordinator verified it independently rather than taking it on trust —
+read the whole 28-line production-touching diff, confirmed `verify: lint types contracts
+test web-verify` is unchanged in the `Makefile`, and opened
+`services/web/e2e/screenshots/report.png`, which shows the rendered report with 1 / 1 / 1,
+the FAIL row carrying `"800.0" does not match the requirement`, and the INDETERMINATE row
+carrying `"None" is empty`. Accepted.
+
+**One defect found by the coordinator while reading the evidence, filed rather than fixed
+here.** The screenshot shows the requirement description rendering as
+`<ifctester.facet.Attribute object at 0x76f24ab599a0>` — a Python object repr where the text
+of the requirement belongs. Root cause is `description=str(facet)` at
+`packages/engine/src/cadgpt_engine/check.py:77`; no `ifctester` facet defines `__str__`, so
+it falls back to the default repr. Pre-existing since Phase 2 and outside this task's scope,
+so it is **T-0026**, not a change to this task. It is sequenced ahead of T-0025 because
+T-0025 orders and filters findings, and there is no point ranking a memory address by
+severity.

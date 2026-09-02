@@ -68,7 +68,7 @@ by a test: tenant resolution ran as middleware and could never see a JWT-authent
 JWT lifetimes were configured as integers and failed on the first real sign-in; the report
 named the storage key instead of the file the architect uploaded.
 
-## Phase 3 — What the first real user needs — **NEXT**
+## Phase 3 — What the first real user needs — **IN PROGRESS**
 
 Driven by use, not anticipation. In rough order of what a design office hits first:
 
@@ -95,6 +95,32 @@ Driven by use, not anticipation. In rough order of what a design office hits fir
   unmeasured. Upload directly to object storage rather than through the API process.
 - **Invitations and roles in the UI.** The API has membership and roles; the frontend does
   not surface them yet.
+
+### What has landed
+
+**T-0024 — the browser evidence harness. Done 2026-09-02.** Phase 3 is almost entirely
+frontend and `services/web` had no way to produce an evidence block: `make web-verify` is
+eslint, tsc and vite build, none of which renders a component. Playwright now drives real
+chromium against the `make up` stack — sign in, upload `door_width.ids`, upload
+`three_doors.ifc`, run the check, open the report — and reproduces 1 PASS / 1 FAIL /
+1 INDETERMINATE from the rendered page. `make e2e`, deliberately not part of `make verify`,
+which stays fast and hermetic. Reasoning in `docs/decisions.md`; this is the instrument every
+task below produces its evidence with.
+
+**Found by running it, not by a test:** the requirement description reaches the screen as
+`<ifctester.facet.Attribute object at 0x76f24ab599a0>` — `str(facet)` on a class with no
+`__str__`, at `packages/engine/src/cadgpt_engine/check.py:77`. `ifctester` ships
+`facet.to_string("requirement", spec, facet)` for exactly this and we were not calling it.
+That is I5's resolvable basis rendering as a memory address, and it is the fourth defect this
+repository has found by running the stack rather than by its suite. **T-0026**, sequenced
+ahead of T-0025 — ranking a memory address by severity is not worth doing.
+
+### Queued
+
+- **T-0026** — the requirement description, from `ifctester`'s own `to_string`. Next.
+- **T-0025** — report presentation: coverage above findings, severity ordering
+  (FAIL, INDETERMINATE, PASS — `docs/decisions.md`), and a status filter that cannot hide an
+  unknown. Reviewer-gated: it touches three-valued results and I7.
 
 ## Phase 4 — Toward the PRD
 

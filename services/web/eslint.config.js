@@ -17,4 +17,12 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "error",
     },
   },
+  {
+    // Playwright fixtures, not React: `test.extend` calls its callback `use`, which
+    // react-hooks/rules-of-hooks otherwise mistakes for React 19's built-in `use` hook.
+    files: ["e2e/**/*.ts"],
+    rules: {
+      "react-hooks/rules-of-hooks": "off",
+    },
+  },
 );

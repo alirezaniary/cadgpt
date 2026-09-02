@@ -64,14 +64,22 @@ export function ReportView({ report }: { report: Report }) {
                   <table className="entities">
                     <tbody>
                       {requirement.entities.map((entity) => (
-                        <tr key={`${entity.global_id}-${entity.reason_code}`}>
+                        <tr
+                          key={`${entity.global_id}-${entity.reason_code}`}
+                          data-testid="entity-row"
+                          data-status={entity.status}
+                        >
                           <td>
                             <StatusPill status={entity.status} />
                           </td>
                           <td className="ltr">{entity.ifc_class}</td>
                           <td className="ltr mono">{entity.global_id}</td>
-                          <td>{entity.reason_label ?? entity.reason_code}</td>
-                          <td className="ltr mono muted">{entity.detail}</td>
+                          <td data-testid="reason" data-reason-code={entity.reason_code}>
+                            {entity.reason_label ?? entity.reason_code}
+                          </td>
+                          <td className="ltr mono muted" data-testid="detail">
+                            {entity.detail}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

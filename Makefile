@@ -8,7 +8,7 @@ COMPOSE := docker compose -f deploy/compose.yaml
 
 .PHONY: help verify lint format types contracts test test-fast web-verify install \
         migrations migrate run worker shell schema messages compile-messages \
-        up down logs reset
+        up down logs reset e2e
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -87,3 +87,8 @@ reset:  ## Stop everything and delete the volumes
 
 logs:  ## Follow the logs
 	$(COMPOSE) logs -f
+
+## ---------------------------------------------------------------- browser evidence
+
+e2e:  ## Run the Playwright suite against the stack `make up` already started
+	cd $(WEB) && pnpm exec playwright install chromium && pnpm run e2e
