@@ -9,13 +9,16 @@ from __future__ import annotations
 
 from typing import Any
 
+from cadgpt.apps.review.disclosure import disclosure_text, disclosure_title
 from cadgpt.apps.review.reasons import label_for
 from cadgpt.apps.review.requirements import requirement_text
 
 
 def localize_report(report: dict[str, Any] | None) -> dict[str, Any] | None:
-    """Return `report` with a `reason_label` beside every `reason_code`, and a
-    `requirement_text` beside every requirement's `description` / `basis`.
+    """Return `report` with a `reason_label` beside every `reason_code`, a
+    `requirement_text` beside every requirement's `description` / `basis`, and the I7
+    disclosure (`disclosure_title`, `disclosure_text`) naming the model this report
+    checked (`prd.md` 5.7 -- see `cadgpt.apps.review.disclosure`).
 
     The stored document is not modified: a copy is annotated, so a translation never
     reaches the database and the run stays reproducible from its inputs.
@@ -48,4 +51,9 @@ def localize_report(report: dict[str, Any] | None) -> dict[str, Any] | None:
             }
         )
 
-    return {**report, "specifications": specifications}
+    return {
+        **report,
+        "specifications": specifications,
+        "disclosure_title": disclosure_title(),
+        "disclosure_text": disclosure_text(report.get("ifc_filename", "")),
+    }

@@ -1,6 +1,6 @@
 # T-0029 — Say what was checked: the model, not the submitted drawing set
 
-**Phase:** 3 — What the first real user needs   **Status:** open
+**Phase:** 3 — What the first real user needs   **Status:** done
 **Touches invariants:** I7 — never assert compliance we did not establish. **Reviewer-gated.**
 This task is one paragraph of copy and the difference between decision support and an implied
 compliance claim.
@@ -306,3 +306,144 @@ A verdict is reachable without the disclosure: the Reviews row renders "Complete
 1 / 1 / 1" before anyone opens the report. That is the surface a reader most plausibly
 screenshots into an email, and on a clean run it is a compliance-shaped signal with no statement
 of what was checked. The same I7 obligation, one level up.
+
+## Fix-now evidence
+
+**Changes.** The disclosure moved to the server, following the `reason_label` /
+`requirement_text` idiom exactly:
+
+- `services/api/cadgpt/apps/review/disclosure.py` (new) — `disclosure_title()` and
+  `disclosure_text(ifc_filename)`, both `gettext_lazy`-backed, mirroring
+  `reasons.py`/`requirements.py`'s own module docstrings on why the wording lives here and
+  not on the stored document.
+- `services/api/cadgpt/apps/review/services/presentation.py` — `localize_report` now
+  annotates the top-level report dict with `disclosure_title` and `disclosure_text`
+  (`report.get("ifc_filename", "")` interpolated in), the same call site that already adds
+  `reason_label` and `requirement_text`.
+- `services/api/cadgpt/locale/fa/LC_MESSAGES/django.po` — the two new msgids, translated,
+  appended in the file's existing single-line convention.
+- `services/api/cadgpt/apps/review/tests/test_disclosure.py` (new),
+  `test_presentation.py` (a case proving a pre-`REPORT_SCHEMA_VERSION`-2 stored document
+  still gets the disclosure), `test_check_run.py` (a real end-to-end HTTP assertion).
+- `services/web/src/api/types.ts` — `Report` gains `disclosure_title: string` and
+  `disclosure_text: string`.
+- `services/web/src/components/ReportView.tsx` — renders `report.disclosure_title` /
+  `report.disclosure_text` directly, exactly like `reason_label`; composes nothing.
+- **Deleted** `services/web/src/report/disclosureCopy.ts` and the `report.disclosure.*`
+  keys from both `en.json` and `fa.json` — confirmed those two files are now byte-identical
+  to their pre-T-0029 committed state (`git diff services/web/src/i18n/{en,fa}.json` is
+  empty).
+- `services/web/e2e/report.spec.ts` — added `toContainText("not the drawing set")`, the
+  wording assertion finding 3 asked for.
+- Wording fix (finding 2): `_TEXT` no longer says "a **clean** result below" — it says "The
+  result below describes the model; it says nothing about the sheets," which holds for
+  FAIL and INDETERMINATE reports too, not only a clean one.
+
+**`make verify` — full pass, both languages of the workspace, after the move:**
+```
+uv run ruff check .            -> All checks passed!
+uv run ruff format --check .   -> 157 files already formatted
+uv run mypy ... 143 source files -> Success: no issues found
+uv run lint-imports --no-cache -> Contracts: 5 kept, 0 broken.
+uv run pytest                  -> 192 passed, 18 warnings in 2.70s   (was 186 before this round)
+cd services/web && pnpm run verify
+  eslint .        -> clean
+  tsc -b --noEmit -> clean
+  tsc -b && vite build -> ✓ 105 modules transformed, ✓ built in 1.85s
+```
+
+**Disclosure served from the API, in both languages — one stored run, two renderings,
+from a real HTTP round trip against the rebuilt containers** (registered an account and
+tenant, uploaded `door_width.ids` and `three_doors.ifc` as media, created a rule set and a
+review, ran a real check, same `run_uuid`, fetched twice with a different
+`Accept-Language` header — same pattern as T-0027's own evidence):
+```
+$ curl -s http://localhost:8000/api/v1/reviews/$REVIEW/runs/$RUN/ \
+    -H "Authorization: Bearer $TOKEN" -H "X-Tenant: $TENANT" -H "Accept-Language: en"
+disclosure_title: What this report checked
+disclosure_text: This report checked the model three_doors.ifc — not the drawing set
+  your office submits for review. A model and its submitted drawing set can diverge:
+  detailing drawn directly onto a view, a schedule typed by hand, an area table in a
+  titleblock. None of that divergence is checked here. The result below describes the
+  model; it says nothing about the sheets.
+
+$ curl -s http://localhost:8000/api/v1/reviews/$REVIEW/runs/$RUN/ \
+    -H "Authorization: Bearer $TOKEN" -H "X-Tenant: $TENANT" -H "Accept-Language: fa"
+disclosure_title: آنچه در این گزارش بررسی شد
+disclosure_text: این گزارش مدل three_doors.ifc را بررسی کرده است — نه مجموعه نقشه‌هایی
+  که دفتر شما برای بازبینی ارائه می‌دهد. مدل و مجموعه نقشه‌های ارسالی می‌توانند با هم
+  واگرا شوند: جزئیاتی که مستقیماً روی یک نما ترسیم شده، جدولی که دستی تایپ شده، جدول
+  مساحت در کارتوش. هیچ‌یک از این واگرایی‌ها در اینجا بررسی نشده است. نتیجهٔ زیر مدل را
+  توصیف می‌کند؛ دربارهٔ نقشه‌ها چیزی نمی‌گوید.
+```
+Both fields differ only by the `Accept-Language` header — the same stored report document,
+localized at read time by `gettext`, not by a second engine run. Also confirmed directly
+inside the rebuilt `cadgpt-api-1` container (`docker compose exec api ... translation.
+activate('fa') ...`) that the compiled `.mo` (built during `deploy/docker/api.Dockerfile`'s
+`compilemessages` step, gettext tools are not installed on the host) renders the same
+Persian text, so the HTTP-level proof above is not a caching artefact.
+
+**`make e2e` against the rebuilt containers:**
+```
+$ docker compose -f deploy/compose.yaml up -d --build web
+ api  Built
+ web  Built
+ Container cadgpt-api-1  Recreated
+ Container cadgpt-web-1  Recreated
+ ...
+
+$ make e2e
+Running 1 test using 1 worker
+  ✓  1 [chromium] › e2e/report.spec.ts:40:1 › a real check run reproduces 1 pass / 1 fail
+     / 1 indeterminate in the browser (10.8s)
+  1 passed (11.8s)
+```
+Screenshot (`services/web/e2e/screenshots/report.png`, refreshed by this run, opened and
+read directly) now shows, verbatim, under "What this report checked": "This report checked
+the model three_doors.ifc — not the drawing set your office submits for review. A model
+and its submitted drawing set can diverge: detailing drawn directly onto a view, a
+schedule typed by hand, an area table in a titleblock. None of that divergence is checked
+here. The result below describes the model; it says nothing about the sheets." — no
+"clean," matching a screenshot that is in fact a FAIL report.
+
+**Mutation proof, on the new wording assertion (finding 3).** Reverted
+`disclosure_text` in `services/api/cadgpt/apps/review/disclosure.py` to `return
+ifc_filename` — the exact failure mode the finding named ("replace the copy with the
+literal `{{filename}}`" in the old frontend version; its server-side analogue is
+collapsing the sentence to the bare filename). Rebuilt (`docker compose -f
+deploy/compose.yaml up -d --build web`, which rebuilds and recreates `cadgpt-api-1` too)
+and ran `make e2e`:
+```
+Error: expect(locator).toContainText(expected) failed
+Locator: locator('section.report').locator('[data-testid="disclosure"]')
+Expected substring: "not the drawing set"
+Received string:    "What this report checkedthree_doors.ifc"
+
+  100 |   await expect(disclosure).toContainText("not the drawing set");
+      |                            ^
+  1 failed
+```
+The filename assertion (`toContainText("three_doors.ifc")`) and the document-order
+assertion both still passed against this mutant — only the new wording assertion caught
+it, which is what it was added for. Restored `disclosure_text` to
+`return str(_TEXT) % {"filename": ifc_filename}`, rebuilt again, ran `make e2e` again:
+```
+Running 1 test using 1 worker
+  ✓  1 [chromium] › e2e/report.spec.ts:40:1 › a real check run reproduces 1 pass / 1 fail
+     / 1 indeterminate in the browser (10.8s)
+  1 passed (11.8s)
+```
+`make verify` (full Python + `services/web` `pnpm run verify`) re-run clean after
+restoring, matching the run pasted above. The document-order mutation from the original
+round (disclosure moved below coverage) was not re-run in this pass — the coordinator
+already independently reproduced it and confirmed it fails on the real error text; moving
+the copy's *source* did not touch the DOM structure or `data-testid` placement that
+mutation exercises.
+
+**NOT DONE:** nothing outstanding in this round. T-0032 (the generated Markdown report)
+remains unbuilt and out of scope; `cadgpt.apps.review.disclosure` is now the single source
+its implementer reads (server-side, reachable from the worker/management-command context
+T-0032 will actually run in — unlike the deleted frontend module, which a Celery process
+could never have imported). T-0041 (the Reviews-row verdict shown before the report is
+opened) is queued, not addressed here, per the coordinator's instruction that it is out of
+scope for this task.

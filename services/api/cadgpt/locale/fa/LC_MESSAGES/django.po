@@ -301,3 +301,11 @@ msgstr " و "
 #: cadgpt/apps/review/requirements.py (disjunctive joiner, xs:enumeration members)
 msgid " or "
 msgstr " یا "
+
+#: cadgpt/apps/review/disclosure.py (disclosure title)
+msgid "What this report checked"
+msgstr "آنچه در این گزارش بررسی شد"
+
+#: cadgpt/apps/review/disclosure.py (disclosure text)
+msgid "This report checked the model %(filename)s — not the drawing set your office submits for review. A model and its submitted drawing set can diverge: detailing drawn directly onto a view, a schedule typed by hand, an area table in a titleblock. None of that divergence is checked here. The result below describes the model; it says nothing about the sheets."
+msgstr "این گزارش مدل %(filename)s را بررسی کرده است — نه مجموعه نقشه‌هایی که دفتر شما برای بازبینی ارائه می‌دهد. مدل و مجموعه نقشه‌های ارسالی می‌توانند با هم واگرا شوند: جزئیاتی که مستقیماً روی یک نما ترسیم شده، جدولی که دستی تایپ شده، جدول مساحت در کارتوش. هیچ‌یک از این واگرایی‌ها در اینجا بررسی نشده است. نتیجهٔ زیر مدل را توصیف می‌کند؛ دربارهٔ نقشه‌ها چیزی نمی‌گوید."

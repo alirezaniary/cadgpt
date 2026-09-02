@@ -84,6 +84,24 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
   const report = page.locator("section.report");
   await expect(report).toBeVisible();
 
+  // T-0029: the I7 disclosure -- what was checked (the model, by the filename the
+  // architect uploaded) and what was not (the drawing set) -- reads before coverage.
+  // Coverage answers "how much of the rule set was evaluated"; the disclosure answers the
+  // prior question, "what artifact was evaluated at all". Asserted on document order, not
+  // presence: a disclosure rendered anywhere else on the page would satisfy a visibility
+  // check while failing the actual requirement.
+  const disclosure = report.locator('[data-testid="disclosure"]');
+  await expect(disclosure).toBeVisible();
+  await expect(disclosure).toContainText("three_doors.ifc");
+  // Fix-now round: the filename alone does not prove the wording survived -- replacing
+  // the whole disclosure with the literal string "{{filename}}" would still contain
+  // "three_doors.ifc" and pass every other assertion here. This is the one that catches
+  // the deliverable being silently emptied.
+  await expect(disclosure).toContainText("not the drawing set");
+
+  const disclosureThenCoverage = report.locator('[data-testid="disclosure"], [data-testid="coverage"]');
+  await expect(disclosureThenCoverage.first()).toHaveAttribute("data-testid", "disclosure");
+
   await expect(report.locator(".count--pass .count__value")).toHaveText("1");
   await expect(report.locator(".count--fail .count__value")).toHaveText("1");
   await expect(report.locator(".count--indeterminate .count__value")).toHaveText("1");

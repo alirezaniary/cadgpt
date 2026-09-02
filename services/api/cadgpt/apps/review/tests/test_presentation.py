@@ -83,5 +83,16 @@ def test_a_v1_schema_document_still_localizes_through_the_fallback() -> None:
     )
 
 
+def test_a_v1_schema_document_still_gets_the_i7_disclosure() -> None:
+    # The disclosure predates no schema version -- it is derived from `ifc_filename`,
+    # present since `REPORT_SCHEMA_VERSION` 1 -- so a pre-existing stored document must
+    # render it exactly like a fresh one.
+    localized = localize_report(_V1_REPORT)
+
+    assert localized is not None
+    assert localized["disclosure_title"]
+    assert "three_doors.ifc" in localized["disclosure_text"]
+
+
 def test_none_stays_none() -> None:
     assert localize_report(None) is None

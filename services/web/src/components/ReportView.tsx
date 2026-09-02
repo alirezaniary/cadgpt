@@ -1,9 +1,16 @@
 /**
  * A finished report.
  *
- * Coverage is presented before findings: the summary states the size of the effective
- * rule set, not just what came out of it, and names every specification that established
- * nothing (prd.md 5.7, I7). Findings are then grouped by severity — FAIL, then
+ * A disclosure is presented before coverage, which is presented before findings: "what
+ * artifact did this check at all" is the prior question to "how much of the rule set was
+ * evaluated" (`prd.md` 5.7, I7). `report.disclosure_title` / `report.disclosure_text` are
+ * rendered as given, the same way `reason_label` and `requirement_text` are: this is report
+ * prose, and report prose is composed server-side, in the reader's language, by
+ * `cadgpt.apps.review.disclosure` (`docs/decisions.md`, "Report prose belongs to the
+ * server, not to the frontend catalogue") -- never assembled here from an i18n key and a
+ * raw filename. Coverage then states the size of the effective rule set, not just what
+ * came out of it, and names every specification that established nothing (prd.md 5.7, I7).
+ * Findings are then grouped by severity — FAIL, then
  * INDETERMINATE, then PASS, stably — so the pile where the model carried the datum and
  * broke the rule is read first, and an unknown is never buried under a pass
  * (`docs/decisions.md`, "Severity, for a report built on IDS, is the three-valued
@@ -101,6 +108,11 @@ export function ReportView({ report }: { report: Report }) {
         </div>
         <StatusPill status={report.status} />
       </header>
+
+      <section className="disclosure" data-testid="disclosure">
+        <h4>{report.disclosure_title}</h4>
+        <p>{report.disclosure_text}</p>
+      </section>
 
       <section className="coverage" data-testid="coverage">
         <h4>{t("report.coverage.title")}</h4>

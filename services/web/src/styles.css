@@ -171,6 +171,18 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 .count--fail { background: var(--fail-bg); color: var(--fail); }
 .count--indeterminate { background: var(--indeterminate-bg); color: var(--indeterminate); }
 
+/* A statement of scope, not a warning: no indeterminate/fail-colored background and no
+   icon, so it reads as part of the report rather than as an alert a reader learns to
+   dismiss. The start border only sets it apart from the header above it. */
+.disclosure {
+  display: grid;
+  gap: 0.3rem;
+  padding-inline-start: 0.85rem;
+  border-inline-start: 3px solid var(--line);
+}
+.disclosure h4 { font-size: 0.85rem; color: var(--muted); font-weight: 620; }
+.disclosure p { margin: 0; }
+
 .coverage { display: grid; gap: 0.6rem; padding-block-end: 0.6rem; border-block-end: 1px solid var(--line); }
 .coverage__nothing ul { margin: 0.2rem 0 0; padding-inline-start: 1.25rem; }
 .coverage__nothing li { font-size: 0.87rem; }

@@ -131,6 +131,14 @@ export interface Report {
   ifc_filename: string;
   ifc_schema: string;
   ids_title: string;
+  /** The I7 disclosure heading, server-rendered in the reader's language
+   * (`cadgpt.apps.review.disclosure.disclosure_title`) -- prose, like `reason_label`,
+   * never composed in the frontend. */
+  disclosure_title: string;
+  /** The I7 disclosure paragraph: what was checked (this model, by filename) and what
+   * was not (the submitted drawing set). Server-rendered
+   * (`cadgpt.apps.review.disclosure.disclosure_text`), `prd.md` 5.7. */
+  disclosure_text: string;
   status: Status;
   specifications_passed: number;
   specifications_failed: number;

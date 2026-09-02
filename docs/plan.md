@@ -267,6 +267,39 @@ correct than the task text. Remaining findings became **T-0039** (a restriction 
 still untranslated English in the stored document) and **T-0040** (`localize_report` raises
 rather than degrading on a malformed `basis`, 500-ing the whole run detail).
 
+**T-0029 — say what was checked. Done 2026-09-02.** `prd.md` §5.7's closing requirement, and
+the cheapest I7 obligation in the product: the report now states, above coverage, that it
+checked the model and not the drawing set the office submits, names the model by the filename
+the architect uploaded, and names three concrete ways the two diverge — detailing drawn onto a
+view, a schedule typed by hand, an area table in a titleblock. It closes: *"The result below
+describes the model; it says nothing about the sheets."* Styled as a quiet rule rather than an
+alert, because dressing a statement of scope as a warning teaches readers to dismiss it.
+
+The review moved the copy rather than the words. The task had scoped itself to `services/web`
+and so put the sentence in a TypeScript module and the frontend catalogues, with a comment
+promising T-0032's Markdown generator would read the same source — **a promise that could not be
+kept**, because T-0032 is server-side Python and a Celery worker can import neither. The
+sentence would have been retyped into `django.po`, producing exactly the two-copy drift the
+requirement existed to prevent, in exactly the copy that leaves the building. **The task file's
+scope was wrong and the correction was the coordinator's, not the builder's.** The copy now
+lives in `cadgpt.apps.review.disclosure`, rendered through `gettext` and served the way
+`reason_label` already is; the view renders a string it was given. Settled as a general rule in
+`docs/decisions.md`: *if a string will appear in the generated report file, it is authored on
+the server* — the report has two renderers and only one of them is a browser.
+
+Two smaller findings were folded into the same round rather than spawning a second pass over one
+paragraph. The closing clause read "A **clean** result below describes the model", a
+counterfactual printed above what is usually a FAIL report — and on a FAIL the live I7
+misreading is the mirror one, the finding list read as *exhaustive* and implying compliance for
+the unlisted remainder. One word dropped covers all three states. And nothing asserted the
+wording: replacing the paragraph with the literal `"{{filename}}"` left every assertion passing.
+Verified closed by the coordinator — gutting the copy now fails with
+`Received string: "What this report checkedthree_doors.ifc"`.
+
+Queued as **T-0041**: a verdict is reachable without its scope. The reviews list renders
+"Complete · Fail · 1 / 1 / 1" before anyone opens the report, and that row is the surface a
+reader most plausibly screenshots into an email.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -311,6 +344,7 @@ the first of them:
 - **T-0036** — the Persian report: prove RTL, and stop rendering a raw payload value.
 - **T-0039** — the subject of a citation: structured in the engine, worded in the service.
 - **T-0040** — `localize_report` must degrade, not 500.
+- **T-0041** — a verdict is reachable without the statement of what was checked.
 
 ## Phase 4 — Toward the PRD
 

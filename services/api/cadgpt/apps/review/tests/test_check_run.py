@@ -48,6 +48,12 @@ def test_a_check_separates_a_violation_from_missing_data(
     assert report["ifc_filename"] == "three_doors.ifc", (
         "the report must name the file the architect uploaded, not the storage key"
     )
+    assert report["disclosure_title"]
+    assert "three_doors.ifc" in report["disclosure_text"], (
+        "the I7 disclosure must name the model that was actually checked, from the "
+        "payload, not a hardcoded example filename"
+    )
+    assert "drawing set" in report["disclosure_text"]
     entities = [
         entity
         for spec in report["specifications"]
