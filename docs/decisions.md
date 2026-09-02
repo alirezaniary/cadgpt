@@ -557,3 +557,35 @@ said at the time, and rewriting it destroys the audit trail the attribution requ
 
 This is retrospective for T-0028: the bump belongs with the fix that made it necessary, and is
 carried in T-0038 alongside the verdict change that task makes.
+
+## Report prose belongs to the server, not to the frontend catalogue
+
+*2026-09-02, forced by the T-0029 review.*
+
+T-0029 put the I7 disclosure — "what this report checked" — into
+`services/web/src/report/disclosureCopy.ts` and the two frontend i18n catalogues, with a
+comment promising that T-0032's Markdown generator would read the same module and so avoid two
+copies of the sentence drifting apart. That promise cannot be kept. **T-0032 is server-side
+Python**: `docs/decisions.md` already records that the system "runs the check asynchronously,
+generates a Markdown report, and puts that file's URL in the report section of the record", and
+`prd.md` §5.8 has the report templated and localized on the server. A Celery worker cannot
+import a TypeScript module or read `services/web/src/i18n/*.json`. When T-0032 lands, the
+sentence would be retyped into `django.po` — which is exactly the drift the single-source
+requirement existed to prevent, in exactly the copy that leaves the building.
+
+This is not a new question; the repository already answered it and the answer was not applied
+here. `services/web/src/i18n/index.ts` states the convention: *"Findings themselves are not
+translated here. The server sends `reason_label` already written in the user's language, because
+the wording belongs with the rule engine's vocabulary and not with the UI's."* The disclosure is
+report prose, not UI chrome, so it sits on the established side of that line.
+
+**The disclosure copy moves to the server**, beside `reasons.py` and `requirements.py`, rendered
+through Django `gettext` into `services/api/cadgpt/locale/`, and served to the frontend the way
+`reason_label` already is. The React view renders a string it was given rather than composing
+one. T-0032 then consumes the same function the API does, and there is one copy of the sentence
+in the product.
+
+The general rule, so this is decided once: **if a string will appear in the generated report
+file, it is authored on the server.** The frontend catalogues hold UI chrome — labels, controls,
+headings that exist only on screen. Anything that is part of the report's own prose is the
+server's, because the report has two renderers and only one of them is a browser.
