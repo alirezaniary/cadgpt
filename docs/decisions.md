@@ -410,3 +410,103 @@ the two-valued reading.
 
 Real severity arrives with rule packs (`prd.md` 5.5), where a clause record can carry the
 weight its source assigns. Until a rule author states it, we do not.
+
+## The rules are a catalogue we ship, not a file the user uploads
+
+Decided 2026-09-02, by the product owner, answering the open question in `docs/plan.md`
+about who authors the rules.
+
+The MVP does not ask an architect for an IDS file. It ships a **rule store**: existing,
+publicly available IDS rule sets that the engine can already consume, seeded so development
+does not wait on rule authoring. The user chooses which rules to run — by jurisdiction, by
+region, by version — and the choice is part of the job record, so a run stays reproducible
+from its inputs. The Iranian building code is the first authored pack; EU and US codes follow.
+Rule content is authored in a separate thread and is not this loop's work; **this loop builds
+the store, the metadata, the selection, and the seeding path**, and nothing about the rule
+content itself.
+
+User-uploaded rule sets remain a real feature and are explicitly **out of MVP scope**. The
+capability already exists in the code and is not being removed — it stops being the primary
+path and stops being the thing the first screen asks for.
+
+The consequence that is not free: `RuleSet` today is `TenantOwnedModel` and requires an
+uploaded `media.Media` file. A catalogue pack we ship belongs to no tenant and has no
+uploader. Making `tenant` nullable to accommodate that would put a nullable column at the
+centre of the one invariant this repository enforces structurally — every tenant-owned table
+carries `tenant` and every read goes through `for_tenant`. So the catalogue is a **separate
+model** from the tenant-owned rule set, and `for_tenant` stays total over tenant-owned tables
+with no exception to reason about. A shipped pack is global and readable by every tenant
+because it contains no tenant's data; that is a different kind of object, and the schema says
+so.
+
+This pulls `prd.md` 5.5's rule packs forward out of Phase 4 and into the MVP, in their
+metadata-and-selection form only — many IDS files per pack, with jurisdiction, region,
+version and source citation. No clause records, no YAML compilation, no ratification
+pipeline yet. The format stays IDS, unforked, per I4 and the non-goal in `prd.md` 10.
+
+**Reopens if:** a target jurisdiction's rules cannot be expressed as a set of IDS files with
+metadata — which is a rule-format gap to be fixed in the format, never a private dialect.
+
+## The first iteration reports; it does not act
+
+Decided 2026-09-02, by the product owner, answering how an architect acts on a finding.
+
+`docs/plan.md` ranked the web overlay and marked sheets as the next Phase 3 items and treated
+the choice between them as blocked on gate 2. Neither is in the MVP. **The first iteration
+produces a report and stops there.** Acting on findings is deferred to the agentic layer,
+where it arrives with permission levels — auto, edit, ask-first — modelled on how Claude Code
+itself is driven. That is a v1+ concern and it is the right home for it: a system that edits a
+model needs a consent model, and bolting one onto an overlay would be building it twice.
+
+This removes the overlay, marked sheets and BCF export from the MVP, and with them removes
+gate 2 from the MVP's critical path entirely. Gate 2 still decides what comes *after* the
+report; it no longer decides what the report is.
+
+**Reopens if:** a first user reads the report and cannot locate the element it names. Then a
+viewer is not a workflow feature, it is a legibility fix, and it returns on that basis.
+
+## The MVP deliverable is a generated report file on the job record
+
+Decided 2026-09-02, by the product owner, answering when the MVP is stable enough to show.
+
+The shape is deliberately small: the user uploads a model, the system creates a job record,
+runs the check asynchronously, generates a Markdown report, and puts that file's URL in the
+report section of the record. Simple but effective — an artifact the office can keep, send,
+archive and diff, rather than a view that only exists while our tab is open.
+
+Markdown, not PDF, and not HTML. It is the format that reads as plain text when the tooling
+is gone, renders everywhere the office already works, and needs no layout engine to produce.
+PDF is a reporter we inherit later if someone asks for it.
+
+The existing React report view is **not** replaced by this. It stays as the in-app view; the
+generated file is the artifact. The presentation work already done — coverage before findings,
+FAIL → INDETERMINATE → PASS ordering — is the specification the Markdown generator implements,
+not a competing design.
+
+**Reopens if:** the file becomes the only thing anyone opens, in which case the in-app view is
+dead weight and should go.
+
+## The upload ceiling is measured against worker memory, not chosen
+
+Decided 2026-09-02, by the product owner, answering what happens to a model we cannot handle.
+
+The instruction is that the ceiling must be high enough to serve 95% of users, and that time
+is not the constraint because checks run as asynchronous jobs. The first half stands. The
+second half needs one correction recorded here, because it changes what the ceiling is
+derived from.
+
+**Asynchronous execution removes the wall-clock constraint. It does not remove the memory
+constraint.** `ifcopenshell` loads the whole model into RAM; a large IFC is bounded by the
+worker container's memory, not by how long anyone is willing to wait. And the failure mode
+compounds: `acks_late` means a message that killed its worker is redelivered, so one oversized
+model becomes a poison message that takes the worker down repeatedly and starves every other
+tenant's queue. A ceiling picked as a round number does not know where that cliff is.
+
+So the ceiling is **measured** — load models of increasing size in the worker container,
+record peak resident memory, and set the limit below where the container dies, with the
+measurement written into the task file as evidence. The number is then stated to the user at
+upload time rather than discovered at failure time. Separately, a job that exceeds its
+resources must fail the run with a named reason instead of being redelivered forever.
+
+**Reopens if:** streaming or out-of-core extraction lands upstream in `ifcopenshell`, which
+would make the ceiling a throughput question rather than a memory one.

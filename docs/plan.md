@@ -70,31 +70,52 @@ named the storage key instead of the file the architect uploaded.
 
 ## Phase 3 — What the first real user needs — **IN PROGRESS**
 
-Driven by use, not anticipation. In rough order of what a design office hits first:
+**Scope settled 2026-09-02 by the product owner.** Four direction questions were answered
+and written to `docs/decisions.md` and `prd.md` 12. The phase got smaller in three places and
+larger in one, and the ordering below is no longer a guess about what a user hits first — it
+is the shape of the MVP.
 
-- **Report presentation.** Findings grouped by severity, filtered by status, with the
-  coverage statement above the findings rather than below them (`prd.md` 5.7). The current
-  report view is honest but flat.
-- **Say what was checked.** Every report names the model it checked and states plainly that
-  it checked the model, not the submitted drawing set (`prd.md` 5.7). An office that models
-  its geometry and drafts its documentation in 2D can submit sheets that diverge from what
-  we measured, and I7 forbids letting "the model complies" be read as "the submission
-  complies". This is a line of report copy and it is the difference between decision support
-  and an implied compliance claim.
-- **The web overlay.** A findings list is a document an architect skims; errors drawn on the
-  model they just finished is something they act on. ThatOpen Engine or xeokit, both open
-  source, both already load BCF viewpoints (`prd.md` 5.8).
-- **Marked sheets.** Plan projection per storey with findings drawn on it, SVG and PDF, from
-  `ifcopenshell.draw` (`prd.md` 5.8). Listed after the overlay on merit, but gate 2 can
-  reorder it: in a market that models geometry and drafts its sheets, generated sheets are
-  the submission artifact, and leading with them closes the model-to-sheet gap by
-  construction rather than by disclosure.
-- **BCF and PDF export**, through `ifctester`'s own reporters, with a fixture test of our own
-  over the BCF output — that reporter has had open defects.
-- **Large-model behaviour.** 47MB completes in ten seconds; the failure modes at 500MB are
-  unmeasured. Upload directly to object storage rather than through the API process.
-- **Invitations and roles in the UI.** The API has membership and roles; the frontend does
-  not surface them yet.
+The MVP is one sentence: **the user uploads a model, picks which rules to run it against, and
+gets back a report file.**
+
+- **The rule store.** Rules are a catalogue we ship, not a file the architect uploads.
+  Existing public IDS sets seeded so development does not wait on authoring; the user selects
+  by jurisdiction, region and version; the selection is part of the job record. Authored packs
+  — Iranian building code first, then EU and US — arrive in a separate thread and are not this
+  loop's work. This loop builds the store, the metadata, the selection and the seeding path.
+  Pulled forward out of Phase 4 (`prd.md` 5.5) in its metadata-and-selection form only: no
+  clause records, no YAML compilation, no ratification pipeline. A shipped pack belongs to no
+  tenant, so it is a separate model from the tenant-owned `RuleSet` — a nullable `tenant`
+  column at the centre of the one structurally-enforced invariant is not a trade worth making.
+
+- **The report as a file.** The job record carries the URL of a generated Markdown report.
+  Markdown because it survives the tooling, renders where the office already works, and needs
+  no layout engine. The presentation rules already built — coverage before findings,
+  FAIL → INDETERMINATE → PASS — are what the generator implements. The in-app React view stays
+  beside it, not under it.
+
+- **Say what was checked.** Every report names the model it checked and states plainly that it
+  checked the model, not the submitted drawing set (`prd.md` 5.7, I7). An office that models
+  its geometry and drafts its documentation in 2D can submit sheets that diverge from what we
+  measured, and I7 forbids letting "the model complies" be read as "the submission complies".
+  A line of report copy, and the difference between decision support and an implied compliance
+  claim. It now has to land in the generated file as well as the view, because the file is the
+  thing that leaves the building.
+
+- **The upload ceiling, measured.** High enough to serve 95% of users, and derived from peak
+  worker memory rather than chosen as a round number — async removed the time constraint, not
+  the memory one, and `acks_late` turns an oversized model into a poison message that starves
+  every other tenant's queue. The measurement is the evidence; the number is then stated at
+  upload time instead of discovered at failure time.
+
+- **Invitations and roles in the UI.** The API has membership and roles; the frontend does not
+  surface them yet. Last, and only if a first user needs a second seat.
+
+**Out of the MVP, by decision, not by deferral:** the web overlay, marked sheets, and BCF
+export. The first iteration reports and does not act; acting on findings arrives with the
+agent layer and its permission levels (auto, edit, ask-first). This takes **gate 2 off the
+MVP's critical path entirely** — it still decides what comes after the report, it no longer
+decides what the report is.
 
 ### What has landed
 
@@ -147,6 +168,11 @@ short version: the filter is the dangerous surface and the e2e spec drives exact
 states.
 
 ### Queued
+
+Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
+the scope was settled and both survive it — they are defects in the report's honesty, and the
+report is now the whole product.
+
 - **T-0027** — the requirement as structured data the service localizes. T-0026 replaced an
   object address with upstream's English sentence, which made the gettext gap load-bearing:
   the line an architect reads first is now the one line that cannot be translated, against
@@ -154,12 +180,20 @@ states.
   wording. Carries two more I5 gaps with the same root — the bound renders as
   `{'minInclusive': '900'}` with no unit while the failing row reports a bare `800.0`, and the
   report never states what a rule applies to, because we drop the applicability facets
-  ifctester does render. Reviewer-gated.
+  ifctester does render. Now doubly load-bearing: the Markdown file inherits whatever this
+  produces. Reviewer-gated.
 - **T-0028** — a requirement that evaluated nothing reports `PASS`. `_aggregate(0, 0)` returns
-  `PASS`, so the prohibited specification above carries a green requirement over zero
-  evaluations. `judge()` already applies this reasoning at the specification level and it was
-  never pushed down to requirements — which is the row the architect actually reads.
-  Pre-existing, found by the T-0026 reviewer. Reviewer-gated.
+  `PASS`, so a prohibited specification carries a green requirement over zero evaluations.
+  `judge()` already applies this reasoning at the specification level and it was never pushed
+  down to requirements — which is the row the architect actually reads. Pre-existing, found by
+  the T-0026 reviewer. This is I7 inside the engine and it outranks new surface. Reviewer-gated.
+- **T-0029** — say what was checked. The I7 disclosure copy, in the view and in the file.
+- **T-0030** — the rule catalogue: a global `RulePack` beside the tenant-owned `RuleSet`, with
+  jurisdiction, region, version and source citation, and a seeding path. No rule content.
+- **T-0031** — rule selection at check time, recorded on the run so it stays reproducible.
+- **T-0032** — the generated Markdown report and its URL on the job record.
+- **T-0033** — the measured upload ceiling, and a resource-exceeded run that fails with a named
+  reason instead of being redelivered forever.
 
 ## Phase 4 — Toward the PRD
 
