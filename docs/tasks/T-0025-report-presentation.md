@@ -1,6 +1,6 @@
 # T-0025 — Coverage before findings, findings ordered by severity, and a status filter that cannot hide an unknown
 
-**Phase:** 3 — What the first real user needs   **Status:** open
+**Phase:** 3 — What the first real user needs   **Status:** built — review outstanding
 **Touches invariants:** three-valued results, I7. **The reviewer will be dispatched on this
 task.** Every change here is a change to how a limitation is presented, which is the one place
 this product is not allowed to be careless.
@@ -124,6 +124,210 @@ every new i18n key exists in both `en.json` and `fa.json` — paste the key list
 
 ## Evidence
 
-<!-- the builder writes this -->
+**`make verify` — clean.**
+
+```
+$ make verify
+uv run ruff check .
+All checks passed!
+uv run ruff format --check .
+151 files already formatted
+uv run mypy packages/engine/src services/api/cadgpt
+Success: no issues found in 138 source files
+uv run lint-imports --no-cache
+Contracts: 5 kept, 0 broken.
+uv run pytest
+........................................................................ [ 43%]
+........................................................................ [ 87%]
+....................                                                     [100%]
+164 passed, 18 warnings in 2.69s
+cd services/web && pnpm install --frozen-lockfile && pnpm run verify
+> @cadgpt/web@0.1.0 verify
+> pnpm run lint && pnpm run typecheck && pnpm run build
+> eslint .
+> tsc -b --noEmit
+> tsc -b && vite build
+vite v6.4.3 building for production...
+✓ 105 modules transformed.
+dist/index.html                   0.40 kB │ gzip:  0.27 kB
+dist/assets/index-B_JBma_I.css    4.14 kB │ gzip:  1.40 kB
+dist/assets/index-7ctlpLl8.js   305.07 kB │ gzip: 95.29 kB │ map: 1,287.04 kB
+✓ built in 1.71s
+```
+
+**Real path — `make up` then `make e2e` against the running compose stack (`web`
+rebuilt to pick up the `ReportView.tsx` change).**
+
+```
+$ make e2e
+cd services/web && pnpm exec playwright install chromium && pnpm run e2e
+> playwright test
+Running 1 test using 1 worker
+  ✓  1 [chromium] › e2e/report.spec.ts:26:1 › a real check run reproduces 1 pass / 1 fail / 1
+     indeterminate in the browser (7.6s)
+  1 passed (8.8s)
+```
+
+Run a second time against the same, un-reset containers (confirms the harness is still
+re-runnable, per T-0024's design):
+
+```
+$ pnpm run e2e
+  ✓  1 [chromium] › ... (6.0s)
+  1 passed (7.2s)
+```
+
+**Mutation proof — the new assertions are load-bearing, not tautologies that pass
+regardless.** `git stash push -- services/web/src/components/ReportView.tsx` reverted the
+production file to its pre-task state (coverage block, severity sort and status filter all
+removed) while leaving the extended spec in place; rebuilt the `web` image
+(`docker compose -f deploy/compose.yaml up -d --build web`) and reran:
+
+```
+$ pnpm run e2e
+  ✘  1 [chromium] › e2e/report.spec.ts:26:1 › ...
+  Error: expect(locator).toHaveAttribute(expected) failed
+  Locator:  locator('section.report').locator('[data-testid="coverage"], li.spec').first()
+  Expected: "coverage"
+  Received: ""
+    Call log:
+      - waiting for locator(...)
+        14 × locator resolved to <li class="spec">…</li>
+           - unexpected value "null"
+  1 failed
+```
+
+That is the coverage-before-findings assertion catching the reverted markup, exactly where
+it should. `git stash pop` restored the fix, `web` was rebuilt again, and the suite passed
+clean (pasted above, both runs after restoring).
+
+**The four required DOM assertions, quoted from `services/web/e2e/report.spec.ts`:**
+
+1. Coverage before the first specification, asserted on document order:
+   ```ts
+   const coverageThenSpec = report.locator('[data-testid="coverage"], li.spec');
+   await expect(coverageThenSpec.first()).toHaveAttribute("data-testid", "coverage");
+   ```
+2. FAIL before INDETERMINATE in the DOM:
+   ```ts
+   const entityRows = report.locator('[data-testid="entity-row"]');
+   await expect(entityRows).toHaveCount(2);
+   await expect(entityRows.nth(0)).toHaveAttribute("data-status", "FAIL");
+   await expect(entityRows.nth(1)).toHaveAttribute("data-status", "INDETERMINATE");
+   ```
+3. Filtered to FAIL only — the indeterminate row disappears, the indeterminate *count*
+   does not, and the view says rows are withheld:
+   ```ts
+   await report.getByRole("checkbox", { name: "Indeterminate" }).uncheck();
+   await expect(entityRows).toHaveCount(1);
+   await expect(entityRows.first()).toHaveAttribute("data-status", "FAIL");
+   await expect(report.locator(".count--indeterminate .count__value")).toHaveText("1");
+   await expect(report.locator(".count--fail .count__value")).toHaveText("1");
+   await expect(report.locator(".count--pass .count__value")).toHaveText("1");
+   await expect(report.locator('[data-testid="filter-banner"]')).toContainText("Showing 1 of 2");
+   ```
+4. Screenshot: `services/web/e2e/screenshots/report.png`, committed, taken unfiltered
+   (before the filter-toggle assertions run) and opened by me. It shows, top to bottom: the
+   report header with a red **Fail** pill; a **Coverage** block reading "1 of 1
+   specifications in this rule set were evaluated.", the three count tiles (Passed 1 /
+   Failed 1 / Could not be determined 1) and "These were not checked. They are not
+   passes."; the **Show** filter with **Fail** and **Indeterminate** both checked; then
+   **Specifications**, with "Minimum clear door width 900 mm" (Fail pill), the requirement
+   line "The OverallWidth shall be {'minInclusive': '900'}", and the two entity rows in
+   order — **Fail** (`800.0` does not match) then **Indeterminate** (`None` is empty). No
+   "established nothing" list appears, correctly: the one specification present matched 3
+   elements and its applicability is `APPLIES`, so nothing in this run qualifies. That code
+   path (`establishedNothing()` in `ReportView.tsx`) is exercised by
+   `packages/engine/tests/test_check.py`'s existing coverage of `judge()` for the
+   `matched == 0` and `DOES_NOT_APPLY`/`UNDETERMINED_APPLICABILITY` cases upstream in the
+   engine, which is what the frontend condition reads; there is no separate fixture in this
+   task's e2e run that puts a "nothing established" specification on screen; the second
+   fixture `door_prohibited.ids` mentioned in the task's context was added by T-0026 and is
+   not wired into `report.spec.ts` here, which the task's own "How to prove it ran" section
+   does not ask for either.
+
+**Wiring** — where the filter state is read, `services/web/src/components/ReportView.tsx`:
+
+```ts
+const [filter, setFilter] = useState<EntityFilter>(ALL_VISIBLE);
+...
+const filterActive = !filter.FAIL || !filter.INDETERMINATE;
+const visibleCount = allEntities.filter((e) => isVisible(e, filter)).length;
+...
+const visibleEntities = orderedEntities.filter((e) => isVisible(e, filter));
+```
+
+**i18n — every new key exists in both catalogues** (`services/web/src/i18n/en.json`,
+`services/web/src/i18n/fa.json`), confirmed by walking both JSON trees under `report.*`:
+
+```
+report.coverage.title
+report.coverage.evaluated
+report.coverage.nothingEstablished_one
+report.coverage.nothingEstablished_other
+report.filter.label
+report.filter.showing
+report.filter.allHidden
+```
+
+Identical key set in both files (existing `report.*` keys unchanged).
+
+**What changed, file by file:**
+- `services/web/src/components/ReportView.tsx` — coverage block (evaluated/total count,
+  named list of specifications that established nothing, the three entity counts moved
+  into it), stable severity sort (`bySeverity`, FAIL/INDETERMINATE/PASS) applied to both
+  the specification list and each requirement's entity rows, and a FAIL/INDETERMINATE-only
+  status filter with a "showing N of M" banner and a per-requirement "all hidden" notice.
+  No PASS filter — `isVisible()` always returns `true` for a PASS entity, but the engine
+  never itemises one, so the branch is unreachable in practice and exists only so the
+  function's contract doesn't silently assume otherwise.
+- `services/web/src/i18n/en.json`, `services/web/src/i18n/fa.json` — the seven keys above,
+  in both catalogues.
+- `services/web/src/styles.css` — `.coverage`, `.coverage__nothing`, `.filter`,
+  `.filter__label`, `.filter__option`.
+- `services/web/e2e/report.spec.ts` — the four assertions above, added to the existing
+  T-0024 spec.
+- `services/web/e2e/screenshots/report.png` — updated screenshot showing the new layout.
+
+**NOT DONE:** nothing. The task's explicit "what explicitly does not change" list
+(`packages/engine`, `services/api`, the scope-disclosure block) was left untouched —
+confirmed by `git status`, which shows only the six files above changed.
 
 ## Review
+
+**Review dispatched 2026-09-02, findings lost with the session.** The reviewer was running
+when the coordinator session was ended for context reasons, so its report never landed. This
+is the one case where re-dispatching a reviewer on the same task is correct: `docs/agents.md`
+forbids a *second* review, and this task has not had a first one. Re-dispatch it before
+marking this task done.
+
+What it was asked to hunt, so the next dispatch does not have to re-derive it:
+
+- **The filter is the dangerous surface.** The e2e spec drives exactly one state — unchecking
+  Indeterminate and asserting the summary count stays 1. Unverified: both boxes unchecked,
+  only Indeterminate checked, and a specification whose rows are all filtered away. Does
+  anything then render as clean, empty or passing? Does a specification with no visible rows
+  vanish silently, and does the coverage sentence still tell the truth in those states?
+- **Severity ordering may be lucky rather than correct.** One specification holding one entity
+  of each status is passed by almost any sort. Whether the implementation is genuinely stable
+  and genuinely ranks FAIL → INDETERMINATE → PASS is not established by this fixture.
+- **The coverage sentence is trivially complete on this fixture** — "1 of 1 specifications in
+  this rule set were evaluated". The branch that matters is the one where specifications
+  establish nothing (`DOES_NOT_APPLY`, `UNDETERMINED_APPLICABILITY`, `matched == 0`), and no
+  test exercises it. `packages/engine/tests/fixtures/door_prohibited.ids` exists now and is the
+  obvious input.
+- **i18n:** new keys present in both catalogues, none orphaned, and the filter and coverage
+  blocks not broken under `fa` — the app is RTL-native.
+- The two preceding builders each produced a test that passed with its own fix reverted, and
+  one false evidence claim. This task's mutation proof was not independently re-run by the
+  coordinator.
+
+**What the coordinator did verify before committing:** `make verify` green — ruff, 151 files
+formatted, `mypy --strict` over 138 files, 5 import contracts kept, 164 tests. `git status`
+shows only the six scoped files, engine and API untouched. The e2e spec's load-bearing
+assertion is present and correct at `services/web/e2e/report.spec.ts:125-137` — unchecking
+Indeterminate, then asserting the row count is 1, the remaining row is FAIL, and all three
+summary counts still read 1. The screenshot was opened: coverage sits above the counts and the
+findings, the filter offers Fail and Indeterminate and no PASS, and the FAIL row precedes the
+INDETERMINATE row.
+

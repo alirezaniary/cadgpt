@@ -171,6 +171,15 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 .count--fail { background: var(--fail-bg); color: var(--fail); }
 .count--indeterminate { background: var(--indeterminate-bg); color: var(--indeterminate); }
 
+.coverage { display: grid; gap: 0.6rem; padding-block-end: 0.6rem; border-block-end: 1px solid var(--line); }
+.coverage__nothing ul { margin: 0.2rem 0 0; padding-inline-start: 1.25rem; }
+.coverage__nothing li { font-size: 0.87rem; }
+
+.filter { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+.filter__label { font-size: 0.85rem; color: var(--muted); }
+.filter__option { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.87rem; color: var(--fg); }
+.filter__option input { padding: 0; }
+
 .specs { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
 .spec { border: 1px solid var(--line); border-radius: var(--radius); padding: 0.9rem; }
 .spec__head { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }

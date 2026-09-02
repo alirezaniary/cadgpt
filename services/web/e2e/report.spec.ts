@@ -99,8 +99,40 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
   );
   await expect(requirementDescription).not.toContainText("object at 0x");
 
+  // T-0025.1: coverage is presented before findings — assert document order, not just
+  // presence. A coverage line rendered underneath the specification list would satisfy a
+  // simple visibility check while failing the actual requirement.
+  const coverageThenSpec = report.locator('[data-testid="coverage"], li.spec');
+  await expect(coverageThenSpec.first()).toHaveAttribute("data-testid", "coverage");
+
+  // T-0025.2: severity ordering. FAIL sorts before INDETERMINATE, in the DOM, never the
+  // reverse — sorting INDETERMINATE last would bury it under a pass-shaped read.
+  const entityRows = report.locator('[data-testid="entity-row"]');
+  await expect(entityRows).toHaveCount(2);
+  await expect(entityRows.nth(0)).toHaveAttribute("data-status", "FAIL");
+  await expect(entityRows.nth(1)).toHaveAttribute("data-status", "INDETERMINATE");
+
+  // Screenshot of the unfiltered report, before the filter control below changes the DOM.
   await page.screenshot({
     path: path.resolve(__dirname, "screenshots/report.png"),
     fullPage: true,
   });
+
+  // T-0025.3: the status filter. This is the assertion the reviewer looks for first —
+  // filtering to FAIL only must not touch the indeterminate count in the summary, and the
+  // view must say that rows are being withheld rather than looking identical to the
+  // unfiltered report.
+  await report.getByRole("checkbox", { name: "Indeterminate" }).uncheck();
+
+  await expect(entityRows).toHaveCount(1);
+  await expect(entityRows.first()).toHaveAttribute("data-status", "FAIL");
+
+  // The count band is a count of the run, not of the view: it must still read 1, not 0.
+  await expect(report.locator(".count--indeterminate .count__value")).toHaveText("1");
+  await expect(report.locator(".count--fail .count__value")).toHaveText("1");
+  await expect(report.locator(".count--pass .count__value")).toHaveText("1");
+
+  await expect(report.locator('[data-testid="filter-banner"]')).toContainText(
+    "Showing 1 of 2",
+  );
 });

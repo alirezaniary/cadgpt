@@ -1,17 +1,72 @@
 /**
  * A finished report.
  *
- * The summary leads with three counts, never two. A specification that established
- * nothing says so in words, because a row with zeroes in it reads like a clean pass.
+ * Coverage is presented before findings: the summary states the size of the effective
+ * rule set, not just what came out of it, and names every specification that established
+ * nothing (prd.md 5.7, I7). Findings are then grouped by severity — FAIL, then
+ * INDETERMINATE, then PASS, stably — so the pile where the model carried the datum and
+ * broke the rule is read first, and an unknown is never buried under a pass
+ * (`docs/decisions.md`, "Severity, for a report built on IDS, is the three-valued
+ * status"). The status filter only ever offers FAIL and INDETERMINATE: passing entities
+ * are counted but never itemised (`EntityOutcome`), so a PASS filter would always render
+ * an empty list and read as "no passes found" — the inversion of the truth. The three
+ * counts are counts of the run and never move when the filter changes.
  */
 
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { Report } from "@/api/types";
+import type { EntityOutcome, Report, SpecificationOutcome, Status } from "@/api/types";
 import { StatusPill } from "@/components/StatusPill";
+
+/** FAIL first, then INDETERMINATE, then PASS. INDETERMINATE never sorts under PASS. */
+const SEVERITY_RANK: Record<Status, number> = { FAIL: 0, INDETERMINATE: 1, PASS: 2 };
+
+/** Stable sort by three-valued severity: equal-severity items keep the rule author's order. */
+function bySeverity<T extends { status: Status }>(items: readonly T[]): T[] {
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => SEVERITY_RANK[a.item.status] - SEVERITY_RANK[b.item.status] || a.index - b.index)
+    .map(({ item }) => item);
+}
+
+/** A specification whose applicability or subject count means it established no compliance,
+ * however its own status reads — see `judge()` in `packages/engine/src/cadgpt_engine/check.py`. */
+function establishedNothing(spec: SpecificationOutcome): boolean {
+  return spec.applicability !== "APPLIES" || spec.matched === 0;
+}
+
+interface EntityFilter {
+  FAIL: boolean;
+  INDETERMINATE: boolean;
+}
+
+const ALL_VISIBLE: EntityFilter = { FAIL: true, INDETERMINATE: true };
+
+function isVisible(entity: EntityOutcome, filter: EntityFilter): boolean {
+  return entity.status === "PASS" ? true : filter[entity.status];
+}
 
 export function ReportView({ report }: { report: Report }) {
   const { t } = useTranslation();
+  const [filter, setFilter] = useState<EntityFilter>(ALL_VISIBLE);
+
+  const orderedSpecs = useMemo(() => bySeverity(report.specifications), [report.specifications]);
+  const nothingEstablished = useMemo(
+    () => report.specifications.filter(establishedNothing),
+    [report.specifications],
+  );
+  const evaluated =
+    report.specifications_passed +
+    report.specifications_failed +
+    report.specifications_indeterminate;
+
+  const allEntities = useMemo(
+    () => report.specifications.flatMap((s) => s.requirements.flatMap((r) => r.entities)),
+    [report.specifications],
+  );
+  const filterActive = !filter.FAIL || !filter.INDETERMINATE;
+  const visibleCount = allEntities.filter((e) => isVisible(e, filter)).length;
 
   return (
     <section className="report">
@@ -26,27 +81,68 @@ export function ReportView({ report }: { report: Report }) {
         <StatusPill status={report.status} />
       </header>
 
-      <div className="counts">
-        <div className="count count--pass">
-          <span className="count__value">{report.passed}</span>
-          <span className="count__label">{t("report.passed")}</span>
+      <section className="coverage" data-testid="coverage">
+        <h4>{t("report.coverage.title")}</h4>
+        <p>{t("report.coverage.evaluated", { evaluated, total: report.specifications.length })}</p>
+
+        <div className="counts">
+          <div className="count count--pass">
+            <span className="count__value">{report.passed}</span>
+            <span className="count__label">{t("report.passed")}</span>
+          </div>
+          <div className="count count--fail">
+            <span className="count__value">{report.failed}</span>
+            <span className="count__label">{t("report.failed")}</span>
+          </div>
+          <div className="count count--indeterminate">
+            <span className="count__value">{report.indeterminate}</span>
+            <span className="count__label">{t("report.indeterminate")}</span>
+          </div>
         </div>
-        <div className="count count--fail">
-          <span className="count__value">{report.failed}</span>
-          <span className="count__label">{t("report.failed")}</span>
-        </div>
-        <div className="count count--indeterminate">
-          <span className="count__value">{report.indeterminate}</span>
-          <span className="count__label">{t("report.indeterminate")}</span>
-        </div>
+        {report.indeterminate > 0 && <p className="notice">{t("report.indeterminateNote")}</p>}
+
+        {nothingEstablished.length > 0 && (
+          <div className="coverage__nothing" data-testid="coverage-nothing-established">
+            <p>
+              {t("report.coverage.nothingEstablished", { count: nothingEstablished.length })}
+            </p>
+            <ul>
+              {nothingEstablished.map((spec, index) => (
+                <li key={`${spec.name}-${index}`}>{spec.name || t("report.nothingChecked")}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+
+      <div className="filter" role="group" aria-label={t("report.filter.label")}>
+        <span className="filter__label">{t("report.filter.label")}</span>
+        <label className="filter__option">
+          <input
+            type="checkbox"
+            checked={filter.FAIL}
+            onChange={(e) => setFilter((f) => ({ ...f, FAIL: e.target.checked }))}
+          />
+          {t("status.FAIL")}
+        </label>
+        <label className="filter__option">
+          <input
+            type="checkbox"
+            checked={filter.INDETERMINATE}
+            onChange={(e) => setFilter((f) => ({ ...f, INDETERMINATE: e.target.checked }))}
+          />
+          {t("status.INDETERMINATE")}
+        </label>
       </div>
-      {report.indeterminate > 0 && (
-        <p className="notice">{t("report.indeterminateNote")}</p>
+      {filterActive && (
+        <p className="notice" data-testid="filter-banner">
+          {t("report.filter.showing", { shown: visibleCount, total: allEntities.length })}
+        </p>
       )}
 
       <h4>{t("report.specifications")}</h4>
       <ul className="specs">
-        {report.specifications.map((spec, index) => (
+        {orderedSpecs.map((spec, index) => (
           <li key={`${spec.name}-${index}`} className="spec">
             <div className="spec__head">
               <strong>{spec.name || t("report.nothingChecked")}</strong>
@@ -57,41 +153,50 @@ export function ReportView({ report }: { report: Report }) {
             </p>
             {spec.reason_label && <p className="notice">{spec.reason_label}</p>}
 
-            {spec.requirements.map((requirement, requirementIndex) => (
-              <div key={requirementIndex} className="requirement">
-                <p className="requirement__description">{requirement.description}</p>
-                {requirement.entities.length > 0 && (
-                  <table className="entities">
-                    <tbody>
-                      {requirement.entities.map((entity) => (
-                        <tr
-                          key={`${entity.global_id}-${entity.reason_code}`}
-                          data-testid="entity-row"
-                          data-status={entity.status}
-                        >
-                          <td>
-                            <StatusPill status={entity.status} />
-                          </td>
-                          <td className="ltr">{entity.ifc_class}</td>
-                          <td className="ltr mono">{entity.global_id}</td>
-                          <td data-testid="reason" data-reason-code={entity.reason_code}>
-                            {entity.reason_label ?? entity.reason_code}
-                          </td>
-                          <td className="ltr mono muted" data-testid="detail">
-                            {entity.detail}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-                {requirement.entities_omitted > 0 && (
-                  <p className="muted">
-                    {t("report.omitted", { count: requirement.entities_omitted })}
-                  </p>
-                )}
-              </div>
-            ))}
+            {spec.requirements.map((requirement, requirementIndex) => {
+              const orderedEntities = bySeverity(requirement.entities);
+              const visibleEntities = orderedEntities.filter((e) => isVisible(e, filter));
+              return (
+                <div key={requirementIndex} className="requirement">
+                  <p className="requirement__description">{requirement.description}</p>
+                  {visibleEntities.length > 0 && (
+                    <table className="entities">
+                      <tbody>
+                        {visibleEntities.map((entity) => (
+                          <tr
+                            key={`${entity.global_id}-${entity.reason_code}`}
+                            data-testid="entity-row"
+                            data-status={entity.status}
+                          >
+                            <td>
+                              <StatusPill status={entity.status} />
+                            </td>
+                            <td className="ltr">{entity.ifc_class}</td>
+                            <td className="ltr mono">{entity.global_id}</td>
+                            <td data-testid="reason" data-reason-code={entity.reason_code}>
+                              {entity.reason_label ?? entity.reason_code}
+                            </td>
+                            <td className="ltr mono muted" data-testid="detail">
+                              {entity.detail}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                  {orderedEntities.length > 0 && visibleEntities.length === 0 && (
+                    <p className="notice" data-testid="requirement-all-hidden">
+                      {t("report.filter.allHidden")}
+                    </p>
+                  )}
+                  {requirement.entities_omitted > 0 && (
+                    <p className="muted">
+                      {t("report.omitted", { count: requirement.entities_omitted })}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </li>
         ))}
       </ul>

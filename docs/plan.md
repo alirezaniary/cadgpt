@@ -132,11 +132,21 @@ fails on exactly the contradicting string. `ruff format` no longer scans `docs/*
 was rewriting quoted defects inside task files into different code, and a task file's code
 quote is evidence that must stay byte-identical to what it quotes.
 
-### Queued
+**T-0025 — report presentation. Built 2026-09-02, review outstanding.** The report now leads
+with coverage rather than trailing it, orders specifications and entity rows
+FAIL → INDETERMINATE → PASS, and carries a Fail/Indeterminate filter with no PASS option —
+passing entities are counted but never itemised by the engine, so a PASS filter would always
+render empty and read as "no passes found". The filter cannot touch the summary: the counts
+are counts of the run, not of the view, and the e2e spec asserts that unchecking Indeterminate
+leaves its count at 1.
 
-- **T-0025** — report presentation: coverage above findings, severity ordering
-  (FAIL, INDETERMINATE, PASS — `docs/decisions.md`), and a status filter that cannot hide an
-  unknown. Reviewer-gated: it touches three-valued results and I7. Next.
+**Not done.** Its reviewer was dispatched and was still running when the coordinator session
+ended, so the findings were lost. Re-dispatch before Phase 3 is marked complete — see
+`docs/CHECKPOINT.md` and the task file, which records what the review was asked to hunt. The
+short version: the filter is the dangerous surface and the e2e spec drives exactly one of its
+states.
+
+### Queued
 - **T-0027** — the requirement as structured data the service localizes. T-0026 replaced an
   object address with upstream's English sentence, which made the gettext gap load-bearing:
   the line an architect reads first is now the one line that cannot be translated, against

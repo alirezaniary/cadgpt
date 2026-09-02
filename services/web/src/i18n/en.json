@@ -47,7 +47,18 @@
     "omitted": "{{count}} further element(s) counted but not listed",
     "engine": "Engine {{version}}",
     "schema": "Model schema {{schema}}",
-    "nothingChecked": "Nothing was checked"
+    "nothingChecked": "Nothing was checked",
+    "coverage": {
+      "title": "Coverage",
+      "evaluated": "{{evaluated}} of {{total}} specifications in this rule set were evaluated.",
+      "nothingEstablished_one": "{{count}} specification established nothing — it matched no elements, or its applicability could not be determined:",
+      "nothingEstablished_other": "{{count}} specifications established nothing — they matched no elements, or their applicability could not be determined:"
+    },
+    "filter": {
+      "label": "Show",
+      "showing": "Showing {{shown}} of {{total}} findings. The rest are hidden by this filter, not resolved.",
+      "allHidden": "Every row here is hidden by the current filter."
+    }
   },
   "error": { "generic": "Something went wrong.", "retry": "Try again" }
 }
