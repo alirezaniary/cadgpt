@@ -1,0 +1,250 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cadgpt.local/schemas/regulations/source-graph-1.0.0.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "catalog_key",
+    "catalog_order",
+    "source_sha256",
+    "pdf_page_count",
+    "pages",
+    "nodes",
+    "tables",
+    "formulas",
+    "units",
+    "continuation_edges",
+    "counts"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "catalog_key": {"type": "string", "minLength": 1},
+    "catalog_order": {"type": "integer", "minimum": 1},
+    "source_sha256": {"$ref": "#/$defs/sha256"},
+    "pdf_page_count": {"type": "integer", "minimum": 1},
+    "pages": {"type": "array", "items": {"$ref": "#/$defs/page"}},
+    "nodes": {"type": "array", "items": {"$ref": "#/$defs/node"}},
+    "tables": {"type": "array", "items": {"$ref": "#/$defs/table"}},
+    "formulas": {"type": "array", "items": {"$ref": "#/$defs/formula"}},
+    "units": {"type": "array", "items": {"$ref": "#/$defs/unit"}},
+    "continuation_edges": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/continuation"}
+    },
+    "counts": {"$ref": "#/$defs/counts"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "spanIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "idList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "bbox": {
+      "type": "array",
+      "prefixItems": [
+        {"type": "integer"},
+        {"type": "integer"},
+        {"type": "integer"},
+        {"type": "integer"}
+      ],
+      "items": false,
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "state": {"enum": ["ready", "needs_review", "failed"]},
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "page_id",
+        "pdf_page",
+        "printed_page_label",
+        "state",
+        "reason_codes",
+        "node_ids",
+        "formula_ids",
+        "unit_ids",
+        "table_ids"
+      ],
+      "properties": {
+        "page_id": {"type": "string", "minLength": 1},
+        "pdf_page": {"type": "integer", "minimum": 1},
+        "printed_page_label": {"type": ["string", "null"]},
+        "state": {"$ref": "#/$defs/state"},
+        "reason_codes": {"type": "array", "items": {"type": "string"}},
+        "node_ids": {"$ref": "#/$defs/idList"},
+        "formula_ids": {"$ref": "#/$defs/idList"},
+        "unit_ids": {"$ref": "#/$defs/idList"},
+        "table_ids": {"$ref": "#/$defs/idList"}
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node_id",
+        "kind",
+        "source_order",
+        "pdf_page",
+        "parent_id",
+        "children_ids",
+        "printed_label",
+        "source_kind",
+        "source_span_ids",
+        "raw_text",
+        "bbox",
+        "state"
+      ],
+      "properties": {
+        "node_id": {"type": "string", "minLength": 1},
+        "kind": {
+          "enum": [
+            "part", "chapter", "section", "clause", "subclause", "paragraph",
+            "list_item", "definition", "note", "exception", "example", "table",
+            "figure", "equation", "annex", "unclassified"
+          ]
+        },
+        "source_order": {"type": "integer", "minimum": 1},
+        "pdf_page": {"type": "integer", "minimum": 1},
+        "parent_id": {"type": ["string", "null"]},
+        "children_ids": {"$ref": "#/$defs/idList"},
+        "printed_label": {"type": ["string", "null"]},
+        "source_kind": {"enum": ["native", "ocr"]},
+        "source_span_ids": {"$ref": "#/$defs/spanIds"},
+        "raw_text": {"type": "string", "minLength": 1},
+        "bbox": {"$ref": "#/$defs/bbox"},
+        "state": {"$ref": "#/$defs/state"}
+      }
+    },
+    "table": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "table_id", "pdf_page", "source_span_ids", "reasons", "rows", "state",
+        "diagnostics"
+      ],
+      "properties": {
+        "table_id": {"type": "string", "minLength": 1},
+        "pdf_page": {"type": "integer", "minimum": 1},
+        "source_span_ids": {"$ref": "#/$defs/spanIds"},
+        "reasons": {"type": "array", "items": {"type": "string"}},
+        "rows": {"type": "array", "items": {"$ref": "#/$defs/row"}},
+        "state": {"$ref": "#/$defs/state"},
+        "diagnostics": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["row_index", "cells"],
+      "properties": {
+        "row_index": {"type": "integer", "minimum": 0},
+        "cells": {"type": "array", "items": {"$ref": "#/$defs/cell"}}
+      }
+    },
+    "cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cell_id", "column_index", "row_span", "column_span", "raw_text", "source_span_ids"],
+      "properties": {
+        "cell_id": {"type": "string", "minLength": 1},
+        "column_index": {"type": "integer", "minimum": 0},
+        "row_span": {"type": "integer", "minimum": 1},
+        "column_span": {"type": "integer", "minimum": 1},
+        "raw_text": {"type": "string"},
+        "source_span_ids": {"$ref": "#/$defs/spanIds"}
+      }
+    },
+    "formula": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "formula_id", "pdf_page", "source_kind", "source_span_ids", "bbox", "crop",
+        "raw_transcription", "unicode", "latex", "presentation_mathml", "content_mathml",
+        "parse_status", "diagnostics", "unresolved_glyphs"
+      ],
+      "properties": {
+        "formula_id": {"type": "string", "minLength": 1},
+        "pdf_page": {"type": "integer", "minimum": 1},
+        "source_kind": {"enum": ["native", "ocr"]},
+        "source_span_ids": {"$ref": "#/$defs/spanIds"},
+        "bbox": {"$ref": "#/$defs/bbox"},
+        "crop": {"$ref": "#/$defs/crop"},
+        "raw_transcription": {"type": "string"},
+        "unicode": {"type": "string"},
+        "latex": {"type": ["string", "null"]},
+        "presentation_mathml": {"type": "string", "minLength": 1},
+        "content_mathml": {"type": ["string", "null"]},
+        "parse_status": {"enum": ["validated", "needs_review", "rejected"]},
+        "diagnostics": {"type": "array", "items": {"type": "string"}},
+        "unresolved_glyphs": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "crop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "unit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unit_id", "pdf_page", "source_kind", "source_span_ids", "bbox", "printed",
+        "ucum_code", "mapping_status"
+      ],
+      "properties": {
+        "unit_id": {"type": "string", "minLength": 1},
+        "pdf_page": {"type": "integer", "minimum": 1},
+        "source_kind": {"enum": ["native", "ocr"]},
+        "source_span_ids": {"$ref": "#/$defs/spanIds"},
+        "bbox": {"$ref": "#/$defs/bbox"},
+        "printed": {"type": "string", "minLength": 1},
+        "ucum_code": {"type": ["string", "null"]},
+        "mapping_status": {"enum": ["mapped", "unknown"]}
+      }
+    },
+    "continuation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from_page_id", "to_page_id", "from_pdf_page", "to_pdf_page", "reason"
+      ],
+      "properties": {
+        "from_page_id": {"type": "string", "minLength": 1},
+        "to_page_id": {"type": "string", "minLength": 1},
+        "from_pdf_page": {"type": "integer", "minimum": 1},
+        "to_pdf_page": {"type": "integer", "minimum": 1},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pages", "nodes", "tables", "formulas", "units", "continuation_edges", "needs_review"
+      ],
+      "properties": {
+        "pages": {"type": "integer", "minimum": 0},
+        "nodes": {"type": "integer", "minimum": 0},
+        "tables": {"type": "integer", "minimum": 0},
+        "formulas": {"type": "integer", "minimum": 0},
+        "units": {"type": "integer", "minimum": 0},
+        "continuation_edges": {"type": "integer", "minimum": 0},
+        "needs_review": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

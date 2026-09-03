@@ -29,11 +29,16 @@ from cadgpt_regulations.jsonio import (
     sha256_json,
 )
 from cadgpt_regulations.page_probe import build_page_probe, parse_page_range
+from cadgpt_regulations.semantic_publish import (
+    build_semantic_publication,
+    validate_semantic_publication,
+)
 from cadgpt_regulations.storage import (
     ensure_private_tree,
     install_immutable_bytes,
     validate_output_root,
 )
+from cadgpt_regulations.structure import build_structure, validate_structure
 from cadgpt_regulations.transcription import build_transcription
 from cadgpt_regulations.transcription_check import check_transcription
 from cadgpt_regulations.validation import check_publishable, validate_manifest
@@ -105,6 +110,21 @@ def _parser() -> argparse.ArgumentParser:
     transcription_check.add_argument("--acquisition-root", type=Path, required=True)
     transcription_check.add_argument("--catalog", type=Path)
 
+    structure = subcommands.add_parser(
+        "structure", help="build source graphs and layered mathematical evidence"
+    )
+    structure.add_argument("--transcription", type=Path, required=True)
+    structure.add_argument("--root", type=Path, required=True)
+    structure.add_argument("--output-root", type=Path, required=True)
+
+    structure_check = subcommands.add_parser(
+        "structure-check", help="re-attest source graphs, anchors, and formula crops"
+    )
+    structure_check.add_argument("manifest", type=Path)
+    structure_check.add_argument("--root", type=Path, required=True)
+    structure_check.add_argument("--transcription", type=Path, required=True)
+    structure_check.add_argument("--transcription-root", type=Path, required=True)
+
     extract_jobs = subcommands.add_parser(
         "extract-jobs", help="queue two blind Luna passes for every transcription bundle"
     )
@@ -136,6 +156,26 @@ def _parser() -> argparse.ArgumentParser:
     )
     extraction_status.add_argument("--jobs", type=Path, required=True)
     extraction_status.add_argument("--output-root", type=Path, required=True)
+
+    semantic_publish = subcommands.add_parser(
+        "semantic-publish",
+        help="publish accepted rules and separate every deferred semantic record",
+    )
+    semantic_publish.add_argument("--catalog", type=Path)
+    semantic_publish.add_argument("--acquisition", type=Path)
+    semantic_publish.add_argument("--acquisition-root", type=Path)
+    semantic_publish.add_argument("--jobs", type=Path, required=True)
+    semantic_publish.add_argument("--structure", type=Path, required=True)
+    semantic_publish.add_argument("--extraction-root", type=Path, required=True)
+    semantic_publish.add_argument("--structure-root", type=Path, required=True)
+    semantic_publish.add_argument("--output-root", type=Path, required=True)
+
+    semantic_publish_check = subcommands.add_parser(
+        "semantic-publish-check",
+        help="re-attest a structured semantic publication",
+    )
+    semantic_publish_check.add_argument("manifest", type=Path)
+    semantic_publish_check.add_argument("--root", type=Path, required=True)
 
     validate = subcommands.add_parser("validate", help="validate a generated manifest")
     validate.add_argument("manifest", type=Path)
@@ -281,6 +321,38 @@ def main(
                     )
                 return 1
             return 0
+        if args.command == "structure":
+            structure_run = build_structure(
+                _load_receipt(args.transcription),
+                transcription_root=args.root,
+                output_root=args.output_root,
+            )
+            summary = cast(JsonObject, structure_run.manifest["summary"])
+            print(f"wrote deterministic structure: {structure_run.manifest_path}")
+            print(
+                f"accounted {summary['documents']} documents and {summary['pages']} pages; "
+                f"{summary['nodes']} nodes, {summary['tables']} tables, "
+                f"{summary['formulas']} formulas, {summary['units']} units; "
+                f"graphs {structure_run.graphs_created} created, "
+                f"{structure_run.graphs_reused} reused"
+            )
+            return 0
+        if args.command == "structure-check":
+            manifest = _load_receipt(args.manifest)
+            transcription = _load_receipt(args.transcription)
+            validate_structure(
+                manifest,
+                root=args.root,
+                transcription=transcription,
+                transcription_root=args.transcription_root,
+            )
+            summary = cast(JsonObject, manifest["summary"])
+            print(
+                f"valid structure: {summary['documents']} documents, "
+                f"{summary['pages']} pages, {summary['formulas']} formula candidates, "
+                f"{summary['needs_review']} deferred review flags"
+            )
+            return 0
         if args.command == "extract-jobs":
             transcription = _load_receipt(args.transcription)
             queue = build_extraction_jobs(
@@ -350,6 +422,37 @@ def main(
                 f"{summary['bundles_accepted']} accepted, "
                 f"{summary['bundles_needs_validation']} need validation, "
                 f"{summary['bundles_pending']} pending"
+            )
+            return 0
+        if args.command == "semantic-publish":
+            publication = build_semantic_publication(
+                load_catalog(args.catalog),
+                _load_receipt(args.jobs),
+                _load_receipt(args.structure),
+                acquisition=(
+                    None if args.acquisition is None else _load_receipt(args.acquisition)
+                ),
+                acquisition_root=args.acquisition_root,
+                extraction_root=args.extraction_root,
+                structure_root=args.structure_root,
+                output_root=args.output_root,
+            )
+            summary = cast(JsonObject, publication.manifest["summary"])
+            print(f"semantic publication: {publication.manifest_path}")
+            print(
+                f"{summary['rules']} accepted rules, {summary['formulas']} formulas, "
+                f"{summary['tables']} tables, {summary['units']} units; "
+                f"{summary['deferred']} deferred; complete "
+                f"{str(publication.manifest['complete']).lower()}"
+            )
+            return 0
+        if args.command == "semantic-publish-check":
+            publication_manifest = _load_receipt(args.manifest)
+            validate_semantic_publication(publication_manifest, root=args.root)
+            summary = cast(JsonObject, publication_manifest["summary"])
+            print(
+                f"valid semantic publication: {summary['rules']} rules, "
+                f"{summary['deferred']} deferred records"
             )
             return 0
         manifest = load_object(args.manifest, description="manifest")

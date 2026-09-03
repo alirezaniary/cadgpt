@@ -242,7 +242,13 @@ def test_ingest_validator_binds_both_stored_passes(tmp_path: Path) -> None:
             "pass_b_sha256": pass_b.response_sha256,
         },
         "accepted_candidates": [candidate],
-        "merged_candidates": [{"accepted_candidate_id": "candidate-b"}],
+        "merged_candidates": [
+            {
+                "merge_id": "merge-1",
+                "accepted_candidate_id": "candidate-b",
+                "source_candidate_ids": ["candidate-1", "candidate-b"],
+            }
+        ],
         "rejected_candidates": [],
         "deferred_candidates": [],
         "counts": {"accepted": 1, "merged": 1, "rejected": 0, "deferred": 0},
@@ -276,6 +282,7 @@ def test_ingest_validator_rejects_false_counts(tmp_path: Path) -> None:
     pass_b_job = jobs["jobs"][1]
     response = json.loads(response_path.read_text())
     response["pass"] = "B"
+    response["candidates"][0]["candidate_id"] = "candidate-b"
     _write_json(response_path, response)
     pass_b = ingest_extraction_response(
         jobs,
@@ -296,7 +303,13 @@ def test_ingest_validator_rejects_false_counts(tmp_path: Path) -> None:
             "pass_b_sha256": pass_b.response_sha256,
         },
         "accepted_candidates": [response["candidates"][0]],
-        "merged_candidates": [],
+        "merged_candidates": [
+            {
+                "merge_id": "merge-1",
+                "accepted_candidate_id": "candidate-b",
+                "source_candidate_ids": ["candidate-1", "candidate-b"],
+            }
+        ],
         "rejected_candidates": [],
         "deferred_candidates": [],
         "counts": {"accepted": 99, "merged": 0, "rejected": 0, "deferred": 0},
@@ -333,6 +346,7 @@ def test_extraction_status_accounts_for_pending_and_validated_bundles(
     pass_b_job = jobs["jobs"][1]
     response = json.loads(response_path.read_text())
     response["pass"] = "B"
+    response["candidates"][0]["candidate_id"] = "candidate-b"
     _write_json(response_path, response)
     pass_b = ingest_extraction_response(
         jobs,
@@ -357,10 +371,16 @@ def test_extraction_status_accounts_for_pending_and_validated_bundles(
             "pass_b_sha256": pass_b.response_sha256,
         },
         "accepted_candidates": [response["candidates"][0]],
-        "merged_candidates": [],
+        "merged_candidates": [
+            {
+                "merge_id": "merge-1",
+                "accepted_candidate_id": "candidate-b",
+                "source_candidate_ids": ["candidate-1", "candidate-b"],
+            }
+        ],
         "rejected_candidates": [],
         "deferred_candidates": [],
-        "counts": {"accepted": 1, "merged": 0, "rejected": 0, "deferred": 0},
+        "counts": {"accepted": 1, "merged": 1, "rejected": 0, "deferred": 0},
     }
     validator_path = tmp_path / "validator.json"
     _write_json(validator_path, validator)

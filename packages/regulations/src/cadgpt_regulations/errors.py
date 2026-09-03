@@ -21,5 +21,9 @@ class TranscriptionError(RegulationsError):
     """Page evidence generation or verification failed."""
 
 
+class StructureError(RegulationsError):
+    """Source structure or mathematical evidence is incomplete or invalid."""
+
+
 class ManifestError(RegulationsError):
     """A manifest violates its schema or deterministic invariants."""

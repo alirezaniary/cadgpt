@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cadgpt.local/schemas/regulations/structure-1.0.0.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "transcription_sha256",
+    "configuration_sha256",
+    "documents",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "transcription_sha256": {"$ref": "#/$defs/sha256"},
+    "configuration_sha256": {"$ref": "#/$defs/sha256"},
+    "documents": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/document"}
+    },
+    "summary": {"$ref": "#/$defs/counts"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonNegative": {"type": "integer", "minimum": 0},
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "documents",
+        "pages",
+        "nodes",
+        "tables",
+        "formulas",
+        "units",
+        "continuation_edges",
+        "needs_review"
+      ],
+      "properties": {
+        "documents": {"$ref": "#/$defs/nonNegative"},
+        "pages": {"$ref": "#/$defs/nonNegative"},
+        "nodes": {"$ref": "#/$defs/nonNegative"},
+        "tables": {"$ref": "#/$defs/nonNegative"},
+        "formulas": {"$ref": "#/$defs/nonNegative"},
+        "units": {"$ref": "#/$defs/nonNegative"},
+        "continuation_edges": {"$ref": "#/$defs/nonNegative"},
+        "needs_review": {"$ref": "#/$defs/nonNegative"}
+      }
+    },
+    "graphCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pages",
+        "nodes",
+        "tables",
+        "formulas",
+        "units",
+        "continuation_edges",
+        "needs_review"
+      ],
+      "properties": {
+        "pages": {"$ref": "#/$defs/nonNegative"},
+        "nodes": {"$ref": "#/$defs/nonNegative"},
+        "tables": {"$ref": "#/$defs/nonNegative"},
+        "formulas": {"$ref": "#/$defs/nonNegative"},
+        "units": {"$ref": "#/$defs/nonNegative"},
+        "continuation_edges": {"$ref": "#/$defs/nonNegative"},
+        "needs_review": {"$ref": "#/$defs/nonNegative"}
+      }
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "catalog_key",
+        "catalog_order",
+        "source_sha256",
+        "pdf_page_count",
+        "path",
+        "sha256",
+        "bytes",
+        "counts"
+      ],
+      "properties": {
+        "catalog_key": {"type": "string", "minLength": 1},
+        "catalog_order": {"type": "integer", "minimum": 1},
+        "source_sha256": {"$ref": "#/$defs/sha256"},
+        "pdf_page_count": {"type": "integer", "minimum": 1},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"type": "integer", "minimum": 1},
+        "counts": {"$ref": "#/$defs/graphCounts"}
+      }
+    }
+  }
+}

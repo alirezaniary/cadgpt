@@ -19,6 +19,10 @@ from cadgpt_regulations.semantic_check import (
     SemanticCheckResult,
     check_semantic_artifact,
 )
+from cadgpt_regulations.semantic_reconcile import (
+    SemanticReconciliationError,
+    reconcile_validator,
+)
 from cadgpt_regulations.storage import (
     InstallStatus,
     StorageError,
@@ -166,6 +170,10 @@ def ingest_validator_response(
     pass_response_sha256 = {
         label: _receipt_response_sha256(receipt) for label, receipt in pass_receipts.items()
     }
+    pass_responses = {
+        label: _load_stored_response(receipt, output_root=output_root)
+        for label, receipt in pass_receipts.items()
+    }
 
     try:
         response_bytes, response_snapshot = read_attested_bytes(response_path)
@@ -183,6 +191,14 @@ def ingest_validator_response(
         pass_b_sha256=pass_response_sha256["B"],
     )
     counts = _validator_counts(response)
+    try:
+        reconciliation = reconcile_validator(
+            response,
+            pass_a=pass_responses["A"],
+            pass_b=pass_responses["B"],
+        )
+    except SemanticReconciliationError as exc:
+        raise ExtractionIngestError(str(exc)) from exc
     bundle_path = safe_path(transcription_root, _required_string(bundle_job, "bundle_path"))
     try:
         semantic = check_semantic_artifact(
@@ -218,7 +234,11 @@ def ingest_validator_response(
         expected_sha256=response_snapshot.sha256,
     )
 
-    state = "needs_review" if counts["deferred"] else "accepted_candidate"
+    state = (
+        "needs_review"
+        if counts["deferred"] or reconciliation.unaccounted_candidate_ids
+        else "accepted_candidate"
+    )
     receipt: JsonObject = {
         "schema_version": "1.0.0",
         "validation_id": validation_id,
@@ -235,6 +255,7 @@ def ingest_validator_response(
             "bytes": response_snapshot.bytes,
         },
         "counts": counts,
+        "reconciliation": reconciliation.as_json(),
         "semantic_check": {
             "candidates": semantic.candidates,
             "source_span_references": semantic.source_span_references,
@@ -320,6 +341,22 @@ def _receipt_response_sha256(receipt: JsonObject) -> str:
     if not isinstance(response, dict):
         raise ExtractionIngestError("ingestion receipt has no response reference")
     return _required_string(cast(JsonObject, response), "sha256")
+
+
+def _load_stored_response(receipt: JsonObject, *, output_root: Path) -> JsonObject:
+    response = receipt.get("response")
+    if not isinstance(response, dict):
+        raise ExtractionIngestError("ingestion receipt has no response reference")
+    reference = cast(JsonObject, response)
+    try:
+        payload, _ = read_attested_bytes(
+            safe_path(output_root, _required_string(reference, "path")),
+            expected_sha256=_required_string(reference, "sha256"),
+            expected_bytes=cast(int, reference["bytes"]),
+        )
+        return loads_object(payload.decode("utf-8"), description="stored blind response")
+    except (StorageError, UnicodeDecodeError, KeyError, TypeError) as exc:
+        raise ExtractionIngestError("cannot load stored blind response") from exc
 
 
 def _validate_response_identity(response: JsonObject, job: JsonObject) -> None:
