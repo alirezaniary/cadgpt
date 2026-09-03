@@ -1,0 +1,61 @@
+{
+  "$id": "https://cadgpt.local/schemas/regulation-native-layout-1.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "page_id": {"pattern": "^sha256:[0-9a-f]{64}:page:[0-9]{6}$", "type": "string"},
+    "coordinate_space": {"$ref": "#/$defs/coordinateSpace"},
+    "raw_glyph_text": {"type": "string"},
+    "raw_line_text": {"items": {"type": "string"}, "type": "array"},
+    "chars": {"items": {"$ref": "#/$defs/cell"}, "type": "array"},
+    "words": {"items": {"$ref": "#/$defs/cell"}, "type": "array"},
+    "lines": {"items": {"$ref": "#/$defs/cell"}, "type": "array"},
+    "resource_counts": {"$ref": "#/$defs/resourceCounts"},
+    "bitmap_coverage_permyriad": {"minimum": 0, "maximum": 10000, "type": "integer"}
+  },
+  "required": ["schema_version", "page_id", "coordinate_space", "raw_glyph_text", "raw_line_text", "chars", "words", "lines", "resource_counts", "bitmap_coverage_permyriad"],
+  "type": "object",
+  "$defs": {
+    "coordinateSpace": {
+      "additionalProperties": false,
+      "properties": {
+        "unit": {"const": "pdf_millipoint"},
+        "origin": {"const": "bottom_left"},
+        "width": {"minimum": 1, "type": "integer"},
+        "height": {"minimum": 1, "type": "integer"},
+        "rotation_millidegrees": {"type": "integer"}
+      },
+      "required": ["unit", "origin", "width", "height", "rotation_millidegrees"],
+      "type": "object"
+    },
+    "cell": {
+      "additionalProperties": false,
+      "properties": {
+        "span_id": {"minLength": 1, "type": "string"},
+        "source_index": {"type": "integer"},
+        "raw_text": {"type": "string"},
+        "text": {"type": "string"},
+        "quad": {"items": {"type": "integer"}, "maxItems": 8, "minItems": 8, "type": "array"},
+        "bbox": {"items": {"type": "integer"}, "maxItems": 4, "minItems": 4, "type": "array"},
+        "direction": {"minLength": 1, "type": "string"},
+        "confidence_permyriad": {"minimum": 0, "maximum": 10000, "type": "integer"},
+        "font_key": {"type": ["string", "null"]},
+        "font_name": {"type": ["string", "null"]}
+      },
+      "required": ["span_id", "source_index", "raw_text", "text", "quad", "bbox", "direction", "confidence_permyriad", "font_key", "font_name"],
+      "type": "object"
+    },
+    "resourceCounts": {
+      "additionalProperties": false,
+      "properties": {
+        "bitmaps": {"minimum": 0, "type": "integer"},
+        "shapes": {"minimum": 0, "type": "integer"},
+        "widgets": {"minimum": 0, "type": "integer"},
+        "hyperlinks": {"minimum": 0, "type": "integer"}
+      },
+      "required": ["bitmaps", "shapes", "widgets", "hyperlinks"],
+      "type": "object"
+    }
+  }
+}

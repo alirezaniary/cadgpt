@@ -140,7 +140,16 @@ page renders, OCR data, model inputs, and inference outputs remain outside Git.
    report. Processing runs to terminal states without waiting for a reviewer; flagged content
    cannot enter the publishable corpus until reviewed later.
 
-The active task is `docs/tasks/T-0026-lossless-page-transcription.md`.
+The active task is `docs/tasks/T-0026-lossless-page-transcription.md`. The queued tasks are
+`docs/tasks/T-0027-source-anchored-document-structure.md` followed by
+`docs/tasks/T-0028-blind-luna-semantic-extraction.md` and
+`docs/tasks/T-0029-official-web-and-semantic-validation.md`, then
+`docs/tasks/T-0030-publish-validated-semantic-corpus.md`.
+
+The live official-site audit on 2026-09-03 maps every cohort artifact but proves the 43-document
+cohort is not the complete current publication set: Volume 12 has a newer official edition and at
+least two official corrections are outside the cohort. The pipeline preserves the requested cohort
+and reports this as versioned drift; it may not claim present-day completeness.
 
 ---
 

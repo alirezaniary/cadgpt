@@ -426,3 +426,43 @@ DNS pinning remains a residual hardening opportunity rather than a guarantee cla
 **Reopens if:** acquisition must run across an untrusted resolver without TLS, or a future
 network policy requires connection-level address pinning in addition to exact-origin and TLS
 validation.
+
+## 2026-09-03 - Formulas retain source evidence and use MathML for interchange
+
+A formula is never represented by one model-written string. Each formula record keeps its exact
+page and span anchors, an immutable source crop, and the raw visual-order transcription. Derived
+display forms use Unicode mathematics, LaTeX, and Presentation MathML; Content MathML is the
+standard semantic interchange form and is emitted only when a parser can round-trip it and the
+symbols, operators, grouping, relations, subscripts, superscripts, and numeric literals reconcile
+with the source evidence. LaTeX is a rendering convenience, not the authoritative semantic form.
+
+Variables and named constants are separate source-anchored records. Units retain the printed form
+and may add a UCUM canonical code when the mapping is unambiguous. Method names and abbreviations
+such as `LRFD` and `ASD` are explicitly not equations. A formula with unresolved glyphs, grouping,
+symbol definitions, or unit mapping remains terminal but quarantined for deferred review; internet
+or model evidence cannot silently repair its primary transcription.
+
+This layered representation is deliberately redundant: the crop and raw spans let a later worker
+re-check the publication, Presentation MathML renders portably, Content MathML carries machine
+meaning, and the review state prevents a plausible rendering from being mistaken for verified
+semantics.
+
+**Reopens if:** a downstream symbolic engine requires a different standards-based semantic form
+that can be losslessly derived while preserving the same evidence and quarantine boundary.
+
+## 2026-09-03 - The 43-document corpus is an immutable cohort, not a claim of currency
+
+The acquired 43 documents remain the exact cohort requested and attested by hash. A live official
+web audit on 2026-09-03 mapped all 43 through INBR WordPress records, but also showed that the site
+now presents Volume 12 fifth edition (1403) ahead of the cohort's 1392 edition and exposes official
+corrections absent from the cohort, including the 2019 Volume 3 correction and a two-page masonry
+guide correction. The official Volume 11 landing title also describes its correction more broadly
+than the catalog title.
+
+The pipeline therefore never equates successful processing of 43/43 with "current complete INBR
+corpus". Live official additions, replacements, title conflicts, and unmapped documents are stored
+as separately versioned corroboration findings and block any currency/completeness claim. They do
+not silently replace an attested PDF or expand the active cohort mid-run. A later cohort revision
+must be explicit, acquire new hashes, preserve the old cohort, and rerun affected stages.
+
+**Reopens if:** the user explicitly selects a new official-source snapshot as the active cohort.

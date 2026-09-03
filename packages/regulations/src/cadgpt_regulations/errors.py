@@ -17,5 +17,9 @@ class AcquisitionError(RegulationsError):
     """Official-source acquisition or receipt verification failed."""
 
 
+class TranscriptionError(RegulationsError):
+    """Page evidence generation or verification failed."""
+
+
 class ManifestError(RegulationsError):
     """A manifest violates its schema or deterministic invariants."""

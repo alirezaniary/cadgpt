@@ -1,0 +1,38 @@
+{
+  "$id": "https://cadgpt.local/schemas/regulation-transcription-check-1.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "transcription_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "valid": {"type": "boolean"},
+    "summary": {
+      "additionalProperties": false,
+      "properties": {
+        "documents_observed": {"minimum": 0, "type": "integer"},
+        "pages_observed": {"minimum": 0, "type": "integer"},
+        "pages_ready": {"minimum": 0, "type": "integer"},
+        "pages_needs_review": {"minimum": 0, "type": "integer"},
+        "pages_failed": {"minimum": 0, "type": "integer"},
+        "blockers": {"minimum": 0, "type": "integer"}
+      },
+      "required": ["documents_observed", "pages_observed", "pages_ready", "pages_needs_review", "pages_failed", "blockers"],
+      "type": "object"
+    },
+    "blockers": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "subject": {"minLength": 1, "type": "string"},
+          "code": {"minLength": 1, "type": "string"},
+          "diagnostic": {"minLength": 1, "type": "string"}
+        },
+        "required": ["subject", "code", "diagnostic"],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": ["schema_version", "transcription_sha256", "valid", "summary", "blockers"],
+  "type": "object"
+}

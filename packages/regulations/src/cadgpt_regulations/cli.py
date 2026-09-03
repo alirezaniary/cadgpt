@@ -11,12 +11,31 @@ from typing import cast
 from cadgpt_regulations.acquisition import acquire_corpus, check_acquisition_health
 from cadgpt_regulations.catalog import load_catalog
 from cadgpt_regulations.errors import AcquisitionError, RegulationsError
+from cadgpt_regulations.extraction_ingest import (
+    ingest_extraction_response,
+    ingest_validator_response,
+)
+from cadgpt_regulations.extraction_jobs import DEFAULT_MODEL, build_extraction_jobs
+from cadgpt_regulations.extraction_status import build_extraction_status
 from cadgpt_regulations.inventory import (
     build_inventory,
     ensure_output_outside_source,
     write_inventory,
 )
-from cadgpt_regulations.jsonio import JsonObject, load_object
+from cadgpt_regulations.jsonio import (
+    JsonObject,
+    canonical_bytes,
+    load_object,
+    sha256_json,
+)
+from cadgpt_regulations.page_probe import build_page_probe, parse_page_range
+from cadgpt_regulations.storage import (
+    ensure_private_tree,
+    install_immutable_bytes,
+    validate_output_root,
+)
+from cadgpt_regulations.transcription import build_transcription
+from cadgpt_regulations.transcription_check import check_transcription
 from cadgpt_regulations.validation import check_publishable, validate_manifest
 
 
@@ -46,6 +65,77 @@ def _parser() -> argparse.ArgumentParser:
     acquisition_check.add_argument("receipt", type=Path)
     acquisition_check.add_argument("--root", type=Path, required=True)
     acquisition_check.add_argument("--catalog", type=Path)
+
+    page_probe = subcommands.add_parser(
+        "page-probe", help="build immutable native text and render evidence per PDF page"
+    )
+    page_probe.add_argument("--acquisition", type=Path, required=True)
+    page_probe.add_argument("--root", type=Path, required=True)
+    page_probe.add_argument("--output-root", type=Path, required=True)
+    page_probe.add_argument("--catalog", type=Path)
+    page_probe.add_argument("--catalog-key", action="append", default=[])
+    page_probe.add_argument(
+        "--pages",
+        action="append",
+        default=[],
+        metavar="START-END",
+        help="inclusive page range applied to each selected document",
+    )
+    page_probe.add_argument("--render-dpi", type=int, default=400)
+    page_probe.add_argument("--tessdata", type=Path)
+    page_probe.add_argument("--workers", type=int, default=1)
+    page_probe.add_argument("--page-timeout", type=int, default=180)
+
+    transcribe = subcommands.add_parser(
+        "transcribe", help="build normalized text, OCR evidence, and model bundles"
+    )
+    transcribe.add_argument("--probe", type=Path, required=True)
+    transcribe.add_argument("--root", type=Path, required=True)
+    transcribe.add_argument("--tessdata", type=Path)
+    transcribe.add_argument("--workers", type=int, default=1)
+    transcribe.add_argument("--ocr-timeout", type=int, default=180)
+    transcribe.add_argument("--bundle-max-pages", type=int, default=10)
+    transcribe.add_argument("--bundle-max-bytes", type=int, default=8 * 1024 * 1024)
+
+    transcription_check = subcommands.add_parser(
+        "transcription-check", help="fail closed unless all page evidence re-attests"
+    )
+    transcription_check.add_argument("manifest", type=Path)
+    transcription_check.add_argument("--root", type=Path, required=True)
+    transcription_check.add_argument("--acquisition-root", type=Path, required=True)
+    transcription_check.add_argument("--catalog", type=Path)
+
+    extract_jobs = subcommands.add_parser(
+        "extract-jobs", help="queue two blind Luna passes for every transcription bundle"
+    )
+    extract_jobs.add_argument("--transcription", type=Path, required=True)
+    extract_jobs.add_argument("--root", type=Path, required=True)
+    extract_jobs.add_argument("--output-root", type=Path, required=True)
+    extract_jobs.add_argument("--model", default=DEFAULT_MODEL)
+
+    extract_ingest = subcommands.add_parser(
+        "extract-ingest", help="validate and durably ingest one blind Luna response"
+    )
+    extract_ingest.add_argument("--jobs", type=Path, required=True)
+    extract_ingest.add_argument("--job-id", required=True)
+    extract_ingest.add_argument("--response", type=Path, required=True)
+    extract_ingest.add_argument("--transcription-root", type=Path, required=True)
+    extract_ingest.add_argument("--output-root", type=Path, required=True)
+
+    validator_ingest = subcommands.add_parser(
+        "validator-ingest", help="ingest an independent decision over two blind passes"
+    )
+    validator_ingest.add_argument("--jobs", type=Path, required=True)
+    validator_ingest.add_argument("--bundle-id", required=True)
+    validator_ingest.add_argument("--response", type=Path, required=True)
+    validator_ingest.add_argument("--transcription-root", type=Path, required=True)
+    validator_ingest.add_argument("--output-root", type=Path, required=True)
+
+    extraction_status = subcommands.add_parser(
+        "extraction-status", help="reconstruct complete queue state from ingest receipts"
+    )
+    extraction_status.add_argument("--jobs", type=Path, required=True)
+    extraction_status.add_argument("--output-root", type=Path, required=True)
 
     validate = subcommands.add_parser("validate", help="validate a generated manifest")
     validate.add_argument("manifest", type=Path)
@@ -115,6 +205,153 @@ def main(
                     file=sys.stderr,
                 )
             return 1
+        if args.command == "page-probe":
+            if args.workers < 1:
+                raise AcquisitionError("page-probe workers must be at least one")
+            receipt = _load_receipt(args.acquisition)
+            catalog = load_catalog(args.catalog)
+            run = build_page_probe(
+                receipt,
+                acquisition_root=args.root,
+                output_root=args.output_root,
+                catalog=catalog,
+                catalog_keys=tuple(args.catalog_key),
+                page_ranges=tuple(parse_page_range(value) for value in args.pages),
+                render_dpi=args.render_dpi,
+                tessdata_directory=args.tessdata,
+                workers=args.workers,
+                page_timeout_seconds=args.page_timeout,
+            )
+            summary = cast(JsonObject, run.manifest["summary"])
+            print(f"wrote deterministic page probe: {run.manifest_path}")
+            print(
+                f"pages {summary['pages_ready']} ready, "
+                f"{summary['pages_needs_review']} need review, "
+                f"{summary['pages_failed']} failed; "
+                f"packages {run.packages_created} created, {run.packages_reused} reused"
+            )
+            return int(
+                cast(int, summary["pages_needs_review"]) > 0
+                or cast(int, summary["pages_failed"]) > 0
+            )
+        if args.command == "transcribe":
+            probe = _load_receipt(args.probe)
+            transcription_run = build_transcription(
+                probe,
+                root=args.root,
+                tessdata_directory=args.tessdata,
+                workers=args.workers,
+                ocr_timeout_seconds=args.ocr_timeout,
+                bundle_max_pages=args.bundle_max_pages,
+                bundle_max_bytes=args.bundle_max_bytes,
+            )
+            summary = cast(JsonObject, transcription_run.manifest["summary"])
+            print(f"wrote deterministic transcription: {transcription_run.manifest_path}")
+            print(
+                f"pages {summary['pages_ready']} ready, "
+                f"{summary['pages_needs_review']} need review, "
+                f"{summary['pages_failed']} failed; "
+                f"packages {transcription_run.packages_created} created, "
+                f"{transcription_run.packages_reused} reused; bundles "
+                f"{transcription_run.bundles_created} created, "
+                f"{transcription_run.bundles_reused} reused"
+            )
+            return int(cast(int, summary["pages_failed"]) > 0)
+        if args.command == "transcription-check":
+            transcription = _load_receipt(args.manifest)
+            check_run = check_transcription(
+                transcription,
+                root=args.root,
+                acquisition_root=args.acquisition_root,
+                catalog=load_catalog(args.catalog),
+            )
+            summary = cast(JsonObject, check_run.report["summary"])
+            print(f"wrote transcription check: {check_run.report_path}")
+            print(
+                f"observed {summary['documents_observed']} documents and "
+                f"{summary['pages_observed']} pages; "
+                f"{summary['blockers']} blocker(s)"
+            )
+            if not check_run.report["valid"]:
+                for blocker in cast(list[JsonObject], check_run.report["blockers"]):
+                    print(
+                        f"- {blocker['subject']}: {blocker['code']}: "
+                        f"{blocker['diagnostic']}",
+                        file=sys.stderr,
+                    )
+                return 1
+            return 0
+        if args.command == "extract-jobs":
+            transcription = _load_receipt(args.transcription)
+            queue = build_extraction_jobs(
+                transcription,
+                root=args.root,
+                model=args.model,
+            )
+            validate_output_root(args.output_root, description="extraction output root")
+            queue_install = install_immutable_bytes(
+                args.output_root / "jobs.json", canonical_bytes(queue)
+            )
+            summary = cast(JsonObject, queue["summary"])
+            print(
+                f"extraction queue {queue_install.status}: {args.output_root / 'jobs.json'}"
+            )
+            print(
+                f"queued {summary['jobs']} blind jobs for {summary['bundles']} bundles "
+                f"across {summary['documents']} documents"
+            )
+            return 0
+        if args.command == "extract-ingest":
+            ingest_run = ingest_extraction_response(
+                _load_receipt(args.jobs),
+                job_id=args.job_id,
+                response_path=args.response,
+                transcription_root=args.transcription_root,
+                output_root=args.output_root,
+            )
+            print(f"response {ingest_run.response_status}: {ingest_run.response_path}")
+            print(
+                f"{ingest_run.job_id}: {ingest_run.semantic.candidates} candidates, "
+                f"{ingest_run.semantic.unique_span_references} unique source spans; "
+                f"state {ingest_run.state}"
+            )
+            return 0
+        if args.command == "validator-ingest":
+            validator_run = ingest_validator_response(
+                _load_receipt(args.jobs),
+                bundle_id=args.bundle_id,
+                response_path=args.response,
+                transcription_root=args.transcription_root,
+                output_root=args.output_root,
+            )
+            print(
+                f"validator response {validator_run.response_status}: "
+                f"{validator_run.response_path}"
+            )
+            print(
+                f"{validator_run.validation_id}: "
+                f"{validator_run.accepted_candidates} accepted, "
+                f"{validator_run.deferred_candidates} deferred; "
+                f"state {validator_run.state}"
+            )
+            return 0
+        if args.command == "extraction-status":
+            status = build_extraction_status(
+                _load_receipt(args.jobs), output_root=args.output_root
+            )
+            digest = sha256_json(status)
+            directory = ensure_private_tree(args.output_root, "status")
+            path = directory / f"{digest}.json"
+            status_install = install_immutable_bytes(path, canonical_bytes(status))
+            summary = cast(JsonObject, status["summary"])
+            print(f"extraction status {status_install.status}: {path}")
+            print(
+                f"jobs {summary['jobs_ingested']}/{summary['jobs']} ingested; bundles "
+                f"{summary['bundles_accepted']} accepted, "
+                f"{summary['bundles_needs_validation']} need validation, "
+                f"{summary['bundles_pending']} pending"
+            )
+            return 0
         manifest = load_object(args.manifest, description="manifest")
         catalog = load_catalog(args.catalog)
         if args.command == "validate":

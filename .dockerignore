@@ -1,0 +1,14 @@
+.git
+.venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/node_modules
+**/dist
+**/*.pdf
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/page-probe.json
+**/transcription.json
+**/ocr.json

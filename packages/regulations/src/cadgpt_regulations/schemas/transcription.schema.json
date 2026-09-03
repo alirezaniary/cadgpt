@@ -1,0 +1,124 @@
+{
+  "$id": "https://cadgpt.local/schemas/regulation-transcription-1.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "catalog": {"type": "object"},
+    "acquisition": {"type": "object"},
+    "probe": {"$ref": "#/$defs/probe"},
+    "configuration": {"$ref": "#/$defs/configuration"},
+    "ocr_toolchain": {"type": ["object", "null"]},
+    "documents": {"items": {"$ref": "#/$defs/document"}, "type": "array"},
+    "summary": {"$ref": "#/$defs/summary"}
+  },
+  "required": ["schema_version", "catalog", "acquisition", "probe", "configuration", "ocr_toolchain", "documents", "summary"],
+  "type": "object",
+  "$defs": {
+    "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "relativePath": {"minLength": 1, "not": {"pattern": "(^/|(^|/)\\.\\.?(/|$)|\\\\)"}, "type": "string"},
+    "nullablePath": {"oneOf": [{"$ref": "#/$defs/relativePath"}, {"type": "null"}]},
+    "nullableSha": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+    "probe": {
+      "additionalProperties": false,
+      "properties": {
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "configuration_sha256": {"$ref": "#/$defs/sha256"},
+        "toolchain_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "required": ["sha256", "configuration_sha256", "toolchain_sha256"],
+      "type": "object"
+    },
+    "configuration": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "normalization_version": {"const": "1.0.0"},
+        "ocr_timeout_seconds": {"minimum": 1, "maximum": 3600, "type": "integer"},
+        "ocr_languages": {"const": ["fas", "eng"]},
+        "ocr_primary_psm": {"const": 3},
+        "ocr_dense_fallback_psm": {"const": 6},
+        "ocr_general_review_confidence_permyriad": {"const": 6000},
+        "ocr_critical_review_confidence_permyriad": {"const": 7500},
+        "bundle_max_pages": {"minimum": 1, "maximum": 10, "type": "integer"},
+        "bundle_max_bytes": {"minimum": 1024, "type": "integer"},
+        "model_max_edge": {"minimum": 320, "maximum": 4096, "type": "integer"},
+        "model_jpeg_quality": {"minimum": 30, "maximum": 95, "type": "integer"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "required": ["schema_version", "normalization_version", "ocr_timeout_seconds", "ocr_languages", "ocr_primary_psm", "ocr_dense_fallback_psm", "ocr_general_review_confidence_permyriad", "ocr_critical_review_confidence_permyriad", "bundle_max_pages", "bundle_max_bytes", "model_max_edge", "model_jpeg_quality", "sha256"],
+      "type": "object"
+    },
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "catalog_key": {"minLength": 1, "type": "string"},
+        "catalog_order": {"minimum": 1, "type": "integer"},
+        "source_sha256": {"$ref": "#/$defs/sha256"},
+        "source_bytes": {"minimum": 1, "type": "integer"},
+        "pdf_page_count": {"minimum": 1, "type": "integer"},
+        "artifact_path": {"$ref": "#/$defs/relativePath"},
+        "pages": {"items": {"$ref": "#/$defs/page"}, "type": "array"},
+        "bundles": {"items": {"$ref": "#/$defs/bundleReference"}, "type": "array"}
+      },
+      "required": ["catalog_key", "catalog_order", "source_sha256", "source_bytes", "pdf_page_count", "artifact_path", "pages", "bundles"],
+      "type": "object"
+    },
+    "page": {
+      "additionalProperties": false,
+      "properties": {
+        "page_id": {"pattern": "^sha256:[0-9a-f]{64}:page:[0-9]{6}$", "type": "string"},
+        "pdf_page": {"minimum": 1, "type": "integer"},
+        "state": {"enum": ["ready", "needs_review", "failed"]},
+        "classification": {"type": ["string", "null"]},
+        "route": {"type": ["string", "null"]},
+        "reason_codes": {"items": {"minLength": 1, "type": "string"}, "type": "array"},
+        "printed_page_label": {"type": ["string", "null"]},
+        "package_path": {"$ref": "#/$defs/nullablePath"},
+        "package_sha256": {"$ref": "#/$defs/nullableSha"},
+        "normalized_sha256": {"$ref": "#/$defs/nullableSha"},
+        "normalized_chars": {"minimum": 0, "type": "integer"},
+        "model_input_bytes": {"minimum": 0, "type": "integer"},
+        "error": {"oneOf": [{"$ref": "#/$defs/error"}, {"type": "null"}]}
+      },
+      "required": ["page_id", "pdf_page", "state", "classification", "route", "reason_codes", "printed_page_label", "package_path", "package_sha256", "normalized_sha256", "normalized_chars", "model_input_bytes", "error"],
+      "type": "object"
+    },
+    "bundleReference": {
+      "additionalProperties": false,
+      "properties": {
+        "bundle_id": {"minLength": 1, "type": "string"},
+        "sequence": {"minimum": 1, "type": "integer"},
+        "start_pdf_page": {"minimum": 1, "type": "integer"},
+        "end_pdf_page": {"minimum": 1, "type": "integer"},
+        "page_count": {"minimum": 1, "maximum": 10, "type": "integer"},
+        "input_bytes": {"minimum": 0, "type": "integer"},
+        "path": {"$ref": "#/$defs/relativePath"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "required": ["bundle_id", "sequence", "start_pdf_page", "end_pdf_page", "page_count", "input_bytes", "path", "sha256"],
+      "type": "object"
+    },
+    "summary": {
+      "additionalProperties": false,
+      "properties": {
+        "documents_expected": {"minimum": 0, "type": "integer"},
+        "documents_processed": {"minimum": 0, "type": "integer"},
+        "pages_expected": {"minimum": 0, "type": "integer"},
+        "pages_ready": {"minimum": 0, "type": "integer"},
+        "pages_needs_review": {"minimum": 0, "type": "integer"},
+        "pages_failed": {"minimum": 0, "type": "integer"},
+        "ocr_pages": {"minimum": 0, "type": "integer"},
+        "bundles": {"minimum": 0, "type": "integer"}
+      },
+      "required": ["documents_expected", "documents_processed", "pages_expected", "pages_ready", "pages_needs_review", "pages_failed", "ocr_pages", "bundles"],
+      "type": "object"
+    },
+    "error": {
+      "additionalProperties": false,
+      "properties": {"code": {"minLength": 1, "type": "string"}, "diagnostic": {"minLength": 1, "type": "string"}},
+      "required": ["code", "diagnostic"],
+      "type": "object"
+    }
+  }
+}

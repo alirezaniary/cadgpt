@@ -1,0 +1,294 @@
+{
+  "$id": "https://cadgpt.local/schemas/regulation-page-probe-1.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "catalog": {"$ref": "#/$defs/catalogIdentity"},
+    "acquisition": {"$ref": "#/$defs/acquisitionIdentity"},
+    "configuration": {"$ref": "#/$defs/configuration"},
+    "toolchain": {"$ref": "#/$defs/toolchain"},
+    "toolchain_sha256": {"$ref": "#/$defs/sha256"},
+    "selection": {"$ref": "#/$defs/selection"},
+    "documents": {
+      "items": {"$ref": "#/$defs/document"},
+      "type": "array"
+    },
+    "summary": {"$ref": "#/$defs/summary"}
+  },
+  "required": [
+    "schema_version",
+    "catalog",
+    "acquisition",
+    "configuration",
+    "toolchain",
+    "toolchain_sha256",
+    "selection",
+    "documents",
+    "summary"
+  ],
+  "type": "object",
+  "$defs": {
+    "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "relativePath": {
+      "minLength": 1,
+      "not": {"pattern": "(^/|(^|/)\\.\\.?(/|$)|\\\\)"},
+      "type": "string"
+    },
+    "catalogIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "catalog_id": {"minLength": 1, "type": "string"},
+        "schema_version": {"pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$", "type": "string"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "provenance": {"items": {"type": "object"}, "type": "array"}
+      },
+      "required": ["catalog_id", "schema_version", "sha256", "provenance"],
+      "type": "object"
+    },
+    "acquisitionIdentity": {
+      "additionalProperties": false,
+      "properties": {"receipt_sha256": {"$ref": "#/$defs/sha256"}},
+      "required": ["receipt_sha256"],
+      "type": "object"
+    },
+    "configuration": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "render_dpi": {"minimum": 72, "maximum": 600, "type": "integer"},
+        "page_timeout_seconds": {"minimum": 1, "maximum": 3600, "type": "integer"},
+        "parser_boundary": {"const": "crop_box"},
+        "thresholds": {
+          "additionalProperties": false,
+          "properties": {
+            "minimum_native_nonspace_chars": {"minimum": 0, "type": "integer"},
+            "mixed_bitmap_coverage_permyriad": {"minimum": 0, "maximum": 10000, "type": "integer"},
+            "scan_bitmap_coverage_permyriad": {"minimum": 0, "maximum": 10000, "type": "integer"},
+            "blank_ink_coverage_permyriad": {"minimum": 0, "maximum": 10000, "type": "integer"}
+          },
+          "required": [
+            "minimum_native_nonspace_chars",
+            "mixed_bitmap_coverage_permyriad",
+            "scan_bitmap_coverage_permyriad",
+            "blank_ink_coverage_permyriad"
+          ],
+          "type": "object"
+        },
+        "sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "required": ["schema_version", "render_dpi", "page_timeout_seconds", "parser_boundary", "thresholds", "sha256"],
+      "type": "object"
+    },
+    "toolchain": {
+      "additionalProperties": false,
+      "properties": {
+        "docling_parse": {"minLength": 1, "type": "string"},
+        "pypdfium2": {"minLength": 1, "type": "string"},
+        "pillow": {"minLength": 1, "type": "string"},
+        "tesseract": {"type": ["string", "null"]},
+        "tessdata_models": {"items": {"$ref": "#/$defs/tessdataModel"}, "type": "array"}
+      },
+      "required": ["docling_parse", "pypdfium2", "pillow", "tesseract", "tessdata_models"],
+      "type": "object"
+    },
+    "tessdataModel": {
+      "additionalProperties": false,
+      "properties": {
+        "language": {"enum": ["fas", "eng", "osd"]},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"minimum": 1, "type": "integer"}
+      },
+      "required": ["language", "sha256", "bytes"],
+      "type": "object"
+    },
+    "selection": {
+      "additionalProperties": false,
+      "properties": {
+        "catalog_keys": {
+          "oneOf": [
+            {"items": {"minLength": 1, "type": "string"}, "type": "array", "uniqueItems": true},
+            {"type": "null"}
+          ]
+        },
+        "page_ranges": {"items": {"$ref": "#/$defs/pageRange"}, "type": "array"}
+      },
+      "required": ["catalog_keys", "page_ranges"],
+      "type": "object"
+    },
+    "pageRange": {
+      "additionalProperties": false,
+      "properties": {
+        "start": {"minimum": 1, "type": "integer"},
+        "end": {"minimum": 1, "type": "integer"}
+      },
+      "required": ["start", "end"],
+      "type": "object"
+    },
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "catalog_key": {"minLength": 1, "type": "string"},
+        "catalog_order": {"minimum": 1, "type": "integer"},
+        "source_sha256": {"$ref": "#/$defs/sha256"},
+        "source_bytes": {"type": ["integer", "null"], "minimum": 0},
+        "pdf_page_count": {"minimum": 1, "type": "integer"},
+        "artifact_path": {
+          "oneOf": [{"$ref": "#/$defs/relativePath"}, {"type": "null"}]
+        },
+        "pages": {"items": {"$ref": "#/$defs/page"}, "type": "array"}
+      },
+      "required": [
+        "catalog_key",
+        "catalog_order",
+        "source_sha256",
+        "source_bytes",
+        "pdf_page_count",
+        "artifact_path",
+        "pages"
+      ],
+      "type": "object"
+    },
+    "page": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"state": {"enum": ["ready", "needs_review"]}}, "required": ["state"]},
+          "then": {
+            "properties": {
+              "classification": {"enum": ["blank", "native_text", "suspect_native", "image_scan", "mixed", "degraded_photo"]},
+              "route": {"enum": ["none", "native", "ocr", "native_plus_ocr"]},
+              "metrics": {"$ref": "#/$defs/metrics"},
+              "package_path": {"$ref": "#/$defs/relativePath"},
+              "package_sha256": {"$ref": "#/$defs/sha256"},
+              "error": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"state": {"const": "failed"}}, "required": ["state"]},
+          "then": {
+            "properties": {
+              "classification": {"type": "null"},
+              "route": {"type": "null"},
+              "metrics": {"type": "null"},
+              "package_path": {"type": "null"},
+              "package_sha256": {"type": "null"},
+              "error": {"$ref": "#/$defs/error"}
+            }
+          }
+        }
+      ],
+      "properties": {
+        "page_id": {"pattern": "^sha256:[0-9a-f]{64}:page:[0-9]{6}$", "type": "string"},
+        "pdf_page": {"minimum": 1, "type": "integer"},
+        "state": {"enum": ["ready", "needs_review", "failed"]},
+        "classification": {"type": ["string", "null"]},
+        "route": {"type": ["string", "null"]},
+        "reason_codes": {"items": {"minLength": 1, "type": "string"}, "type": "array", "uniqueItems": true},
+        "metrics": {"oneOf": [{"$ref": "#/$defs/metrics"}, {"type": "null"}]},
+        "package_path": {"oneOf": [{"$ref": "#/$defs/relativePath"}, {"type": "null"}]},
+        "package_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "error": {"oneOf": [{"$ref": "#/$defs/error"}, {"type": "null"}]}
+      },
+      "required": [
+        "page_id",
+        "pdf_page",
+        "state",
+        "classification",
+        "route",
+        "reason_codes",
+        "metrics",
+        "package_path",
+        "package_sha256",
+        "error"
+      ],
+      "type": "object"
+    },
+    "metrics": {
+      "additionalProperties": false,
+      "properties": {
+        "native_char_cells": {"minimum": 0, "type": "integer"},
+        "native_nonspace_chars": {"minimum": 0, "type": "integer"},
+        "native_word_cells": {"minimum": 0, "type": "integer"},
+        "native_line_cells": {"minimum": 0, "type": "integer"},
+        "bitmap_count": {"minimum": 0, "type": "integer"},
+        "shape_count": {"minimum": 0, "type": "integer"},
+        "bitmap_coverage_permyriad": {"minimum": 0, "maximum": 10000, "type": "integer"},
+        "ink_coverage_permyriad": {"minimum": 0, "maximum": 10000, "type": "integer"},
+        "render_width_pixels": {"minimum": 1, "type": "integer"},
+        "render_height_pixels": {"minimum": 1, "type": "integer"}
+      },
+      "required": [
+        "native_char_cells",
+        "native_nonspace_chars",
+        "native_word_cells",
+        "native_line_cells",
+        "bitmap_count",
+        "shape_count",
+        "bitmap_coverage_permyriad",
+        "ink_coverage_permyriad",
+        "render_width_pixels",
+        "render_height_pixels"
+      ],
+      "type": "object"
+    },
+    "summary": {
+      "additionalProperties": false,
+      "properties": {
+        "documents_expected": {"minimum": 0, "type": "integer"},
+        "documents_processed": {"minimum": 0, "type": "integer"},
+        "pages_expected": {"minimum": 0, "type": "integer"},
+        "pages_ready": {"minimum": 0, "type": "integer"},
+        "pages_needs_review": {"minimum": 0, "type": "integer"},
+        "pages_failed": {"minimum": 0, "type": "integer"},
+        "classifications": {"$ref": "#/$defs/classificationCounts"},
+        "routes": {"$ref": "#/$defs/routeCounts"}
+      },
+      "required": [
+        "documents_expected",
+        "documents_processed",
+        "pages_expected",
+        "pages_ready",
+        "pages_needs_review",
+        "pages_failed",
+        "classifications",
+        "routes"
+      ],
+      "type": "object"
+    },
+    "classificationCounts": {
+      "additionalProperties": false,
+      "properties": {
+        "blank": {"minimum": 0, "type": "integer"},
+        "native_text": {"minimum": 0, "type": "integer"},
+        "suspect_native": {"minimum": 0, "type": "integer"},
+        "image_scan": {"minimum": 0, "type": "integer"},
+        "mixed": {"minimum": 0, "type": "integer"},
+        "degraded_photo": {"minimum": 0, "type": "integer"}
+      },
+      "required": ["blank", "native_text", "suspect_native", "image_scan", "mixed", "degraded_photo"],
+      "type": "object"
+    },
+    "routeCounts": {
+      "additionalProperties": false,
+      "properties": {
+        "none": {"minimum": 0, "type": "integer"},
+        "native": {"minimum": 0, "type": "integer"},
+        "ocr": {"minimum": 0, "type": "integer"},
+        "native_plus_ocr": {"minimum": 0, "type": "integer"}
+      },
+      "required": ["none", "native", "ocr", "native_plus_ocr"],
+      "type": "object"
+    },
+    "error": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {"minLength": 1, "type": "string"},
+        "diagnostic": {"minLength": 1, "type": "string"}
+      },
+      "required": ["code", "diagnostic"],
+      "type": "object"
+    }
+  }
+}

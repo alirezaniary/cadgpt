@@ -1,0 +1,103 @@
+{
+  "$id": "https://cadgpt.local/schemas/regulation-page-package-1.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "page_id": {"pattern": "^sha256:[0-9a-f]{64}:page:[0-9]{6}$", "type": "string"},
+    "source": {"$ref": "#/$defs/source"},
+    "configuration_sha256": {"$ref": "#/$defs/sha256"},
+    "toolchain": {"$ref": "#/$defs/toolchain"},
+    "toolchain_sha256": {"$ref": "#/$defs/sha256"},
+    "state": {"enum": ["ready", "needs_review"]},
+    "classification": {"enum": ["blank", "native_text", "suspect_native", "image_scan", "mixed", "degraded_photo"]},
+    "route": {"enum": ["none", "native", "ocr", "native_plus_ocr"]},
+    "reason_codes": {"items": {"minLength": 1, "type": "string"}, "type": "array", "uniqueItems": true},
+    "metrics": {"$ref": "#/$defs/metrics"},
+    "artifacts": {
+      "items": {"$ref": "#/$defs/artifact"},
+      "maxItems": 2,
+      "minItems": 2,
+      "type": "array"
+    },
+    "error": {"type": "null"}
+  },
+  "required": [
+    "schema_version", "page_id", "source", "configuration_sha256", "toolchain",
+    "toolchain_sha256", "state", "classification", "route", "reason_codes", "metrics",
+    "artifacts", "error"
+  ],
+  "type": "object",
+  "$defs": {
+    "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "relativePath": {
+      "minLength": 1,
+      "not": {"pattern": "(^/|(^|/)\\.\\.?(/|$)|\\\\)"},
+      "type": "string"
+    },
+    "source": {
+      "additionalProperties": false,
+      "properties": {
+        "catalog_key": {"minLength": 1, "type": "string"},
+        "catalog_order": {"minimum": 1, "type": "integer"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"minimum": 1, "type": "integer"},
+        "pdf_page_count": {"minimum": 1, "type": "integer"},
+        "pdf_page": {"minimum": 1, "type": "integer"}
+      },
+      "required": ["catalog_key", "catalog_order", "sha256", "bytes", "pdf_page_count", "pdf_page"],
+      "type": "object"
+    },
+    "artifact": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {"enum": ["native_layout", "source_render"]},
+        "path": {"$ref": "#/$defs/relativePath"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"minimum": 0, "type": "integer"},
+        "media_type": {"enum": ["application/json", "image/png"]}
+      },
+      "required": ["role", "path", "sha256", "bytes", "media_type"],
+      "type": "object"
+    },
+    "toolchain": {
+      "additionalProperties": false,
+      "properties": {
+        "docling_parse": {"minLength": 1, "type": "string"},
+        "pypdfium2": {"minLength": 1, "type": "string"},
+        "pillow": {"minLength": 1, "type": "string"},
+        "tesseract": {"type": ["string", "null"]},
+        "tessdata_models": {"items": {"$ref": "#/$defs/tessdataModel"}, "type": "array"}
+      },
+      "required": ["docling_parse", "pypdfium2", "pillow", "tesseract", "tessdata_models"],
+      "type": "object"
+    },
+    "tessdataModel": {
+      "additionalProperties": false,
+      "properties": {
+        "language": {"enum": ["fas", "eng", "osd"]},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"minimum": 1, "type": "integer"}
+      },
+      "required": ["language", "sha256", "bytes"],
+      "type": "object"
+    },
+    "metrics": {
+      "additionalProperties": false,
+      "properties": {
+        "native_char_cells": {"minimum": 0, "type": "integer"},
+        "native_nonspace_chars": {"minimum": 0, "type": "integer"},
+        "native_word_cells": {"minimum": 0, "type": "integer"},
+        "native_line_cells": {"minimum": 0, "type": "integer"},
+        "bitmap_count": {"minimum": 0, "type": "integer"},
+        "shape_count": {"minimum": 0, "type": "integer"},
+        "bitmap_coverage_permyriad": {"minimum": 0, "maximum": 10000, "type": "integer"},
+        "ink_coverage_permyriad": {"minimum": 0, "maximum": 10000, "type": "integer"},
+        "render_width_pixels": {"minimum": 1, "type": "integer"},
+        "render_height_pixels": {"minimum": 1, "type": "integer"}
+      },
+      "required": ["native_char_cells", "native_nonspace_chars", "native_word_cells", "native_line_cells", "bitmap_count", "shape_count", "bitmap_coverage_permyriad", "ink_coverage_permyriad", "render_width_pixels", "render_height_pixels"],
+      "type": "object"
+    }
+  }
+}

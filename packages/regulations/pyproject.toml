@@ -4,8 +4,12 @@ version = "0.1.0"
 description = "Deterministic inventory and provenance contracts for regulation corpora."
 requires-python = ">=3.12"
 dependencies = [
+    "docling-parse==7.16.0",
     "httpx>=0.28.1,<0.29",
     "jsonschema>=4.23,<5.0",
+    "opencv-python-headless==4.12.0.88",
+    "pillow==11.3.0",
+    "pypdfium2==5.13.0",
 ]
 
 [project.scripts]
