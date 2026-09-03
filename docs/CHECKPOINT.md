@@ -1,8 +1,8 @@
 # Checkpoint — 2026-09-03, coordinator session 4 in progress
 
 Session 2 settled scope and moved no code. Session 3 closed five tasks with their reviews —
-T-0025, T-0028, T-0027, T-0029 and T-0030. **Session 4 closed T-0031 and T-0032 with their reviews and
-wrote T-0033's task file.** `main` is green and every task file
+T-0025, T-0028, T-0027, T-0029 and T-0030. **Session 4 closed T-0031, T-0032, T-0051 and T-0033 with their
+reviews — every task from its brief, plus the one its own reviews raised above them.** `main` is green and every task file
 carries its evidence. `docs/plan.md` is the route and `docs/tasks/` holds
 the detail; this file only records where the loop is and what is unresolved.
 
@@ -30,18 +30,26 @@ Full reasoning in `docs/decisions.md` and `prd.md` §12.
 | T-0030 — the rule catalogue | done, reviewed — **no fix-now** | `9faf208` |
 | T-0031 — rule selection on the run | done, reviewed, 4 fix-now applied | `25e49ac` |
 | T-0032 — the Markdown report file | done, reviewed, 3 fix-now applied | see log |
-| T-0033 — the measured upload ceiling | open, **task file written** | — |
-| T-0034 … T-0055 | queued from reviews | — |
+| T-0051 — a report that never generated can be recovered | done, reviewed | `7ede740` |
+| T-0033 — the measured upload ceiling | done, reviewed | `b532f3f` |
+| T-0034 … T-0066 | queued from reviews | — |
 
-Numbering continues at **T-0056**.
+Numbering continues at **T-0067**.
 
-**All three clauses of the MVP sentence now exist in code.** Phase 3 is deliberately *not* marked
-done: T-0033 is unbuilt, and T-0051 and T-0053 bear on whether the sentence holds for a real user —
-a report can silently never generate with no way to ask again, and the download button has never
-been executed by any test. **T-0051 is the highest-priority queued task**, ahead of T-0033.
+**All three clauses of the MVP sentence exist in code, and T-0033 closed the last task of the
+brief.** Phase 3 is still deliberately *not* marked done — thirty-three queued findings remain, and
+three of them bear on whether the sentence holds for a real user rather than in principle:
+**T-0056** (a lost dispatch strands the check itself at PENDING, and `MAX_IN_FLIGHT_RUNS = 1` means
+that row blocks the review forever), **T-0062** (an ordinary deploy burns a run's claims, so a
+healthy model can be refused and told the wrong reason) and **T-0053** (the download button a user
+would actually press has never been executed).
 
-`make verify` at last run (after T-0032): ruff clean, `mypy --strict` over 153 files, **5 import
-contracts kept**, **228 tests passed**, frontend build green. `make e2e` green.
+One clause is recorded as **NOT DONE** rather than claimed: the ceiling is derived from worker
+memory, but *"high enough to serve 95% of users"* rests on a single 47MB sample and cannot be
+settled without a model corpus we do not have.
+
+`make verify` at last run (after T-0033): ruff clean, `mypy --strict` over 156 files, **5 import
+contracts kept**, **235 tests passed**, frontend build green. `make e2e` green (3 specs).
 
 ## Nothing is unresolved
 
@@ -151,10 +159,11 @@ tenant-owned.
 
 ## Environment notes that cost time to discover
 
-- The `builder` and `reviewer` agent types in `.claude/agents/` are **not registered** as
-  dispatchable types in this harness. Dispatch `general-purpose` and instruct it to read
-  `.claude/agents/builder.md` or `reviewer.md` as its role contract. Builder on sonnet,
-  reviewer on opus.
+- The `builder` and `reviewer` agent types **became dispatchable partway through session 4** and
+  were used directly for T-0033's review. Earlier in that session they were not registered and the
+  workaround was `general-purpose` told to read `.claude/agents/builder.md` or `reviewer.md` as its
+  role contract. Try the real types first; the workaround still works if they are absent. Builder on
+  sonnet, reviewer on opus.
 - **The engine CLI is `uv run cadgpt-check <model.ifc> <rules.ids> --json`.** T-0026, T-0027 and
   T-0028 all shipped a task file instructing the builder to run `cadgpt-engine check`, which
   does not exist. Fixed in all three; do not reintroduce it.
