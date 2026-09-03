@@ -13,6 +13,7 @@ from cadgpt_regulations.extraction_ingest import (
 from cadgpt_regulations.extraction_jobs import build_extraction_jobs
 from cadgpt_regulations.semantic_publish import (
     SemanticPublishError,
+    _candidate_quality_codes,
     _deduplicate_rules,
     _internet_verification,
     build_semantic_publication,
@@ -441,3 +442,23 @@ def test_overlapping_bundle_rules_collapse_and_keep_validator_evidence() -> None
             "predicate": "requires wall spacing of no more than 250 mm",
         }
     ]
+
+
+def test_quality_gate_rejects_placeholder_semantics_in_qualifiers() -> None:
+    candidate = {
+        "candidate_id": "placeholder",
+        "kind": "requirement",
+        "subject": "beam",
+        "predicate": "has an actual-looking predicate",
+        "modality": "must",
+        "conditions": ["when the stated source condition applies"],
+        "exceptions": [],
+        "references": [],
+        "formula_or_table_notes": [],
+        "english_gloss": "The beam has an actual-looking requirement.",
+        "uncertainty_codes": [],
+        "source_span_ids": ["sha256:" + "a" * 64 + ":page:000001:ocr:line:000001"],
+        "qualifier_span_ids": [],
+    }
+
+    assert "GENERIC_PAGE_SUMMARY" in _candidate_quality_codes(candidate)

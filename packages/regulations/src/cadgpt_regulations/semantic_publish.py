@@ -941,8 +941,9 @@ def _candidate_quality_codes(candidate: JsonObject) -> list[str]:
     ):
         if not isinstance(candidate.get(field), list):
             codes.append(f"INVALID_{field.upper()}")
-    predicate = str(candidate.get("predicate", "")).casefold()
-    gloss = str(candidate.get("english_gloss", "")).casefold()
+    semantic_text = json.dumps(
+        candidate, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).casefold()
     generic_fragments = (
         "is governed by this source passage",
         "presents provisions concerning",
@@ -954,8 +955,15 @@ def _candidate_quality_codes(candidate: JsonObject) -> list[str]:
         "atomic source statement on pdf page",
         "states a technical provision",
         "requires, prohibits, permits, or directs an action",
+        "requires the stated design, detailing, or calculation condition",
+        "the stated structural provision",
+        "when the stated source condition applies",
+        "the source states an exception or alternative",
+        "specifies the stated resistance or buckling calculation",
+        "specifies the stated engineering requirement",
+        "lists the applicable section, grade, dimension, or design-property dependencies",
     )
-    if any(fragment in predicate or fragment in gloss for fragment in generic_fragments):
+    if any(fragment in semantic_text for fragment in generic_fragments):
         codes.append("GENERIC_PAGE_SUMMARY")
     return codes
 
