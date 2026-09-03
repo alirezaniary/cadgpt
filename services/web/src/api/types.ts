@@ -197,6 +197,12 @@ export interface CheckRunSummary {
   started_at: string | null;
   finished_at: string | null;
   duration_seconds: number | null;
+  /** The generated Markdown report's download route (T-0032), `null` until generation
+   * completes -- an authenticated path, never a bare storage URL (`docs/tasks/
+   * T-0042-the-catalogue-hands-out-a-storage-url.md` is exactly the mistake this avoids).
+   * Fetch it with the same authenticated client as everything else here, not a plain
+   * `<a href>`: the API takes a bearer token, not a cookie. */
+  report_file_url: string | null;
   created_at: string;
 }
 

@@ -133,10 +133,43 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   return (await response.json()) as T;
 }
 
+/**
+ * Save an authenticated file to disk -- a generated report, not a JSON body.
+ *
+ * `path` is the *full* server-rooted path a run's `report_file_url` already carries
+ * (`/api/v1/reviews/…`), not a `BASE_URL`-relative one like `request()` takes: the server
+ * builds that URL from its own route, and re-deriving `BASE_URL + path` here would double
+ * the "/api" prefix if the two ever disagree. A plain `<a href>` cannot carry the bearer
+ * token this API takes instead of a cookie, so this fetches the bytes itself and hands the
+ * browser a local blob to save.
+ */
+export async function downloadFile(path: string, filename: string): Promise<void> {
+  const response = await fetch(path, { credentials: "include", headers: headers(undefined) });
+
+  if (response.status === 401 && (await refreshAccessToken())) {
+    return downloadFile(path, filename);
+  }
+  if (!response.ok) throw await toError(response);
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  try {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export const api = {
   get: <T>(path: string, signal?: AbortSignal) =>
     request<T>(path, signal ? { signal } : {}),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: "PATCH", body }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  download: downloadFile,
 };

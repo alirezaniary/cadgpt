@@ -47,6 +47,7 @@
   },
   "report": {
     "summary": "Summary",
+    "downloadFile": "Download report (Markdown)",
     "passed": "Passed",
     "failed": "Failed",
     "indeterminate": "Could not be determined",

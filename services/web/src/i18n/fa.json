@@ -47,6 +47,7 @@
   },
   "report": {
     "summary": "خلاصه",
+    "downloadFile": "دریافت گزارش (Markdown)",
     "passed": "قبول",
     "failed": "مردود",
     "indeterminate": "قابل تعیین نبود",

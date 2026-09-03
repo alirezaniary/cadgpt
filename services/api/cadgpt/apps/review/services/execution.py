@@ -200,20 +200,30 @@ class CheckRunExecutor(BaseService):
         return cast("CheckRun", run)
 
     def _succeed(self, run: CheckRun, report: Report, log: object) -> CheckRun:
-        run.status = CheckRunStatus.SUCCEEDED
-        run.finished_at = timezone.now()
-        run.report = report.to_dict()
-        run.engine_version = report.engine_version
-        run.outcome = report.status.value
-        run.specifications_passed = report.specifications_passed
-        run.specifications_failed = report.specifications_failed
-        run.specifications_indeterminate = report.specifications_indeterminate
-        run.passed = report.passed
-        run.failed = report.failed
-        run.indeterminate = report.indeterminate
-        run.failure_reason = ""
-        run.failure_detail = ""
-        run.save()
+        # T-0032: the Markdown report file is generated from this exact result, so its
+        # dispatch is wrapped in the same transaction the save commits with. `on_commit`
+        # is load-bearing here for the reason `ReviewService.request_check` documents for
+        # `execute_check_run`'s own dispatch -- enqueuing before this row is visible to
+        # another connection would let a worker pick the message up and find a run that
+        # is not SUCCEEDED yet.
+        from cadgpt.apps.review.tasks import generate_report_file
+
+        with transaction.atomic():
+            run.status = CheckRunStatus.SUCCEEDED
+            run.finished_at = timezone.now()
+            run.report = report.to_dict()
+            run.engine_version = report.engine_version
+            run.outcome = report.status.value
+            run.specifications_passed = report.specifications_passed
+            run.specifications_failed = report.specifications_failed
+            run.specifications_indeterminate = report.specifications_indeterminate
+            run.passed = report.passed
+            run.failed = report.failed
+            run.indeterminate = report.indeterminate
+            run.failure_reason = ""
+            run.failure_detail = ""
+            run.save()
+            transaction.on_commit(lambda: generate_report_file.delay(str(run.uuid)))
 
         log.info(  # type: ignore[attr-defined]
             "check_run_succeeded",

@@ -1,8 +1,8 @@
 # Checkpoint — 2026-09-03, coordinator session 4 in progress
 
 Session 2 settled scope and moved no code. Session 3 closed five tasks with their reviews —
-T-0025, T-0028, T-0027, T-0029 and T-0030. **Session 4 closed T-0031 with its review (`25e49ac`),
-wrote T-0033's task file, and dispatched T-0032's builder.** `main` is green and every task file
+T-0025, T-0028, T-0027, T-0029 and T-0030. **Session 4 closed T-0031 and T-0032 with their reviews and
+wrote T-0033's task file.** `main` is green and every task file
 carries its evidence. `docs/plan.md` is the route and `docs/tasks/` holds
 the detail; this file only records where the loop is and what is unresolved.
 
@@ -29,30 +29,32 @@ Full reasoning in `docs/decisions.md` and `prd.md` §12.
 | T-0029 — say what was checked | done, reviewed, fix-now applied | `3a87ef5` |
 | T-0030 — the rule catalogue | done, reviewed — **no fix-now** | `9faf208` |
 | T-0031 — rule selection on the run | done, reviewed, 4 fix-now applied | `25e49ac` |
-| T-0032 — the Markdown report file | **builder dispatched, in flight** | — |
+| T-0032 — the Markdown report file | done, reviewed, 3 fix-now applied | see log |
 | T-0033 — the measured upload ceiling | open, **task file written** | — |
-| T-0034 … T-0050 | queued from reviews, behind the MVP tasks | — |
+| T-0034 … T-0055 | queued from reviews | — |
 
-Numbering continues at **T-0051**.
+Numbering continues at **T-0056**.
 
-**If session 4 ended mid-T-0032:** its builder was dispatched with the task file as its whole
-contract, so nothing is lost that the task file does not already carry. Check `git status` — an
-uncommitted working tree is that builder's output and should be judged on its evidence block, not
-discarded. T-0032 is reviewer-gated on I7, three-valued results and tenancy.
+**All three clauses of the MVP sentence now exist in code.** Phase 3 is deliberately *not* marked
+done: T-0033 is unbuilt, and T-0051 and T-0053 bear on whether the sentence holds for a real user —
+a report can silently never generate with no way to ask again, and the download button has never
+been executed by any test. **T-0051 is the highest-priority queued task**, ahead of T-0033.
 
-`make verify` at last run (after T-0031): ruff clean, `mypy --strict` over 149 files, **5 import
-contracts kept**, **208 tests passed**, frontend build green. `make e2e` green.
+`make verify` at last run (after T-0032): ruff clean, `mypy --strict` over 153 files, **5 import
+contracts kept**, **228 tests passed**, frontend build green. `make e2e` green.
 
 ## Nothing is unresolved
 
-Every closed task carries its review. **Phase 3 is not complete** — T-0032 is in flight and
-T-0033 is written and undispatched — but nothing is half-finished and no review is outstanding.
-The MVP's last clause is the report file (T-0032). After it, Phase 3's remaining work is T-0033
-and then the seventeen queued review findings, none of which blocks the MVP.
+Every closed task carries its review. **Phase 3 is not complete** — T-0033 is written and
+undispatched — but nothing is half-finished and no review is outstanding.
 
-**T-0031 is worth reading before T-0032**, because T-0032 inherits its shape: a run may now cite
-either an uploaded `RuleSet` or a `rule_pack_selection` snapshot, and the generated report has to
-be correct for both. `review.rule_set` is nullable now.
+Next: **T-0051** (a report that never generated cannot be recovered — it undercuts the MVP sentence
+more directly than anything else queued), then **T-0033** (the measured upload ceiling, task file
+written), then the rest of T-0034…T-0055.
+
+**The pattern to carry forward, now three reviews deep and unbroken: the builders' mechanisms were
+sound every time, and every defect was in a claim about coverage or honesty that the suite was
+green over.**
 
 T-0030's review nearly *was* lost — it was dispatched as the session ended and landed in the last
 moments. A note claiming it had been lost was written and is now removed. The near-miss is worth

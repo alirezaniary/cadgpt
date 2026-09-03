@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
@@ -18,10 +19,12 @@ class CheckRunSummarySerializer(serializers.ModelSerializer[CheckRun]):
     """A run without its report. What a list of runs shows.
 
     The report document can be megabytes; sending it in a list would make the common
-    request the expensive one.
+    request the expensive one. `report_file_url` is cheap either way -- a link, not the
+    file -- so it is on the summary too rather than gated behind the detail view.
     """
 
     duration_seconds = serializers.FloatField(read_only=True, allow_null=True)
+    report_file_url = serializers.SerializerMethodField()
 
     class Meta:
         model = CheckRun
@@ -42,9 +45,26 @@ class CheckRunSummarySerializer(serializers.ModelSerializer[CheckRun]):
             "started_at",
             "finished_at",
             "duration_seconds",
+            "report_file_url",
             "created_at",
         )
         read_only_fields = fields
+
+    def get_report_file_url(self, obj: CheckRun) -> str | None:
+        """The authenticated download route, never the storage URL directly.
+
+        T-0042 (queued, found by the T-0030 review) is exactly the mistake this avoids:
+        serialising a `FileField` straight to a URL hands out a link nothing authenticates.
+        This returns a path into `CheckRunViewSet.report_file`, which resolves through the
+        same tenant-scoped `get_object()` as every other read on this viewset -- another
+        tenant's run 404s rather than leaking a file.
+        """
+        if obj.report_file_id is None:
+            return None
+        return reverse(
+            "review-v1:tenant-review-run-report-file",
+            kwargs={"review_uuid": obj.review.uuid, "uuid": obj.uuid},
+        )
 
 
 class CheckRunDetailSerializer(CheckRunSummarySerializer):
@@ -90,6 +110,12 @@ class ReviewSerializer(serializers.ModelSerializer[Review]):
         if not runs:
             return None
         newest = max(runs, key=lambda run: run.created_at)
+        # `newest` came from `obj.runs.all()`, the reverse side of the FK it was fetched
+        # through -- Django does not cache that direction, so `newest.review` would cost
+        # its own query per row. `obj` already *is* that review, so set the cache by hand:
+        # `report_file_url` (`CheckRunSummarySerializer.get_report_file_url`) reads
+        # `.review.uuid`, and this is what keeps a page of reviews at a fixed query count.
+        newest.review = obj
         return CheckRunSummarySerializer(newest).data
 
 

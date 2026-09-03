@@ -340,3 +340,112 @@ msgstr "آنچه در این گزارش بررسی شد"
 #: cadgpt/apps/review/disclosure.py (disclosure text)
 msgid "This report checked the model %(filename)s — not the drawing set your office submits for review. A model and its submitted drawing set can diverge: detailing drawn directly onto a view, a schedule typed by hand, an area table in a titleblock. None of that divergence is checked here. The result below describes the model; it says nothing about the sheets."
 msgstr "این گزارش مدل %(filename)s را بررسی کرده است — نه مجموعه نقشه‌هایی که دفتر شما برای بازبینی ارائه می‌دهد. مدل و مجموعه نقشه‌های ارسالی می‌توانند با هم واگرا شوند: جزئیاتی که مستقیماً روی یک نما ترسیم شده، جدولی که دستی تایپ شده، جدول مساحت در کارتوش. هیچ‌یک از این واگرایی‌ها در اینجا بررسی نشده است. نتیجهٔ زیر مدل را توصیف می‌کند؛ دربارهٔ نقشه‌ها چیزی نمی‌گوید."
+
+#: cadgpt/apps/review/choices.py (OutcomeStatus.PASS)
+msgid "Pass"
+msgstr "قبول"
+
+#: cadgpt/apps/review/choices.py (OutcomeStatus.FAIL)
+#: matches services/web/src/i18n/fa.json "status.FAIL" -- the same run reads the
+#: same verdict word on screen and in the file (T-0032 review, A2).
+msgid "Fail"
+msgstr "مردود"
+
+#: cadgpt/apps/review/choices.py (OutcomeStatus.INDETERMINATE)
+#: matches services/web/src/i18n/fa.json "status.INDETERMINATE" (T-0032 review, A2).
+msgid "Indeterminate"
+msgstr "نامشخص"
+
+#: cadgpt/apps/review/services/report_markdown.py (header line)
+msgid "Model schema %(schema)s"
+msgstr "شمای مدل %(schema)s"
+
+#: cadgpt/apps/review/services/report_markdown.py (header line)
+msgid "Engine %(version)s"
+msgstr "موتور %(version)s"
+
+#: cadgpt/apps/review/services/report_markdown.py (status line, table header)
+msgid "Status"
+msgstr "وضعیت"
+
+#: cadgpt/apps/review/services/report_markdown.py (rule pack selection heading)
+msgid "Rule packs checked"
+msgstr "بسته‌های قاعدهٔ بررسی‌شده"
+
+#: cadgpt/apps/review/services/report_markdown.py (coverage heading)
+msgid "Coverage"
+msgstr "پوشش"
+
+#: cadgpt/apps/review/services/report_markdown.py (coverage sentence)
+msgid "%(evaluated)s of %(total)s specifications were evaluated."
+msgstr "%(evaluated)s از %(total)s مشخصه بررسی شد."
+
+#: cadgpt/apps/review/services/report_markdown.py (coverage table header)
+#: matches services/web/src/i18n/fa.json "report.passed" (T-0032 review, A2).
+msgid "Passed"
+msgstr "قبول"
+
+#: cadgpt/apps/review/services/report_markdown.py (coverage table header -- a count of
+#: failing findings, disambiguated via msgctxt from CheckRunStatus.FAILED (a failed
+#: check *run*), which would otherwise share this exact English msgid (T-0032 review,
+#: A2). Matches services/web/src/i18n/fa.json "report.failed".
+msgctxt "report coverage table: count of failing findings"
+msgid "Failed"
+msgstr "مردود"
+
+#: cadgpt/apps/review/services/report_markdown.py (coverage table header)
+#: matches services/web/src/i18n/fa.json "report.indeterminate" (T-0032 review, A2).
+msgid "Could not be determined"
+msgstr "قابل تعیین نبود"
+
+#: cadgpt/apps/review/services/report_markdown.py (indeterminate note)
+#: matches services/web/src/i18n/fa.json "report.indeterminateNote" word for word
+#: (T-0032 review, A2).
+msgid "These were not checked. They are not passes."
+msgstr "این موارد بررسی نشدند و قبول به شمار نمی‌آیند."
+
+#: cadgpt/apps/review/services/report_markdown.py (nothing-established note, singular)
+msgid "%(count)s specification established nothing — it matched no elements, or its applicability could not be determined:"
+msgid_plural "%(count)s specifications established nothing — they matched no elements, or their applicability could not be determined:"
+msgstr[0] "%(count)s مشخصه چیزی را اثبات نکرد — هیچ عضوی را منطبق نیافت، یا قابلیت اعمال آن مشخص نشد:"
+msgstr[1] "%(count)s مشخصه چیزی را اثبات نکردند — هیچ عضوی را منطبق نیافتند، یا قابلیت اعمال آنها مشخص نشد:"
+
+#: cadgpt/apps/review/services/report_markdown.py (a specification or entity with no name)
+msgid "Nothing was checked"
+msgstr "چیزی بررسی نشد"
+
+#: cadgpt/apps/review/services/report_markdown.py (specifications heading)
+msgid "Specifications"
+msgstr "مشخصه‌ها"
+
+#: cadgpt/apps/review/services/report_markdown.py (matched-elements line, singular)
+msgid "%(count)s element matched"
+msgid_plural "%(count)s elements matched"
+msgstr[0] "%(count)s عضو منطبق بود"
+msgstr[1] "%(count)s عضو منطبق بودند"
+
+#: cadgpt/apps/review/services/report_markdown.py (omitted-elements line, singular)
+msgid "%(count)s further element counted but not listed"
+msgid_plural "%(count)s further elements counted but not listed"
+msgstr[0] "%(count)s عضو دیگر شمارش شد اما فهرست نشد"
+msgstr[1] "%(count)s عضو دیگر شمارش شدند اما فهرست نشدند"
+
+#: cadgpt/apps/review/services/report_markdown.py (findings table header)
+msgid "IFC class"
+msgstr "کلاس IFC"
+
+#: cadgpt/apps/review/services/report_markdown.py (findings table header)
+msgid "Global ID"
+msgstr "شناسهٔ سراسری"
+
+#: cadgpt/apps/review/services/report_markdown.py (findings table header)
+msgid "Reason"
+msgstr "دلیل"
+
+#: cadgpt/apps/review/services/report_markdown.py (findings table header)
+msgid "Detail"
+msgstr "جزئیات"
+
+#: cadgpt/apps/review/api/v1/views.py (CheckRunViewSet.report_file, missing file)
+msgid "This run has no generated report file yet."
+msgstr "برای این اجرا هنوز گزارشی تولید نشده است."

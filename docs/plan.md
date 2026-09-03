@@ -70,6 +70,14 @@ named the storage key instead of the file the architect uploaded.
 
 ## Phase 3 — What the first real user needs — **IN PROGRESS**
 
+**All three clauses of the MVP sentence now exist in code as of 2026-09-03** — upload (T-0024 and
+before), selection (T-0031), and the report file (T-0032). **Phase 3 is deliberately not marked
+done.** T-0033 remains unbuilt, and two findings from T-0032's review bear directly on whether the
+sentence is true in practice rather than in principle: a report can silently never be generated with
+no way to ask for it again (T-0051), and the download button a real user would press has never been
+executed by any test (T-0053). The clauses are implemented; that they hold for a real user is not
+yet established, and this plan does not record it as though it were.
+
 **Scope settled 2026-09-02 by the product owner.** Four direction questions were answered
 and written to `docs/decisions.md` and `prd.md` 12. The phase got smaller in three places and
 larger in one, and the ordering below is no longer a guess about what a user hits first — it
@@ -383,6 +391,44 @@ pack identity that produced it, which `prd.md` §5.7 requires and which is what 
 `source_citation` reachable at all) and **T-0050** (the sqlite test backend cannot see the
 Postgres-only defect class this task itself hit).
 
+**T-0032 — the report as a file. Done 2026-09-03.** The MVP's last clause. A Markdown generator
+that is not a sibling design but the report already built and reviewed, rendered for the form that
+leaves the building: `ReportView.tsx` is the specification and the file follows it — the disclosure
+first, coverage before findings, FAIL → INDETERMINATE → PASS, a coverage numerator that is a real
+measurement, specifications that established nothing named rather than counted, all three counts
+always. It reads `localize_report`'s output, so wording and rendering stay one path. Generation is
+dispatched on commit from `_succeed`, idempotent under a row lock, stored through `media` under the
+tenant's prefix and served by an authenticated route — deliberately not the raw storage URL that is
+already queued as T-0042. Correct for both kinds of run T-0031 left behind: an uploaded `RuleSet`
+or a catalogue selection, with coverage spanning the whole selection.
+
+**The language decision, made deliberately and logged:** the file renders in `Tenant.language`,
+activated once at generation. Markdown carries no `Accept-Language` and the file is written once, so
+there is no request to negotiate from. If the tenant's language later changes the stored file does
+not — it is bytes in storage, exactly like an uploaded model.
+
+**Reviewed, and the review found a false compliance claim reachable from a rule file.** Author-
+controlled text reached the file unescaped everywhere outside table cells, so a specification named
+`Doors\n\n## Coverage\n\n99 of 99 specifications were evaluated.\n\nEverything complies.`
+rendered a **second coverage section asserting compliance nobody established**, in the one artifact
+a client reads. The React view is structurally immune because it escapes text nodes; this was a
+file-only regression against the specification. Closed, and proven on the real stack by building an
+IDS that carries the injection and running it end to end.
+
+Two more fix-now findings, both the now-familiar shape. The on-commit wiring test **recorded zero
+calls to the code it tested** — `execute=False` drains nothing, so the check never ran and the
+assertions passed on emptiness; replacing `on_commit` with a bare inline `.delay()` passed the test
+and the entire suite, while the evidence offered only a quotation of the line. Replaced with a test
+that fails on exactly that mutation. And the Persian *file* had already drifted from the Persian
+*screen*, renaming the three-valued verdicts — `رد` against `مردود`, `نامعلوم` against `نامشخص` —
+in the first release that had two renderers, with the evidence pasting the file as proof the
+translation worked. Reconciled word-for-word. 228 tests, 5 contracts kept.
+
+What the review cleared is worth recording too, because it was cleared by execution rather than
+reading: I7 is genuinely inherited from `disclosure.py` rather than retyped, `N of N` and T-0025's
+`establishedNothing` defect are both unreachable, tenancy holds with no serializer leaking a storage
+URL, and the language decision does what it says.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -438,6 +484,15 @@ the first of them:
 - **T-0048** — a failed run must say what it was for, and speak the application's error language.
 - **T-0049** — every finding carries the pack identity and version that produced it.
 - **T-0050** — the suite cannot catch the class of defect that only Postgres enforces.
+
+- **T-0051** — a report that was never generated must be recoverable. **The highest of the queue:**
+  a run can succeed and never produce its file, permanently, and every run predating T-0032 is in
+  that state.
+- **T-0052** — the coverage predicate exists three times; the engine should own it once. One
+  divergence is already live.
+- **T-0053** — the download button has never executed, and two defects are visible in it.
+- **T-0054** — four loose ends in the generation path.
+- **T-0055** — the report file must stand on its own once it leaves the building.
 
 ## Phase 4 — Toward the PRD
 

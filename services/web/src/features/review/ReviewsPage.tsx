@@ -16,7 +16,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError } from "@/api/client";
+import { api, ApiError } from "@/api/client";
 import { isTerminal } from "@/api/types";
 import {
   useCheckRun,
@@ -57,6 +57,8 @@ export function ReviewsPage() {
   });
 
   const run = useCheckRun(openReview ?? "", openRun);
+  const currentReport = run.data?.report ?? null;
+  const reportFileUrl = run.data?.report_file_url ?? null;
 
   const filteredPacks = useMemo(() => {
     const packs = rulePacks.data?.results ?? [];
@@ -70,6 +72,15 @@ export function ReviewsPage() {
 
   function report(caught: unknown) {
     setError(caught instanceof ApiError ? caught.message : t("error.generic"));
+  }
+
+  async function onDownloadReportFile(url: string) {
+    setError(null);
+    try {
+      await api.download(url, "report.md");
+    } catch (caught) {
+      report(caught);
+    }
   }
 
   async function onAddRuleSet(event: FormEvent<HTMLFormElement>) {
@@ -294,8 +305,22 @@ export function ReviewsPage() {
         </ul>
       </section>
 
-      {run.data?.report && (
-        <ReportView report={run.data.report} rulePackSelection={run.data.rule_pack_selection} />
+      {reportFileUrl && (
+        <p>
+          <button
+            type="button"
+            data-testid="report-file-link"
+            onClick={() => void onDownloadReportFile(reportFileUrl)}
+          >
+            {t("report.downloadFile")}
+          </button>
+        </p>
+      )}
+      {currentReport && (
+        <ReportView
+          report={currentReport}
+          rulePackSelection={run.data?.rule_pack_selection ?? []}
+        />
       )}
     </main>
   );

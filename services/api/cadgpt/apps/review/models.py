@@ -145,6 +145,21 @@ class CheckRun(TenantOwnedModel, UuidBaseModel):
 
     report = models.JSONField(_("report"), null=True, blank=True)
 
+    #: The generated Markdown report (T-0032), stored through `media.Media` under this
+    #: run's tenant like any other file here. `SET_NULL` rather than `PROTECT`: unlike
+    #: `Review.model_file`, this is a derived artifact the run can regenerate, not an
+    #: input whose loss would make the run unexplainable. `None` until generation
+    #: completes, which is also how `ReportGenerationService.generate` recognises a run
+    #: it has not yet produced a file for -- see its idempotence contract.
+    report_file = models.ForeignKey(
+        "media.Media",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="generated_for_runs",
+        verbose_name=_("report file"),
+    )
+
     failure_reason = models.CharField(
         _("failure reason"), max_length=32, choices=CheckRunFailure.choices, blank=True
     )

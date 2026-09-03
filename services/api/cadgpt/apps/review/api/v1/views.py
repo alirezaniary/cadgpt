@@ -10,12 +10,16 @@ from __future__ import annotations
 from typing import Any, cast
 
 from django.db.models import QuerySet
+from django.http import FileResponse
+from django.utils.translation import gettext_lazy as _
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, status
 from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from cadgpt.apps.base.exceptions import NotFoundError
 from cadgpt.apps.review.api.v1.filters import CheckRunFilterSet, ReviewFilterSet
 from cadgpt.apps.review.api.v1.serializers import (
     CheckRequestSerializer,
@@ -110,5 +114,34 @@ class CheckRunViewSet(
         if self.action == "list":
             # The report is deferred rather than excluded: a list of runs must never
             # load a page of multi-megabyte documents to render six numbers.
-            return cast("QuerySet[CheckRun]", runs.without_report())
+            # `select_related("review")` keeps `report_file_url`
+            # (`CheckRunSummarySerializer.get_report_file_url`, which reads
+            # `.review.uuid`) at one query for the page rather than one per row.
+            return cast(
+                "QuerySet[CheckRun]", runs.without_report().select_related("review")
+            )
         return cast("QuerySet[CheckRun]", runs.with_inputs())
+
+    @extend_schema(responses={200: OpenApiTypes.BINARY})
+    @action(detail=True, methods=["get"], url_path="report-file", throttle_classes=[])
+    def report_file(self, request: Request, review_uuid: str, uuid: str) -> FileResponse:  # noqa: ARG002
+        """Stream the generated Markdown report, authenticated and tenant-scoped.
+
+        `get_object()` narrows through `get_queryset()` above -- `for_tenant(self.tenant)`
+        composed with this review's uuid -- exactly like `retrieve`, so another tenant's
+        run 404s rather than handing out a bare storage URL the way `RulePackSerializer.
+        source_file` does today (`docs/tasks/T-0042-the-catalogue-hands-out-a-storage-url.
+        md`, queued rather than fixed there because the catalogue is deliberately global;
+        a generated report is tenant data, and this route is what keeps it authenticated).
+        Not routed through `BaseViewSet.respond()`: that wraps a serializer's JSON body,
+        and a file has none to wrap.
+        """
+        run = self.get_object()
+        if run.report_file_id is None:
+            raise NotFoundError(_("This run has no generated report file yet."))
+        return FileResponse(
+            run.report_file.file.open("rb"),
+            as_attachment=True,
+            filename=run.report_file.original_name,
+            content_type=run.report_file.content_type or "text/markdown",
+        )
