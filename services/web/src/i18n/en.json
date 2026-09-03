@@ -48,6 +48,9 @@
   "report": {
     "summary": "Summary",
     "downloadFile": "Download report (Markdown)",
+    "notGeneratedYet": "The report file has not been generated yet.",
+    "generationFailed": "The report file could not be generated: it was too large to store.",
+    "generate": "Generate report",
     "passed": "Passed",
     "failed": "Failed",
     "indeterminate": "Could not be determined",

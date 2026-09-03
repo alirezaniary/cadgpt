@@ -203,6 +203,13 @@ export interface CheckRunSummary {
    * Fetch it with the same authenticated client as everything else here, not a plain
    * `<a href>`: the API takes a bearer token, not a cookie. */
   report_file_url: string | null;
+  /** Blank until generation is attempted and fails for a reason a retry will not change
+   * (T-0051) -- today, only the rendered report exceeding what the server can store. A
+   * succeeded run with this blank *and* `report_file_url` null has simply not been
+   * generated yet; `useGenerateReportFile` asks again. Distinguishes "not generated yet"
+   * from "cannot be generated", which `report_file_url` alone cannot: both are null for
+   * it. */
+  report_generation_error: string;
   created_at: string;
 }
 

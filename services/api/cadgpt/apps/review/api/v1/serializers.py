@@ -46,6 +46,13 @@ class CheckRunSummarySerializer(serializers.ModelSerializer[CheckRun]):
             "finished_at",
             "duration_seconds",
             "report_file_url",
+            # Blank until generation is attempted and fails for a reason a retry will
+            # not change (`ReportGenerationFailure`). A succeeded run with both this
+            # and `report_file_url` blank has simply not been generated yet -- ask
+            # again via `CheckRunViewSet.generate_report` (T-0051). Never
+            # re-derived from `report_file_url` being null alone: both states share
+            # that, and this is what tells them apart.
+            "report_generation_error",
             "created_at",
         )
         read_only_fields = fields

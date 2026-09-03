@@ -20,6 +20,13 @@ from cadgpt.apps.tenancy.models import Tenant
 pytestmark = [pytest.mark.django_db, pytest.mark.integration]
 
 
+def _lost_dispatch(*_args: object, **_kwargs: object) -> None:
+    """Stands in for `generate_report_file.delay` when a message never arrives -- a
+    worker dying between commit and the callback, or `.delay()` itself raising because
+    the broker blipped. Used by the T-0051 tests below to reproduce that hole for one
+    run's dispatch without touching any other test's."""
+
+
 def test_a_successful_check_generates_the_report_file_with_a_url_on_the_run(
     api: APIClient, review: Review, commit: Any
 ) -> None:
@@ -145,3 +152,196 @@ def test_a_run_with_no_report_cannot_be_generated_from(
 
     with pytest.raises(ValueError, match="has no report to render yet"):
         ReportGenerationService().generate(run.uuid)
+
+
+# ---------------------------------------------------------------------------- T-0051
+
+
+def test_a_lost_report_dispatch_leaves_a_run_stuck_and_the_recovery_route_fixes_it(
+    tenant: Tenant,
+    review: Review,
+    owner: Any,
+    api: APIClient,
+    django_capture_on_commit_callbacks: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Reproduces the hole this task exists to close, the same way the T-0032 review
+    found it (`docs/tasks/T-0051-a-report-that-failed-to-generate-can-be-recovered.md`):
+    stub `generate_report_file.delay` to a no-op for one run's dispatch, let the check
+    finish, and confirm the end state is exactly `succeeded / report_file_id=None` --
+    permanently, because redelivering the check's own task finds a terminal run and
+    returns it untouched; `execute()` never re-dispatches report generation.
+
+    Then asks again, for real, over `CheckRunViewSet.generate_report` (the new
+    route this task adds), and confirms the file exists afterward, fetched over
+    authenticated HTTP exactly like a normally-generated one.
+    """
+    from cadgpt.apps.review import tasks as review_tasks
+    from cadgpt.apps.review.services import ReviewService
+    from cadgpt.apps.review.services.execution import CheckRunExecutor
+
+    monkeypatch.setattr(review_tasks.generate_report_file, "delay", _lost_dispatch)
+    with django_capture_on_commit_callbacks(execute=True):
+        run = ReviewService(tenant=tenant).request_check(review=review, requested_by=owner)
+    monkeypatch.undo()  # restore .delay before the recovery route needs the real thing
+
+    run.refresh_from_db()
+    assert run.status == CheckRunStatus.SUCCEEDED
+    assert run.report_file_id is None
+    assert run.report_generation_error == ""
+    assert Media.objects.for_tenant(tenant).filter(kind="report").count() == 0
+
+    # The hole, confirmed before any fix is asked for: a redelivery of the check's own
+    # task cannot recover this on its own.
+    stuck = CheckRunExecutor().execute(run.uuid)
+    assert stuck.status == CheckRunStatus.SUCCEEDED
+    assert stuck.report_file_id is None
+
+    response = api.post(f"/api/v1/reviews/{review.uuid}/runs/{run.uuid}/report-file/")
+    assert response.status_code == 202, response.data
+
+    run.refresh_from_db()
+    assert run.report_file_id is not None
+    assert run.report_file.kind == "report"
+    assert Media.objects.for_tenant(tenant).filter(kind="report").count() == 1
+
+    downloaded = api.get(f"/api/v1/reviews/{review.uuid}/runs/{run.uuid}/report-file/")
+    assert downloaded.status_code == 200
+    body = b"".join(downloaded.streaming_content).decode("utf-8")
+    assert body.startswith("# Accessible door width")
+
+
+def test_asking_twice_produces_one_file_and_a_run_that_already_has_one_is_untouched(
+    tenant: Tenant,
+    review: Review,
+    owner: Any,
+    api: APIClient,
+    django_capture_on_commit_callbacks: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The recovery route is `generate` under a new door, not a new idempotence
+    contract -- this proves the route itself is safe to call twice, not merely the
+    service function it dispatches to (already covered above by
+    `test_running_generation_twice_produces_one_file_not_two`)."""
+    from cadgpt.apps.review import tasks as review_tasks
+    from cadgpt.apps.review.services import ReviewService
+
+    monkeypatch.setattr(review_tasks.generate_report_file, "delay", _lost_dispatch)
+    with django_capture_on_commit_callbacks(execute=True):
+        run = ReviewService(tenant=tenant).request_check(review=review, requested_by=owner)
+    monkeypatch.undo()
+
+    first = api.post(f"/api/v1/reviews/{review.uuid}/runs/{run.uuid}/report-file/")
+    assert first.status_code == 202, first.data
+    run.refresh_from_db()
+    first_media_id = run.report_file_id
+    assert first_media_id is not None
+
+    second = api.post(f"/api/v1/reviews/{review.uuid}/runs/{run.uuid}/report-file/")
+    assert second.status_code == 202, second.data
+
+    run.refresh_from_db()
+    assert run.report_file_id == first_media_id, "a second request must not re-generate"
+    assert Media.objects.for_tenant(tenant).filter(kind="report").count() == 1
+
+
+def test_generation_cannot_be_requested_for_a_run_that_has_not_succeeded(
+    tenant: Tenant, review: Review, owner: Any, api: APIClient
+) -> None:
+    run = CheckRun.objects.create_run(review=review, requested_by=owner)
+    assert run.status == CheckRunStatus.PENDING
+
+    response = api.post(f"/api/v1/reviews/{review.uuid}/runs/{run.uuid}/report-file/")
+
+    assert response.status_code == 409, response.data
+    run.refresh_from_db()
+    assert run.report_file_id is None
+
+
+def test_a_report_too_large_to_store_leaves_the_run_succeeded_with_no_file(
+    tenant: Tenant,
+    review: Review,
+    owner: Any,
+    commit: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The deliberate decision this task names (`docs/tasks/
+    T-0051-a-report-that-failed-to-generate-can-be-recovered.md`): a check that
+    genuinely found what it found is not retro-failed because its rendering did not fit
+    in storage. Rather than fabricating a multi-megabyte fixture to clear the real 8MB
+    cap, the real cap is turned down so a small, real render exceeds it -- the check,
+    the render and the rejection in `MediaService._validate` are all real; only the
+    limit is different, the same technique `test_media_service.py` already uses for the
+    same reason.
+    """
+    from cadgpt.apps.media.choices import MediaKind
+    from cadgpt.apps.media.constants import MAX_BYTES
+    from cadgpt.apps.review.api.v1.serializers import CheckRunSummarySerializer
+    from cadgpt.apps.review.choices import ReportGenerationFailure
+    from cadgpt.apps.review.services import ReviewService
+
+    monkeypatch.setitem(MAX_BYTES, MediaKind.REPORT, 10)
+
+    with commit():
+        run = ReviewService(tenant=tenant).request_check(review=review, requested_by=owner)
+
+    run.refresh_from_db()
+    assert run.status == CheckRunStatus.SUCCEEDED, run.failure_detail
+    assert run.report is not None, "the check's own findings are untouched"
+    assert run.report_file_id is None
+    assert run.report_generation_error == ReportGenerationFailure.TOO_LARGE
+    assert run.report_generation_detail, "the real MediaService message, not empty"
+    assert Media.objects.for_tenant(tenant).filter(kind="report").count() == 0
+
+    # The API surface a frontend distinguishes on: the run says it cannot be
+    # generated, not merely that it has not been yet.
+    data = CheckRunSummarySerializer(run).data
+    assert data["report_file_url"] is None
+    assert data["report_generation_error"] == "too_large"
+
+    # Not eligible for the blind backfill sweep -- retrying would only restate the
+    # same rejection.
+    assert not CheckRun.objects.missing_report().filter(pk=run.pk).exists()
+
+
+def test_backfill_generates_reports_for_runs_that_were_never_dispatched(
+    tenant: Tenant,
+    review: Review,
+    owner: Any,
+    django_capture_on_commit_callbacks: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Stands in for a run that succeeded before T-0032 deployed the generator: such a
+    run is `succeeded`, carries a real `report`, and has never had
+    `generate_report_file` dispatched for it -- `CheckRunExecutor._succeed` is the only
+    place that ever queues it, so a run whose success predates that queueing line is in
+    exactly this shape. Reproduced here the same way as the lost-dispatch case above,
+    because the two are identical by construction: nothing distinguishes "never
+    dispatched because the code did not exist yet" from "dispatched and lost" once the
+    row is written -- which is exactly why `CheckRunQuerySet.missing_report` recovers
+    both without needing to know which one a given row is.
+    """
+    import io
+
+    from django.core.management import call_command
+
+    from cadgpt.apps.review import tasks as review_tasks
+    from cadgpt.apps.review.services import ReviewService
+
+    monkeypatch.setattr(review_tasks.generate_report_file, "delay", _lost_dispatch)
+    with django_capture_on_commit_callbacks(execute=True):
+        run = ReviewService(tenant=tenant).request_check(review=review, requested_by=owner)
+    monkeypatch.undo()
+
+    run.refresh_from_db()
+    assert run.report_file_id is None
+
+    out = io.StringIO()
+    call_command("backfill_report_files", stdout=out)
+
+    run.refresh_from_db()
+    assert run.report_file_id is not None
+    assert run.report_file.kind == "report"
+    output = out.getvalue()
+    assert f"generated: run {run.uuid}" in output
+    assert "done: 1 generated, 0 could not be generated, 1 runs considered" in output

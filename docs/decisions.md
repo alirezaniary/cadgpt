@@ -674,3 +674,34 @@ running the real check against the compose stack's real Postgres surfaced it. Fi
 
 **Reopens if:** a pack's own content ever needs to change without a new version number, which
 would make the stored checksum the only thing still telling the truth about what a run checked.
+
+## A report that cannot be generated does not retro-fail the run it belongs to
+
+*2026-09-03, decided while building T-0051.*
+
+A rendered report can exceed `MediaService`'s storage cap (`media/constants.py: MAX_BYTES
+[MediaKind.REPORT]`, 8MB) -- plausible for a run with thousands of findings. The check that
+produced those findings already ran to completion and its result is real: the three counts, the
+outcome, the stored `report` JSON are all correct regardless of whether the rendered Markdown
+fits in storage afterward. Failing the *run* over that would tell the user their check did not
+succeed when it did, which is a worse lie than the one this decision exists to prevent -- so
+`CheckRunExecutor._fail` is never called for this. The run stays `CheckRunStatus.SUCCEEDED`.
+
+What does happen: `ReportGenerationService.generate` catches the `ValidationError` `MediaService.
+store` raises and records it on the run itself -- `report_generation_error =
+ReportGenerationFailure.TOO_LARGE`, plus the raw exception text in `report_generation_detail` --
+rather than leaving the run indistinguishable from one whose report simply has not been generated
+yet. Both states leave `report_file_id` null; `report_generation_error` is the only thing that
+tells them apart, for the API's serializer and for a user asking "why is there no file".
+
+The cost: `CheckRunQuerySet.missing_report`, which the recovery backfill (`manage.py
+backfill_report_files`) and the automatic dispatch both rely on, excludes any run with
+`report_generation_error` set. A run in this state is not swept by anything automatic --
+retrying would just re-render the same findings into the same too-large file and fail the same
+way again. It stays in this state until something changes what would be rendered (the report
+shrinks, the cap is raised, a future task adds pagination or truncation) and something calls
+`ReportGenerationService.generate` on it directly, which clears both fields on success exactly
+like any other regenerated field in this pipeline.
+
+**Reopens if:** a real report exceeding the cap is observed in production and thousands of
+findings need to become downloadable rather than merely visible in the API's own JSON.

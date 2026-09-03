@@ -19,7 +19,7 @@ from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from cadgpt.apps.base.exceptions import NotFoundError
+from cadgpt.apps.base.exceptions import ConflictError, NotFoundError
 from cadgpt.apps.review.api.v1.filters import CheckRunFilterSet, ReviewFilterSet
 from cadgpt.apps.review.api.v1.serializers import (
     CheckRequestSerializer,
@@ -28,6 +28,7 @@ from cadgpt.apps.review.api.v1.serializers import (
     ReviewCreateSerializer,
     ReviewSerializer,
 )
+from cadgpt.apps.review.choices import CheckRunStatus
 from cadgpt.apps.review.models import CheckRun, Review
 from cadgpt.apps.tenancy.drf.views import TenantScopedViewSet
 from cadgpt.apps.tenancy.permissions import IsTenantMember, IsTenantMemberOrAbove
@@ -144,4 +145,38 @@ class CheckRunViewSet(
             as_attachment=True,
             filename=run.report_file.original_name,
             content_type=run.report_file.content_type or "text/markdown",
+        )
+
+    @extend_schema(request=None, responses={202: CheckRunSummarySerializer})
+    @action(detail=True, methods=["post"], url_path="report-file", throttle_classes=[])
+    def generate_report(self, request: Request, review_uuid: str, uuid: str) -> Response:  # noqa: ARG002
+        """Ask for this run's report file to be produced, or reproduced.
+
+        `docs/tasks/T-0051-a-report-that-failed-to-generate-can-be-recovered.md`: the
+        automatic dispatch from `CheckRunExecutor._succeed` can be lost -- a worker
+        dying between commit and its `on_commit` callback, `.delay()` raising because
+        the broker blipped, or `generate` itself raising anything outside its retried
+        `(ConnectionError, TimeoutError)` -- and until this route existed, nothing could
+        ever ask again. Same URL as the download above, a different verb: `GET` reads
+        the file, `POST` asks for one.
+
+        Dispatches the same idempotent `ReportGenerationService.generate` the automatic
+        path uses, via the `generate_report_file` task -- a run that already has a file
+        is untouched, and a run whose generation is already in flight is not duplicated.
+        Both are `generate`'s own row-locked contract, nothing new here; this route only
+        adds a second way to trigger it.
+        """
+        run = self.get_object()
+        if run.status != CheckRunStatus.SUCCEEDED:
+            raise ConflictError(
+                _("A report can only be generated for a succeeded check run.")
+            )
+
+        from cadgpt.apps.review.tasks import (
+            generate_report_file as generate_report_file_task,
+        )
+
+        generate_report_file_task.delay(str(run.uuid))
+        return Response(
+            CheckRunSummarySerializer(run).data, status=status.HTTP_202_ACCEPTED
         )

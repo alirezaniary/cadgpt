@@ -18,7 +18,7 @@ router.register("reviews", ReviewViewSet, basename="review")
 
 run_list = CheckRunViewSet.as_view({"get": "list"})
 run_detail = CheckRunViewSet.as_view({"get": "retrieve"})
-run_report_file = CheckRunViewSet.as_view({"get": "report_file"})
+run_report_file = CheckRunViewSet.as_view({"get": "report_file", "post": "generate_report"})
 
 urlpatterns = [
     path("", include(router.urls)),

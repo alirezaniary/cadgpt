@@ -449,3 +449,7 @@ msgstr "جزئیات"
 #: cadgpt/apps/review/api/v1/views.py (CheckRunViewSet.report_file, missing file)
 msgid "This run has no generated report file yet."
 msgstr "برای این اجرا هنوز گزارشی تولید نشده است."
+
+#: cadgpt/apps/review/api/v1/views.py (CheckRunViewSet.generate_report_file, not succeeded)
+msgid "A report can only be generated for a succeeded check run."
+msgstr "گزارش فقط برای اجرایی که با موفقیت به پایان رسیده باشد قابل تولید است."

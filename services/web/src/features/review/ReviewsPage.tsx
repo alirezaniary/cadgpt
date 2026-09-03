@@ -22,6 +22,7 @@ import {
   useCheckRun,
   useCreateReview,
   useCreateRuleSet,
+  useGenerateReportFile,
   useReviews,
   useRulePacks,
   useRuleSets,
@@ -42,6 +43,7 @@ export function ReviewsPage() {
   const createRuleSet = useCreateRuleSet(slug);
   const createReview = useCreateReview(slug);
   const startCheck = useStartCheck(slug);
+  const generateReportFile = useGenerateReportFile(slug);
 
   const [openReview, setOpenReview] = useState<string | null>(null);
   const [openRun, setOpenRun] = useState<string | null>(null);
@@ -59,6 +61,13 @@ export function ReviewsPage() {
   const run = useCheckRun(openReview ?? "", openRun);
   const currentReport = run.data?.report ?? null;
   const reportFileUrl = run.data?.report_file_url ?? null;
+  const reportGenerationError = run.data?.report_generation_error ?? "";
+  // A silence with two different causes (T-0051): a succeeded run can be waiting for
+  // its report file to catch up, or its generation can have permanently failed. Both
+  // read the same as "no link" from `reportFileUrl` alone, which is exactly what must
+  // not be shown as one blank state.
+  const reportFileMissing =
+    run.data?.status === "succeeded" && !reportFileUrl && !reportGenerationError;
 
   const filteredPacks = useMemo(() => {
     const packs = rulePacks.data?.results ?? [];
@@ -78,6 +87,16 @@ export function ReviewsPage() {
     setError(null);
     try {
       await api.download(url, "report.md");
+    } catch (caught) {
+      report(caught);
+    }
+  }
+
+  async function onGenerateReportFile() {
+    if (!openReview || !openRun) return;
+    setError(null);
+    try {
+      await generateReportFile.mutateAsync({ reviewUuid: openReview, runUuid: openRun });
     } catch (caught) {
       report(caught);
     }
@@ -313,6 +332,32 @@ export function ReviewsPage() {
             onClick={() => void onDownloadReportFile(reportFileUrl)}
           >
             {t("report.downloadFile")}
+          </button>
+        </p>
+      )}
+      {reportFileMissing && (
+        <p className="muted">
+          <span data-testid="report-file-pending">{t("report.notGeneratedYet")}</span>{" "}
+          <button
+            type="button"
+            data-testid="report-file-generate"
+            onClick={() => void onGenerateReportFile()}
+            disabled={generateReportFile.isPending}
+          >
+            {t("report.generate")}
+          </button>
+        </p>
+      )}
+      {reportGenerationError && (
+        <p className="error">
+          <span data-testid="report-file-failed">{t("report.generationFailed")}</span>{" "}
+          <button
+            type="button"
+            data-testid="report-file-generate"
+            onClick={() => void onGenerateReportFile()}
+            disabled={generateReportFile.isPending}
+          >
+            {t("report.generate")}
           </button>
         </p>
       )}

@@ -48,6 +48,9 @@
   "report": {
     "summary": "خلاصه",
     "downloadFile": "دریافت گزارش (Markdown)",
+    "notGeneratedYet": "فایل گزارش هنوز تولید نشده است.",
+    "generationFailed": "فایل گزارش تولید نشد: حجم آن بیش از ظرفیت ذخیره‌سازی بود.",
+    "generate": "تولید گزارش",
     "passed": "قبول",
     "failed": "مردود",
     "indeterminate": "قابل تعیین نبود",

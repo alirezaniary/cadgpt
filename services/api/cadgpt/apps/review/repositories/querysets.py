@@ -59,6 +59,23 @@ class CheckRunQuerySet(TenantScopedQuerySet["CheckRun"]):
         """List views never need the report document, which can be megabytes."""
         return self.defer("report")
 
+    def missing_report(self) -> Self:
+        """Succeeded, but no report file was ever produced -- eligible for recovery.
+
+        Never includes a run whose generation permanently failed
+        (`CheckRun.report_generation_error` set): that raises the same terminal outcome
+        on every retry (`ReportGenerationFailure`), so a blind sweep over this set would
+        just restate the same rejection forever. This is the set that is actually
+        silently stuck -- pre-T-0032 runs, and any run whose `on_commit` dispatch or
+        `.delay()` was lost. See `docs/tasks/
+        T-0051-a-report-that-failed-to-generate-can-be-recovered.md`.
+        """
+        return self.filter(
+            status=CheckRunStatus.SUCCEEDED,
+            report_file_id__isnull=True,
+            report_generation_error="",
+        )
+
     def stalled(self, older_than_seconds: int) -> Self:
         """Started, never finished, and past the point where a live worker would have.
 

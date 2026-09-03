@@ -18,7 +18,12 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from cadgpt.apps.base.models import SoftDeleteModelMixin, UuidBaseModel
-from cadgpt.apps.review.choices import CheckRunFailure, CheckRunStatus, OutcomeStatus
+from cadgpt.apps.review.choices import (
+    CheckRunFailure,
+    CheckRunStatus,
+    OutcomeStatus,
+    ReportGenerationFailure,
+)
 from cadgpt.apps.review.repositories.custom_managers import CheckRunManager, ReviewManager
 from cadgpt.apps.tenancy.models import TenantOwnedModel
 
@@ -159,6 +164,25 @@ class CheckRun(TenantOwnedModel, UuidBaseModel):
         related_name="generated_for_runs",
         verbose_name=_("report file"),
     )
+
+    #: Set only when generation was attempted and failed for a reason a retry will not
+    #: change -- today, only `MediaService`'s size cap rejecting the rendered file
+    #: (`ReportGenerationFailure.TOO_LARGE`). Blank is what distinguishes "not generated
+    #: yet, ask again" from "asked, and it cannot be produced" -- both `CheckRunQuerySet.
+    #: missing_report` and the frontend (`docs/tasks/
+    #: T-0051-a-report-that-failed-to-generate-can-be-recovered.md`) read this rather
+    #: than inferring it from `report_file` being `None` alone, which both states share.
+    #: The run itself is never retro-failed for this: see `docs/decisions.md`.
+    report_generation_error = models.CharField(
+        _("report generation error"),
+        max_length=32,
+        choices=ReportGenerationFailure.choices,
+        blank=True,
+    )
+    #: The raw exception text behind `report_generation_error`, for an operator reading
+    #: logs or the admin -- not translated, not sent to a client, exactly like
+    #: `failure_detail` below.
+    report_generation_detail = models.TextField(_("report generation detail"), blank=True)
 
     failure_reason = models.CharField(
         _("failure reason"), max_length=32, choices=CheckRunFailure.choices, blank=True

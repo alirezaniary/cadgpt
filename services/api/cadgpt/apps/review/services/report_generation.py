@@ -23,6 +23,21 @@ change with it -- it is bytes in storage, exactly like an uploaded model, and no
 re-renders it after the fact. A later regeneration (there is none in this task's scope;
 `report_file_id` being set makes `generate` a no-op) would be the only way to produce a
 file in the new language.
+
+**Recovery (T-0051).** `generate` was, until now, only ever reachable from the one
+`on_commit` dispatch `CheckRunExecutor._succeed` registers -- lose that message (a worker
+dying between commit and the callback, `.delay()` raising because the broker blipped) and
+a succeeded run's report file never arrives, permanently, with nothing that asks again.
+`CheckRunViewSet.generate_report` and `manage.py backfill_report_files` are the two
+new callers this method did not have before; both are just `generate`, unchanged, because
+its row-locked idempotence was already the right contract for "call this again and it is
+safe" -- redelivery, a user's retry, and an operator's backfill are the same shape of
+problem. What is new in the method body itself is `MediaService.store` being allowed to
+fail: a rendered report can exceed `MediaService`'s size cap (plausible for a run with
+thousands of findings), and that is answered by *not* retro-failing the run -- it found
+what it found -- but recording `report_generation_error` so the run stops looking merely
+"not generated yet" and both a user and `CheckRunQuerySet.missing_report` can tell the
+difference.
 """
 
 from __future__ import annotations
@@ -34,11 +49,11 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import transaction
 from django.utils import translation
 
-from cadgpt.apps.base.exceptions import NotFoundError
+from cadgpt.apps.base.exceptions import NotFoundError, ValidationError
 from cadgpt.apps.base.services import BaseService
 from cadgpt.apps.media.choices import MediaKind
 from cadgpt.apps.media.services import MediaService
-from cadgpt.apps.review.choices import CheckRunStatus
+from cadgpt.apps.review.choices import CheckRunStatus, ReportGenerationFailure
 from cadgpt.apps.review.models import CheckRun
 from cadgpt.apps.review.services.presentation import localize_report
 from cadgpt.apps.review.services.report_markdown import render_markdown_report
@@ -86,17 +101,59 @@ class ReportGenerationService(BaseService):
                 assert localized is not None  # report is not None, checked above
                 markdown = render_markdown_report(localized, run.rule_pack_selection)
 
-            upload = SimpleUploadedFile(
-                f"report-{run.uuid}.md",
-                markdown.encode("utf-8"),
-                content_type="text/markdown",
-            )
-            media = MediaService(tenant=run.tenant).store(
-                upload=upload, kind=MediaKind.REPORT
-            )
+                upload = SimpleUploadedFile(
+                    f"report-{run.uuid}.md",
+                    markdown.encode("utf-8"),
+                    content_type="text/markdown",
+                )
+                # Moved inside the tenant-language override with the render itself
+                # (T-0051): the exception text this can raise is now persisted
+                # (`report_generation_detail`) as part of this run's terminal state,
+                # and that state is written once, exactly like the file would have
+                # been -- the same "language decision" above, extended to the failure
+                # case it did not have to consider before.
+                try:
+                    media = MediaService(tenant=run.tenant).store(
+                        upload=upload, kind=MediaKind.REPORT
+                    )
+                except ValidationError as exc:
+                    # A check that genuinely found what it found is not retro-failed
+                    # because its rendering did not fit in storage -- the run stays
+                    # SUCCEEDED. This is the terminal, not-retryable state that tells
+                    # a user (and `CheckRunQuerySet.missing_report`) so, instead of
+                    # leaving the run looking merely "not generated yet" forever.
+                    run.report_generation_error = ReportGenerationFailure.TOO_LARGE
+                    run.report_generation_detail = str(exc.message)[:4000]
+                    run.save(
+                        update_fields=[
+                            "report_generation_error",
+                            "report_generation_detail",
+                            "updated_at",
+                        ]
+                    )
+                    self.log.warning(
+                        "report_generation_failed",
+                        run_id=str(run.uuid),
+                        reason=run.report_generation_error,
+                        detail=run.report_generation_detail[:200],
+                    )
+                    return run
 
             run.report_file = media
-            run.save(update_fields=["report_file", "updated_at"])
+            # Cleared, not merely left alone: a retry that succeeds after an earlier
+            # permanent-looking failure (a code change lowering the rendered size, or an
+            # operator raising the cap) must not leave a stale error sitting beside a
+            # file that now exists.
+            run.report_generation_error = ""
+            run.report_generation_detail = ""
+            run.save(
+                update_fields=[
+                    "report_file",
+                    "report_generation_error",
+                    "report_generation_detail",
+                    "updated_at",
+                ]
+            )
 
         self.log.info(
             "report_file_generated",

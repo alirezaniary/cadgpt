@@ -45,6 +45,24 @@ class CheckRunFailure(models.TextChoices):
     )
 
 
+class ReportGenerationFailure(models.TextChoices):
+    """Why a succeeded run's report file could not be generated at all.
+
+    Distinct from `CheckRunFailure`, which is tied to `CheckRunStatus.FAILED` by the
+    `failed_run_states_a_reason` constraint: the check itself succeeded and its findings
+    are real, only rendering them to a storable file failed. `docs/decisions.md` -- a run
+    that genuinely found what it found is not retro-failed because its report did not
+    fit; it stays `SUCCEEDED`, and a blank `CheckRun.report_generation_error` is what
+    tells `ReportGenerationService.generate` (and the frontend) that a report is merely
+    pending rather than permanently unobtainable.
+    """
+
+    #: `MediaService._validate`'s size cap (`media/constants.py: MAX_BYTES`) rejecting the
+    #: rendered file -- plausible for a run with thousands of findings. See
+    #: `docs/tasks/T-0051-a-report-that-failed-to-generate-can-be-recovered.md`.
+    TOO_LARGE = "too_large", _("The rendered report is larger than this system can store")
+
+
 class OutcomeStatus(models.TextChoices):
     """The three-valued result, mirrored from the engine for filtering and for the schema.
 

@@ -73,9 +73,10 @@ named the storage key instead of the file the architect uploaded.
 **All three clauses of the MVP sentence now exist in code as of 2026-09-03** — upload (T-0024 and
 before), selection (T-0031), and the report file (T-0032). **Phase 3 is deliberately not marked
 done.** T-0033 remains unbuilt, and two findings from T-0032's review bear directly on whether the
-sentence is true in practice rather than in principle: a report can silently never be generated with
-no way to ask for it again (T-0051), and the download button a real user would press has never been
-executed by any test (T-0053). The clauses are implemented; that they hold for a real user is not
+sentence is true in practice rather than in principle: a report could silently never be generated with
+no way to ask for it again — **closed by T-0051** — and the download button a real user would press
+has never been executed by any test (T-0053). T-0051's review then found the same lost-dispatch
+hazard still open upstream, where it strands the check itself (T-0056). The clauses are implemented; that they hold for a real user is not
 yet established, and this plan does not record it as though it were.
 
 **Scope settled 2026-09-02 by the product owner.** Four direction questions were answered
@@ -429,6 +430,44 @@ reading: I7 is genuinely inherited from `disclosure.py` rather than retyped, `N 
 `establishedNothing` defect are both unreachable, tenancy holds with no serializer leaking a storage
 URL, and the language decision does what it says.
 
+**T-0051 — a report that was never generated can be recovered. Done 2026-09-03.** T-0032 shipped a
+generator dispatched on commit from `_succeed`; nothing recovered a dispatch that was lost. A run
+could report `succeeded` and never produce its file, permanently — `execute()` returns early for any
+terminal run, `reap_stalled` only touches `RUNNING`, and every run predating T-0032 was in exactly
+that state. Now: an authenticated `POST` on the same URL as the download, a `backfill_report_files`
+command, and a `missing_report` queryset. The backfill recovered 70 real rows in the dev database.
+
+**The deliberate decision, in `docs/decisions.md`:** a rendered report that exceeds the storage cap
+does **not** retro-fail the run. The check ran to completion and its counts are real; failing it
+because the Markdown did not fit would tell the user their check did not happen. The failure is
+recorded on the run instead, so "generation failed terminally" is distinguishable from "not
+generated yet" — and the cost is recorded too, that such a run is then excluded from `missing_report`
+until something deliberately sweeps it (T-0059).
+
+**Reviewed.** The core held under enumeration rather than sampling: every way generation can fail —
+`.delay()` raising, the worker lost between COMMIT and callback, `generate` raising outside the
+retried exceptions, storage errors, a crash after the Media row is written — leaves a state
+`missing_report` finds. Concurrency was proven on **real Postgres**, three concurrent `generate()`
+processes yielding one file, because the sqlite test backend ignores the row lock entirely and any
+sqlite-based race proof would have been worthless. No combination of file/error ever advertises a
+report that does not exist.
+
+Two fix-now findings. Three shipped docstrings cited `docs/decisions.md` for a decision **the file
+did not contain** — the reasoning lived only in the task file, which is not the decision log; now
+appended. And the new Playwright spec **passed with the recovery button inert**: its route glob
+missed the POST entirely, and because the page polls every 2s while the report is pending, the
+second body arrived whether or not the button did anything. Removing the `post` route from the
+router would have left it green. This was the fourth consecutive review to find evidence that could
+not have failed, and the first where the evidence claimed a mutation proof by name. Rewritten to
+gate on a real 2xx from a disjoint interception, and killed and revived by the reviewer's own
+mutation. 233 tests, 5 contracts kept.
+
+**The review's most consequential finding is not in this task.** The identical lost-dispatch hazard
+is still open on `request_check`'s dispatch of `execute_check_run`, and there it is worse: the run
+sits `PENDING` forever, nothing reaps PENDING by design, this task's recovery POST returns 409 for a
+non-succeeded run, and `MAX_IN_FLIGHT_RUNS = 1` means the dead row blocks the review from ever being
+checked again. Executed against the live stack. **T-0056.**
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -493,6 +532,13 @@ the first of them:
 - **T-0053** — the download button has never executed, and two defects are visible in it.
 - **T-0054** — four loose ends in the generation path.
 - **T-0055** — the report file must stand on its own once it leaves the building.
+
+- **T-0056** — a lost check dispatch kills the review, not just the file. **Highest of the queue.**
+- **T-0057** — the backfill must survive one bad run, and count what it did.
+- **T-0058** — the terminal-failure state offers a button that cannot change anything.
+- **T-0059** — a run stranded by the size cap has no way back once the cap is raised.
+- **T-0060** — queuing work needs a role floor; a viewer can flood the check queue.
+- **T-0061** — four loose ends in the report-generation failure record.
 
 ## Phase 4 — Toward the PRD
 

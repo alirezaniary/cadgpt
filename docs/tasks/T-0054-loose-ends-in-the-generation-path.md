@@ -8,7 +8,8 @@
 All four found by the T-0032 review, all low severity, none worth a task of its own — but they are
 in the path that produces the product's deliverable and they are cheap to close together.
 
-1. **An orphaned blob on rollback.** `report_generation.py:94-99` — `MediaService.store` writes
+1. **An orphaned blob on rollback.** *(T-0051's review found this independently — it is item 4
+   of T-0061. Close both together; they are the same lines.)* `report_generation.py:94-99` — `MediaService.store` writes
    bytes to storage *inside* the atomic block. A crash between the storage write and the commit
    rolls back the `Media` row and leaves an unreferenced file under `tenants/{uuid}/report/`; the
    redelivery then writes a second one. No cross-tenant exposure, just accumulating garbage that
