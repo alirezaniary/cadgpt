@@ -420,6 +420,7 @@ def main(
             print(
                 f"jobs {summary['jobs_ingested']}/{summary['jobs']} ingested; bundles "
                 f"{summary['bundles_accepted']} accepted, "
+                f"{summary['bundles_needs_review']} need review, "
                 f"{summary['bundles_needs_validation']} need validation, "
                 f"{summary['bundles_pending']} pending"
             )
