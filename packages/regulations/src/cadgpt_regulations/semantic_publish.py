@@ -123,6 +123,7 @@ def build_semantic_publication(
         artifacts_by_key=artifacts_by_key,
     )
     deferred.extend(structural_deferred)
+    rules, duplicate_rules_collapsed = _deduplicate_rules(rules)
 
     payloads = [
         _Payload("formats.json", canonical_bytes(_formats_payload()), 1),
@@ -176,6 +177,7 @@ def build_semantic_publication(
             "bundles_pending": status_summary["bundles_pending"],
             "bundles_needs_validation": status_summary["bundles_needs_validation"],
             "rules": len(rules),
+            "duplicate_rules_collapsed": duplicate_rules_collapsed,
             "formulas": len(formulas),
             "tables": len(tables),
             "units": len(units),
@@ -255,6 +257,7 @@ def validate_semantic_publication(manifest: JsonObject, *, root: Path) -> None:
             if len(set(record_ids)) != len(record_ids):
                 raise SemanticPublishError(f"duplicate record identity in {path.name}")
             if path.name == "rules.jsonl":
+                semantic_identities: set[str] = set()
                 for record in records:
                     candidate = record.get("candidate")
                     if not isinstance(candidate, dict):
@@ -266,6 +269,10 @@ def validate_semantic_publication(manifest: JsonObject, *, root: Path) -> None:
                         raise SemanticPublishError(
                             "low-quality candidate leaked into rules"
                         )
+                    identity = sha256_json(_rule_semantic_identity(record))
+                    if identity in semantic_identities:
+                        raise SemanticPublishError("duplicate semantic rule was published")
+                    semantic_identities.add(identity)
             if path.name == "deferred.jsonl" and any(
                 not isinstance(record.get("reason_code"), str) for record in records
             ):
@@ -444,6 +451,10 @@ def _formats_payload() -> JsonObject:
         },
         "rules": {
             "semantic_model": "subject-predicate-modality with explicit qualifiers",
+            "deduplication": (
+                "Equivalent source-anchored meanings from overlapping bundles are "
+                "collapsed while all validator evidence is retained."
+            ),
             "numeric_fields": ["comparator", "value", "printed_unit"],
             "provenance_fields": [
                 "catalog_key",
@@ -756,8 +767,63 @@ def _candidate_record(
         "record_id": f"sha256:{sha256_json(identity)}",
         "provenance": provenance,
         "validation_decision": validation_decision,
+        "corroborating_validations": [],
         "candidate": candidate,
     }
+
+
+def _deduplicate_rules(rules: list[JsonObject]) -> tuple[list[JsonObject], int]:
+    unique: list[JsonObject] = []
+    by_identity: dict[str, JsonObject] = {}
+    collapsed = 0
+    for rule in rules:
+        identity = sha256_json(_rule_semantic_identity(rule))
+        existing = by_identity.get(identity)
+        if existing is None:
+            by_identity[identity] = rule
+            unique.append(rule)
+            continue
+        corroborating = cast(list[JsonObject], existing["corroborating_validations"])
+        corroborating.append(
+            {
+                "record_id": rule["record_id"],
+                "provenance": rule["provenance"],
+                "validation_decision": rule["validation_decision"],
+                "candidate_id": cast(JsonObject, rule["candidate"])["candidate_id"],
+                "predicate": cast(JsonObject, rule["candidate"])["predicate"],
+            }
+        )
+        collapsed += 1
+    return unique, collapsed
+
+
+def _rule_semantic_identity(rule: JsonObject) -> JsonObject:
+    candidate = cast(JsonObject, rule["candidate"])
+    provenance = cast(JsonObject, rule["provenance"])
+    return {
+        "catalog_key": provenance["catalog_key"],
+        "source_span_ids": sorted(cast(list[str], candidate["source_span_ids"])),
+        "qualifier_span_ids": sorted(
+            cast(list[str], candidate.get("qualifier_span_ids", []))
+        ),
+        "kind": candidate.get("kind"),
+        "subject": _normalized_semantic_text(candidate.get("subject")),
+        "modality": candidate.get("modality"),
+        "comparator": candidate.get("comparator"),
+        "value": candidate.get("value"),
+        "printed_unit": _normalized_semantic_text(candidate.get("printed_unit")),
+        "conditions": candidate.get("conditions"),
+        "exceptions": candidate.get("exceptions"),
+        "references": candidate.get("references"),
+        "formula_or_table_notes": candidate.get("formula_or_table_notes"),
+        "english_gloss": _normalized_semantic_text(candidate.get("english_gloss")),
+    }
+
+
+def _normalized_semantic_text(value: object) -> object:
+    if not isinstance(value, str):
+        return value
+    return " ".join(value.casefold().split())
 
 
 def _audit_record(

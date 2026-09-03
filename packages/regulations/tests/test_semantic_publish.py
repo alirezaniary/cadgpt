@@ -13,6 +13,7 @@ from cadgpt_regulations.extraction_ingest import (
 from cadgpt_regulations.extraction_jobs import build_extraction_jobs
 from cadgpt_regulations.semantic_publish import (
     SemanticPublishError,
+    _deduplicate_rules,
     _internet_verification,
     build_semantic_publication,
     validate_semantic_publication,
@@ -312,6 +313,7 @@ def test_publication_separates_engine_rules_from_deferred_data(tmp_path: Path) -
 
     assert first.manifest["complete"] is True
     assert first.manifest["summary"]["rules"] == 1
+    assert first.manifest["summary"]["duplicate_rules_collapsed"] == 0
     assert first.manifest["summary"]["documents_internet_verified"] == 0
     assert first.manifest["summary"]["formulas"] == 1
     assert first.manifest["summary"]["tables"] == 1
@@ -385,3 +387,57 @@ def test_internet_verification_preserves_official_transport_evidence() -> None:
     assert evidence["http_status"] == 200
     assert evidence["sha256"] == artifact["expected_sha256"]
     assert evidence["pdf_page_count"] == artifact["expected_pdf_pages"]
+
+
+def test_overlapping_bundle_rules_collapse_and_keep_validator_evidence() -> None:
+    source_span = "sha256:" + "a" * 64 + ":page:000403:ocr:line:000001"
+    candidate = {
+        "candidate_id": "candidate-1",
+        "kind": "requirement",
+        "subject": "Wall spacing",
+        "predicate": "limits spacing to 250 mm",
+        "modality": "must",
+        "comparator": "<=",
+        "value": 250,
+        "printed_unit": "mm",
+        "conditions": [],
+        "exceptions": [],
+        "references": [],
+        "formula_or_table_notes": [],
+        "english_gloss": "Wall spacing must not exceed 250 mm.",
+        "uncertainty_codes": [],
+        "source_span_ids": [source_span],
+        "qualifier_span_ids": [],
+    }
+    first = {
+        "record_id": "rule-1",
+        "provenance": {"catalog_key": "volume-09", "bundle_id": "bundle-1"},
+        "validation_decision": {"merge_id": "merge-1"},
+        "corroborating_validations": [],
+        "candidate": candidate,
+    }
+    second = {
+        **first,
+        "record_id": "rule-2",
+        "provenance": {"catalog_key": "volume-09", "bundle_id": "bundle-2"},
+        "validation_decision": {"merge_id": "merge-2"},
+        "candidate": {
+            **candidate,
+            "candidate_id": "candidate-2",
+            "predicate": "requires wall spacing of no more than 250 mm",
+        },
+    }
+
+    rules, collapsed = _deduplicate_rules([first, second])
+
+    assert collapsed == 1
+    assert len(rules) == 1
+    assert rules[0]["corroborating_validations"] == [
+        {
+            "record_id": "rule-2",
+            "provenance": second["provenance"],
+            "validation_decision": second["validation_decision"],
+            "candidate_id": "candidate-2",
+            "predicate": "requires wall spacing of no more than 250 mm",
+        }
+    ]
