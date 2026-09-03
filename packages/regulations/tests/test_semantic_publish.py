@@ -462,3 +462,7 @@ def test_quality_gate_rejects_placeholder_semantics_in_qualifiers() -> None:
     }
 
     assert "GENERIC_PAGE_SUMMARY" in _candidate_quality_codes(candidate)
+
+    candidate["conditions"] = []
+    candidate["predicate"] = "defines the engineering relationship for bolted joints"
+    assert "GENERIC_PAGE_SUMMARY" in _candidate_quality_codes(candidate)

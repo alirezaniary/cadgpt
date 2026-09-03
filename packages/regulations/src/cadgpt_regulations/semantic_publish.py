@@ -962,6 +962,14 @@ def _candidate_quality_codes(candidate: JsonObject) -> list[str]:
         "specifies the stated resistance or buckling calculation",
         "specifies the stated engineering requirement",
         "lists the applicable section, grade, dimension, or design-property dependencies",
+        "defines the equation used for",
+        "shows the bending moment geometry or force arrangement",
+        "must comply with the composite-member design rule",
+        "must meet the required diameter limit",
+        "records the tabulated values for",
+        "must provide the required resistance",
+        "defines the scope of",
+        "defines the engineering relationship for",
     )
     if any(fragment in semantic_text for fragment in generic_fragments):
         codes.append("GENERIC_PAGE_SUMMARY")
