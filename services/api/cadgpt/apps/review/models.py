@@ -110,6 +110,15 @@ class CheckRun(TenantOwnedModel, UuidBaseModel):
     started_at = models.DateTimeField(_("started at"), null=True, blank=True)
     finished_at = models.DateTimeField(_("finished at"), null=True, blank=True)
 
+    #: How many times `CheckRunExecutor._claim` has claimed this run -- incremented in the
+    #: same row-locked write that flips the run to `RUNNING`, so it counts every attempt
+    #: that actually started, including one a worker died on before it could finish. Once
+    #: this reaches `settings.CHECK_RUN_MAX_CLAIMS`, `_claim` ends the run as
+    #: `CheckRunFailure.RESOURCE_EXHAUSTED` instead of claiming it again (T-0033) --
+    #: without this, `acks_late` redelivering a run whose worker was OOM-killed cycles it
+    #: through the shared `checks` queue forever.
+    claim_count = models.PositiveIntegerField(_("claim count"), default=0)
+
     # What produced this result. An old run stays explainable only if it says so itself.
     engine_version = models.CharField(_("engine version"), max_length=64, blank=True)
     model_checksum = models.CharField(_("model SHA-256"), max_length=64, blank=True)

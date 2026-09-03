@@ -20,6 +20,7 @@
     "checking": "Checking…",
     "empty": "No reviews yet. Upload a model and a rule set to start.",
     "neverRun": "Not checked yet",
+    "modelSizeLimit": "Up to {{limit}} per model.",
     "catalogue": {
       "title": "Select rule packs from the catalogue to check against",
       "jurisdiction": "Jurisdiction",

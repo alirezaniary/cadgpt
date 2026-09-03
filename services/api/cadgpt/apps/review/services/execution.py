@@ -29,6 +29,7 @@ from cadgpt_engine import InvalidIdsError, InvalidIfcError, Report, Status, run_
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from cadgpt.apps.base.exceptions import NotFoundError
 from cadgpt.apps.base.services import BaseService
@@ -174,6 +175,17 @@ class CheckRunExecutor(BaseService):
         )
 
     def _claim(self, run_uuid: uuid_lib.UUID | str) -> CheckRun:
+        """Claim `run_uuid` for this worker, or end it if it has been claimed too often.
+
+        T-0033's one thing to get right: `claim_count` is incremented in the *same*
+        row-locked write that flips the run to `RUNNING`, not after the expensive work
+        begins. A worker killed between that write's commit and the check finishing --
+        the OOM case this bound exists for -- leaves `claim_count` already persisted, so
+        the next redelivery sees an accurate count. A worker killed *before* the write
+        commits leaves nothing persisted at all, which is correct: no attempt was made
+        that a count needs to remember. There is no window in which an attempt happened
+        but the count does not know about it.
+        """
         with transaction.atomic():
             run = (
                 # `of=("self",)` restricts the row lock to `check_run` itself. Postgres
@@ -194,9 +206,33 @@ class CheckRunExecutor(BaseService):
             if run.is_terminal:
                 return cast("CheckRun", run)
 
+            log = self.log.bind(run_id=str(run.uuid), tenant_id=str(run.tenant.uuid))
+
+            if run.claim_count >= settings.CHECK_RUN_MAX_CLAIMS:
+                log.warning(
+                    "check_run_claim_limit_exceeded",
+                    claim_count=run.claim_count,
+                    max_claims=settings.CHECK_RUN_MAX_CLAIMS,
+                )
+                # A user-facing sentence, not a raw exception fragment like the other
+                # `_fail` call sites below -- CLAUDE.md: every user-facing string goes
+                # through gettext. It states the fact this bound observed (claimed
+                # `claim_count` times, never finished) without asserting *why* a worker
+                # kept dying: memory exhaustion is the case this bound was built to
+                # survive, but `_claim` cannot see the OS's kill reason, and stating a
+                # cause it did not establish would be exactly the "never assert what was
+                # not established" invariant this product otherwise holds to.
+                detail = _(
+                    "This run was claimed %(count)s times without finishing and has "
+                    "been stopped rather than tried again."
+                ) % {"count": run.claim_count}
+                return self._fail(run, CheckRunFailure.RESOURCE_EXHAUSTED, detail, log)
+
             run.status = CheckRunStatus.RUNNING
             run.started_at = timezone.now()
-            run.save(update_fields=["status", "started_at", "updated_at"])
+            run.claim_count = run.claim_count + 1
+            run.save(update_fields=["status", "started_at", "claim_count", "updated_at"])
+            log.info("check_run_claimed", claim_count=run.claim_count)
         return cast("CheckRun", run)
 
     def _succeed(self, run: CheckRun, report: Report, log: object) -> CheckRun:

@@ -23,3 +23,14 @@ STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
 }
+
+# The production "auth" rate (10/min, base.py) is tuned against credential-stuffing, not
+# against a Playwright suite that legitimately registers a fresh account per spec
+# (`services/web/e2e/fixtures.ts`) plus the browser's own sign-in click on top of that --
+# three "auth"-scoped requests per test, times however many spec files `make e2e` runs.
+# Raised here only, in local/dev, where the accounts are throwaway harness fixtures, not
+# a surface anyone attacks.
+REST_FRAMEWORK = {
+    **REST_FRAMEWORK,
+    "DEFAULT_THROTTLE_RATES": {"auth": "100/min", "upload": "60/hour", "check": "120/hour"},
+}

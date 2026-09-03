@@ -65,6 +65,7 @@ ignore = [
 "**/tests/**" = ["S105", "S106", "ARG001", "ARG002"]
 "**/conftest.py" = ["S105", "S106", "ARG001", "ARG002"]
 "packages/engine/src/cadgpt_engine/cli.py" = ["T20"]
+"scripts/*.py" = ["T20"]
 "packages/engine/tests/fixtures/make_fixtures.py" = ["T20"]
 "services/api/cadgpt/config/settings/*" = ["F403", "F405"]
 

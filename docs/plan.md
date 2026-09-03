@@ -468,6 +468,39 @@ sits `PENDING` forever, nothing reaps PENDING by design, this task's recovery PO
 non-succeeded run, and `MAX_IN_FLIGHT_RUNS = 1` means the dead row blocks the review from ever being
 checked again. Executed against the live stack. **T-0056.**
 
+**T-0033 — the measured upload ceiling, and the poison message. Done 2026-09-03.**
+`MAX_UPLOAD_BYTES` was `512 * 1024 * 1024` — a round number nobody derived. It is now
+`126 * 1024 * 1024`, and the derivation is written beside the constant with its denominator: the
+worker's now-*declared* `mem_limit: 4g` at `--concurrency 2`, less the Celery parent, less an
+allocator/GC factor, against measured peak RSS. The number moves if the concurrency or the container
+limit moves, and says so.
+
+**The half that mattered more was the queue.** `acks_late` plus `_claim`'s deliberate re-claim of a
+`RUNNING` run — correct for a worker killed by a deploy — made an OOM-killed model a poison message:
+redelivered, claimed, killed, forever, on a queue shared by every tenant. `CheckRun.claim_count`
+bounds it, incremented **inside the same row-locked write that flips the run to `RUNNING`**, which is
+the one placement an OOM kill between claiming and finishing cannot lose. The run ends as
+`RESOURCE_EXHAUSTED` — a failed run with no report and no counts, never an `INDETERMINATE` result and
+never a finding about the model.
+
+**Reviewed, and the review's headline was that the task had reintroduced what it existed to
+eliminate.** The derivation reached 126MB and the first round rounded it to 100MB "for margin and
+memorability" — choosing a round number, which the standing decision forbids by name, discarding
+21MB of measured headroom. Corrected. The decision's other half — *high enough to serve 95% of
+users* — turned out to be entirely unaddressed behind a `NOT DONE — Nothing`, resting on one 47MB
+sample; it cannot be established without a model corpus we do not have, and it is now recorded as
+explicit **NOT DONE** rather than silently claimed.
+
+Two evidence items could not have failed. A pasted generation command omitted the script's required
+`--output` and would have exited at argparse; and the poison-message proof queued its second run
+**25 seconds after the cycle had already stopped**, which demonstrates the worker still functions,
+not that the queue was ever unblocked. Redone at `--concurrency 2` with both runs 0.5s apart: the
+small run is claimed on a second fork and succeeds in 0.43s while the poison run's first attempt is
+still alive. Finally, the one user-facing string the task added was a raw English f-string that
+`ReviewsPage` renders verbatim, so a Persian tenant would have read English internals while the
+Persian translation added in the same diff sat unreachable — now through `gettext`, with the
+unproven "most likely the memory limit" claim dropped. 235 tests, 5 contracts kept.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -539,6 +572,13 @@ the first of them:
 - **T-0059** — a run stranded by the size cap has no way back once the cap is raised.
 - **T-0060** — queuing work needs a role floor; a viewer can flood the check queue.
 - **T-0061** — four loose ends in the report-generation failure record.
+
+- **T-0062** — an ordinary deploy burns a run's claims, and there are only three. **The important
+  one of this group:** refusing a healthy check is worse than the failure the bound prevents.
+- **T-0063** — the stated limit must be the enforced limit.
+- **T-0064** — the old 512MB ceiling is still live at nginx, and nothing guards client-side.
+- **T-0065** — the memory model is a two-point line and its one corroborating point disagrees.
+- **T-0066** — `scripts/` is outside the type gate.
 
 ## Phase 4 — Toward the PRD
 

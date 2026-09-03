@@ -10,6 +10,7 @@ from typing import Any
 
 from django.conf import settings
 from django.core.files.uploadedfile import UploadedFile
+from django.template.defaultfilters import filesizeformat
 from django.utils.translation import gettext_lazy as _
 
 from cadgpt.apps.account.models import User
@@ -76,8 +77,12 @@ class MediaService(BaseTenantAwareService):
 
         limit = MAX_BYTES.get(kind, settings.MAX_UPLOAD_BYTES)
         if upload.size is None or upload.size > limit:
+            # In human units: "larger than the 536870912 byte limit" is a number no
+            # architect can act on (T-0033). `filesizeformat` is itself translated, so
+            # "MB"/"GB" read correctly in either locale without a second lookup table.
             raise ValidationError(
-                _("This file is larger than the %(limit)d byte limit.") % {"limit": limit},
+                _("This file is larger than the %(limit)s limit.")
+                % {"limit": filesizeformat(limit)},
                 details={"file": ["too large"]},
             )
         if upload.size == 0:

@@ -705,3 +705,116 @@ like any other regenerated field in this pipeline.
 
 **Reopens if:** a real report exceeding the cap is observed in production and thousands of
 findings need to become downloadable rather than merely visible in the API's own JSON.
+
+
+## The upload ceiling is derived from measured peak RSS, not a round number
+
+*2026-09-03, decided while building T-0033; corrected the same day after review found the
+derived figure was rounded down for "memorability" and the plan's demand-side clause was
+left silently unaddressed.*
+
+`MAX_UPLOAD_BYTES` was `512 * 1024 * 1024` with nothing behind it. `scripts/
+measure_check_memory.py` -- committed, repeatable -- ran a real `cadgpt_engine.run_check` (the
+`door_width.ids` fixture already used against Schependomlaan in Phase 0) over three real model
+sizes inside the `cadgpt-api:latest` image, each in its own subprocess, and read that
+subprocess's own peak RSS from `resource.getrusage(RUSAGE_SELF).ru_maxrss` right after it
+returned -- a kernel-tracked high-water mark, not a poll that can miss a spike between samples:
+
+| model | size | peak RSS |
+| --- | --- | --- |
+| Duplex_A_20110907.ifc | 2.3 MB | 176 MB |
+| Schependomlaan.ifc | 47.0 MB | 644 MB |
+| Schependomlaan_large.ifc (`scripts/generate_large_ifc_model.py`, 2 duplication passes, 4x the contained elements) | 94.4 MB | 1205 MB |
+
+The third model is not a real building: no real-world sample larger than Schependomlaan was
+available to fetch, so `generate_large_ifc_model.py` deep-copies Schependomlaan's own contained
+elements (`ifcopenshell.util.element.copy_deep`, which regenerates every `GlobalId`) to grow a
+structurally real IFC file past 47MB honestly, without inventing what the *checking engine*
+reports on -- this is a test fixture for a memory measurement, not a finding about a model. Each
+`--passes` compounds (a pass re-scans what the previous pass already added), so `--passes 2`
+reaches 4x the contained elements, not 3x -- the file is named `..._large`, never "x3".
+
+The two larger points fit `peak_RSS_MB ≈ 88.6 + 11.82 × size_MB` (the small Duplex file's ratio
+is dominated by fixed interpreter/library baseline, not representative of scaling). The worker
+(`deploy/compose.yaml`) runs `--concurrency 2` -- two checks can run at once, sharing one
+container -- so the container was given a declared `mem_limit: 4g` (previously unbounded, which
+left "peak worker memory" with no denominator) and the ceiling was derived against that specific
+number: reserve ~150MB for the Celery parent, split the remaining ~3946MB across two concurrent
+checks (~1973MB each), keep to 80% of that for allocator slack and rule sets that walk more of a
+model than `door_width.ids` does (~1578MB usable), and solve the fit for that budget: **126MB**.
+
+That is the constant. The first version of this decision rounded 126MB down to 100MB "for
+margin and memorability" -- the plan's own words for this constant are *"derived from peak
+worker memory rather than chosen as a round number,"* and discarding ~26MB of measured
+headroom to land on a rounder figure is choosing a round number by another name. Fixed:
+`MAX_UPLOAD_BYTES = 126 * 1024 * 1024`, the fit's output rounded only to whole-megabyte
+precision (no more than the input measurements carry), with no further reduction. The 80%
+factor above is the only margin applied, and it is stated and reasoned, not chosen for
+appearance.
+
+**What this still does not establish, and is recorded here as open rather than silently
+dropped:** the plan's clause has two halves -- *"High enough to serve 95% of users, **and**
+derived from peak worker memory."* This measurement is entirely supply-side. The only
+demand-side datum anywhere in this repository is the single 47MB Schependomlaan sample,
+which is not a distribution and cannot support a percentile claim. `docs/tasks/
+T-0033-measured-upload-ceiling.md`'s Evidence carries this explicitly as **NOT DONE**: it
+would take either real tenant upload telemetry or a broader model-size corpus to settle.
+
+**Reopens if:** `--concurrency`, the worker's `mem_limit`, or the 80% safety factor changes --
+the number is derived from all three and is not independent of them. Also reopens if a rule set
+materially different in shape from `door_width.ids` is found to walk enough more of a model to
+invalidate the linear fit at scale. Also reopens when the 95%-of-users clause is actually
+addressed -- a future task with real usage data, not this one.
+
+## A run claimed too many times ends named, instead of cycling forever
+
+*2026-09-03, decided while building T-0033; corrected the same day after review found the
+"second run" evidence had been queued into an empty queue 25 seconds after the poison run
+had already stopped, which proves nothing about starvation, and that the new failure
+sentence bypassed `gettext`.*
+
+`execute_check_run` is `acks_late` and `CheckRunExecutor._claim` deliberately re-claims a
+`RUNNING` run, because the only way a redelivery sees one is that the worker holding it died.
+Correct for a worker killed by a deploy; catastrophic for one killed by the OOM killer -- the
+model that exhausted memory is redelivered, claimed again, and exhausts memory again, forever, on
+the `checks` queue every tenant shares.
+
+The bound added is `CheckRun.claim_count`, incremented in the *same* row-locked write that flips
+a run to `RUNNING` inside `_claim` -- not after the expensive work begins. That placement is the
+whole design: a worker killed after that write commits (including mid-check, the OOM case this
+exists for) leaves an accurate count behind; a worker killed *before* it commits leaves nothing
+persisted, which is correct, because no attempt actually happened yet for a count to owe. There
+is no window in which a real attempt is made and the count does not know about it. Once
+`claim_count` reaches `settings.CHECK_RUN_MAX_CLAIMS` (default 3), `_claim` ends the run as
+`CheckRunFailure.RESOURCE_EXHAUSTED` instead of claiming it again -- a reason distinct from
+`STALLED` (a run that stopped responding) because this one was ended on purpose for costing too
+much, not left to time out. The detail sentence shown for it is built with `gettext` and states
+only the observed fact (claimed N times, never finished) -- it does not assert the OOM killer as
+the cause, because `_claim` has no way to see the kill reason and asserting one it did not
+establish is exactly what this product's own "never assert what was not established" discipline
+forbids.
+
+Concurrency safety comes from the row lock already in `_claim` (`select_for_update`), unchanged:
+only one process can ever hold the lock at claim time, so `claim_count` counts real sequential
+attempts, never double-counts a moment of contention, and the bound cannot be tripped by two
+workers legitimately racing to claim the same delivery.
+
+Proven with a real kill, not an argument, and proven against a live queue, not an empty one:
+the worker's `mem_limit` was lowered (`WORKER_MEM_LIMIT` override in `deploy/compose.yaml`)
+below what checking Schependomlaan needs, a poison run and an unrelated small run were queued
+~0.5s apart at `--concurrency 2`, and the worker log shows the small run claimed on a different
+fork and completing in 0.43s while the poison run's first attempt was still alive -- five
+seconds before its first `SIGKILL`, nineteen seconds before the poison run's own terminal
+`FAILED` / `RESOURCE_EXHAUSTED`. The OOM killer ended the worker process mid-check for real,
+three redeliveries were observed in the worker log with `claim_count` climbing 1 → 2 → 3, the
+poison run reached `FAILED` / `RESOURCE_EXHAUSTED` on its own rather than cycling past the
+bound, and the unrelated run was never made to wait for it. That is the point of this task: one
+tenant's oversized model does not starve another tenant's queue, demonstrated by a run that
+completes *while* the poison run is still cycling, not one submitted after the cycle already
+ended.
+
+**Reopens if:** Celery's redelivery semantics change such that a live worker's message can be
+redelivered to a second live worker under normal operation (today this would only happen from an
+overly short broker visibility timeout relative to real check duration, which `CELERY_BROKER_
+TRANSPORT_OPTIONS`'s `visibility_timeout` is set to avoid) -- `claim_count` would then bound
+concurrent contention together with genuine retries, which it is not designed to distinguish.

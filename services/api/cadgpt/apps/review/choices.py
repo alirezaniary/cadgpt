@@ -43,6 +43,15 @@ class CheckRunFailure(models.TextChoices):
         "rule_pack_modified",
         _("A cited rule pack no longer matches the bytes this run recorded"),
     )
+    #: Ended on purpose after `CHECK_RUN_MAX_CLAIMS` (T-0033) -- distinct from `STALLED`,
+    #: which is a run whose worker went silent. This is a run whose worker kept dying
+    #: partway through it, most likely to the OOM killer, and was stopped from cycling
+    #: through the queue forever rather than left to keep costing every other tenant's
+    #: turn. See `CheckRunExecutor._claim`.
+    RESOURCE_EXHAUSTED = (
+        "resource_exhausted",
+        _("The check repeatedly failed to complete and was stopped rather than retried"),
+    )
 
 
 class ReportGenerationFailure(models.TextChoices):

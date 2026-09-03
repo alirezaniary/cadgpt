@@ -31,6 +31,7 @@ import {
 import { useSession } from "@/app/session-context";
 import { ReportView } from "@/components/ReportView";
 import { StatusPill } from "@/components/StatusPill";
+import { formatBytes, MAX_MODEL_UPLOAD_BYTES } from "@/lib/limits";
 
 export function ReviewsPage() {
   const { t } = useTranslation();
@@ -196,6 +197,9 @@ export function ReviewsPage() {
             ))}
           </select>
           <input name="file" type="file" accept=".ifc,.ifcxml,.ifczip" required />
+          <span className="muted" data-testid="model-size-limit">
+            {t("review.modelSizeLimit", { limit: formatBytes(MAX_MODEL_UPLOAD_BYTES) })}
+          </span>
           <button type="submit" disabled={createReview.isPending}>
             {t("review.create")}
           </button>

@@ -79,6 +79,12 @@ services:
     command: >
       celery -A cadgpt.config.celery worker
       --queues checks,default --concurrency 2 --loglevel info
+    # T-0033: "peak worker memory" has no denominator without this. `MAX_UPLOAD_BYTES`
+    # (services/api/cadgpt/config/settings/base.py) is derived from measured peak RSS
+    # against exactly this limit, at this concurrency -- change one, re-derive the other.
+    # Overridable so the same compose file can reproduce the poison-message evidence in
+    # T-0033's task file with a deliberately smaller limit, e.g. `WORKER_MEM_LIMIT=400m`.
+    mem_limit: ${WORKER_MEM_LIMIT:-4g}
     volumes:
       - media_data:/app/services/api/mediafiles
     depends_on:

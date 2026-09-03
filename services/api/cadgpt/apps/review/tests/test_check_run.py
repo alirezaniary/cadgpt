@@ -189,6 +189,50 @@ def test_a_stalled_run_is_failed_rather_than_left_looking_busy(
     assert run.failure_reason == CheckRunFailure.STALLED
 
 
+def test_a_run_below_the_claim_limit_is_reclaimed_and_the_count_survives_a_dead_worker(
+    tenant: Tenant, review: Review, owner: Any, settings: Any
+) -> None:
+    """Redelivery after a dead worker re-claims the run and counts the attempt.
+
+    Simulates exactly the state `acks_late` redelivery finds: the previous worker's
+    `_claim` committed -- the run is RUNNING and `claim_count` reflects that one claim --
+    but it never reached a terminal state, because it died doing the expensive work in
+    between. `_claim` must still be willing to reclaim it (T-0033 explicitly keeps that
+    behaviour) and must count this as a second attempt.
+    """
+    settings.CHECK_RUN_MAX_CLAIMS = 3
+    run = CheckRun.objects.create_run(review=review, requested_by=owner)
+    CheckRun.objects.filter(pk=run.pk).update(status=CheckRunStatus.RUNNING, claim_count=1)
+
+    claimed = CheckRunExecutor()._claim(run.uuid)
+
+    assert claimed.status == CheckRunStatus.RUNNING
+    assert claimed.claim_count == 2
+
+
+def test_a_run_claimed_too_many_times_is_ended_rather_than_claimed_again(
+    tenant: Tenant, review: Review, owner: Any, settings: Any
+) -> None:
+    """The poison-message bound: a run that keeps dying stops, instead of cycling.
+
+    `claim_count` already at the limit is exactly what redelivery number
+    `CHECK_RUN_MAX_CLAIMS + 1` finds: every prior claim committed and none of them
+    finished. The run is failed with a reason distinct from `STALLED` -- this one was
+    ended on purpose, not left to time out -- and the limit is a ceiling, not a counter
+    that keeps climbing once tripped.
+    """
+    settings.CHECK_RUN_MAX_CLAIMS = 3
+    run = CheckRun.objects.create_run(review=review, requested_by=owner)
+    CheckRun.objects.filter(pk=run.pk).update(status=CheckRunStatus.RUNNING, claim_count=3)
+
+    claimed = CheckRunExecutor()._claim(run.uuid)
+
+    assert claimed.status == CheckRunStatus.FAILED
+    assert claimed.failure_reason == CheckRunFailure.RESOURCE_EXHAUSTED
+    assert claimed.failure_detail
+    assert claimed.claim_count == 3
+
+
 def test_a_list_of_runs_does_not_load_the_report_documents(
     api: APIClient, review: Review, commit: Any
 ) -> None:

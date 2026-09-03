@@ -148,7 +148,32 @@ STORAGES: dict[str, dict[str, Any]] = {
 # temporary file rather than into memory is what keeps a worker's footprint bounded.
 FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
-MAX_UPLOAD_BYTES = env.int("MAX_UPLOAD_BYTES", default=512 * 1024 * 1024)
+
+# Derived, not guessed -- T-0033 (docs/tasks/T-0033-measured-upload-ceiling.md),
+# reasoning in docs/decisions.md. `scripts/measure_check_memory.py` measured peak RSS of
+# a real `run_check` over three model sizes in the `cadgpt-api:latest` image:
+#
+#   Duplex 2.3MB -> 173MB peak RSS | Schependomlaan 47MB -> 642MB | large 94.4MB -> 1202MB
+#
+# which fits peak_RSS_MB ~= 87 + 11.8 * size_MB for models at this scale. The worker
+# (`deploy/compose.yaml`) runs `--concurrency 2` inside one container now declared with a
+# 4 GiB `mem_limit`: two checks can run at once, sharing that one budget, so the number
+# below is a *per-check* ceiling, not the container's. Reserving ~150MB for the Celery
+# parent process leaves ~1973MB per concurrent check; keeping to 80% of that for
+# allocator/GC slack and rule sets that walk more of the model than door_width.ids did
+# gives a ~1578MB usable budget. Solving the fit for that budget gives ~126.3MB -- taken
+# as-is, rounded only to a whole megabyte (the input measurements carry no more precision
+# than that), not reduced further for a rounder or more memorable number. The prior
+# version of this constant did exactly that (100MB, discarding ~26MB the measurement
+# actually supports) and a T-0033 review caught it: docs/decisions.md documents the
+# correction. This number moves if `--concurrency`, the container's `mem_limit`, or the
+# 80% safety factor changes -- it is not independent of them.
+#
+# What this does NOT establish: the plan's other clause -- "high enough to serve 95% of
+# users" -- is a demand-side claim this repository has no upload-size corpus to check
+# against. One 47MB real sample is not a distribution. See docs/decisions.md and this
+# task's Evidence, NOT DONE.
+MAX_UPLOAD_BYTES = env.int("MAX_UPLOAD_BYTES", default=126 * 1024 * 1024)
 
 # --------------------------------------------------------------------------------------
 # API
@@ -242,6 +267,17 @@ CELERY_TASK_ROUTES = {"review.tasks.*": {"queue": "checks"}}
 # A run left RUNNING for longer than this had its worker die. It is failed explicitly
 # rather than left to look like work still in progress.
 CHECK_RUN_STALL_SECONDS = env.int("CHECK_RUN_STALL_SECONDS", default=CELERY_TASK_TIME_LIMIT)
+
+# How many times `CheckRunExecutor._claim` will re-claim the same run after a worker died
+# holding it, before ending it as `CheckRunFailure.RESOURCE_EXHAUSTED` instead of trying
+# again. T-0033: `acks_late` + a re-claimable `RUNNING` run is correct for a worker killed
+# by a deploy, and a poison message for one killed by the OOM killer -- without a bound, a
+# model that exhausts memory is redelivered, claimed and killed again forever, starving
+# every other tenant on the shared `checks` queue. `claim_count` is incremented in the
+# same row-locked transaction that flips the run to `RUNNING`, not after the expensive
+# work starts, so the count survives a kill at any point after the claim is recorded and
+# never undercounts an attempt that got that far.
+CHECK_RUN_MAX_CLAIMS = env.int("CHECK_RUN_MAX_CLAIMS", default=3)
 
 # How many non-passing elements one requirement itemises in a stored report. Counts stay
 # exact regardless; see cadgpt_engine.report.

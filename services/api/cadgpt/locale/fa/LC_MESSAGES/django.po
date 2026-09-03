@@ -195,6 +195,12 @@ msgstr "مستأجری با این شناسه از پیش وجود دارد."
 msgid "That kind of file is not accepted."
 msgstr "این نوع پرونده پذیرفته نمی‌شود."
 
+#: cadgpt/apps/media/services.py (_validate: size cap, T-0033 -- human units, not a raw
+#: byte count)
+#, python-format
+msgid "This file is larger than the %(limit)s limit."
+msgstr "حجم این پرونده بیش از سقف %(limit)s است."
+
 msgid "The uploaded file is empty."
 msgstr "پروندهٔ بارگذاری‌شده خالی است."
 
@@ -258,6 +264,20 @@ msgstr "بستهٔ مقرراتی ناشناخته: %(uuids)s."
 #: cadgpt/apps/review/choices.py (CheckRunFailure.RULE_PACK_MODIFIED -- T-0031 review, F1)
 msgid "A cited rule pack no longer matches the bytes this run recorded"
 msgstr "بسته مقرراتی استنادشده دیگر با بایت‌هایی که این بررسی ثبت کرده مطابقت ندارد"
+
+#: cadgpt/apps/review/choices.py (CheckRunFailure.RESOURCE_EXHAUSTED -- T-0033, the
+#: poison-message bound on CheckRunExecutor._claim)
+msgid "The check repeatedly failed to complete and was stopped rather than retried"
+msgstr "بررسی بارها بدون تکمیل‌شدن شکست خورد و به‌جای تلاش دوباره متوقف شد"
+
+#: cadgpt/apps/review/services/execution.py (_claim: CHECK_RUN_MAX_CLAIMS reached --
+#: T-0033 review F4, this is what ReviewsPage.tsx actually renders to the user, so it
+#: must be translated like MediaService._validate's message, not left as a raw f-string)
+#, python-format
+msgid ""
+"This run was claimed %(count)s times without finishing and has been stopped "
+"rather than tried again."
+msgstr "این اجرا %(count)s بار درخواست شد و بدون تکمیل، به‌جای تلاش دوباره متوقف شد."
 
 msgid "English"
 msgstr "انگلیسی"
