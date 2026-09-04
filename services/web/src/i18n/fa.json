@@ -13,6 +13,7 @@
     "signInPrompt": "قبلاً حساب دارید؟",
     "backToSignIn": "به‌جای آن وارد شوید"
   },
+  "nav": { "breadcrumb": "مسیر پیمایش" },
   "workspace": {
     "label": "فضای کاری",
     "createTitle": "فضای کاری نخست خود را بسازید",

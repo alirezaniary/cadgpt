@@ -379,6 +379,27 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .row { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
 
+/* The way out of a nested route (`Breadcrumbs.tsx`): Projects > project > review,
+   rendered above every page but the changelist root, which already carries the same
+   "Projects" heading. Shares `.page`'s own horizontal rhythm so the trail lines up with
+   the card beneath it. */
+.breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-6) 0;
+  max-inline-size: 72rem;
+  margin-inline: auto;
+  font-size: var(--text-sm);
+}
+.breadcrumbs__item { display: inline-flex; align-items: center; gap: var(--space-1); }
+.breadcrumbs a { color: var(--muted); text-decoration: none; }
+.breadcrumbs a:hover { color: var(--fg); text-decoration: underline; }
+.breadcrumbs a:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.breadcrumbs [aria-current="page"] { color: var(--fg); font-weight: var(--weight-medium); }
+.breadcrumbs__sep { color: var(--line); }
+
 /* The changelist header: a heading and its "add" action, T-0074's Django-admin shape --
    `ProjectsListPage`, `ProjectDetailPage`. */
 .page__head {

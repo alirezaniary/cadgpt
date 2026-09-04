@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { useTenants } from "@/api/queries";
 import { LAST_TENANT_KEY, useSession } from "@/app/session-context";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { RegisterPage } from "@/features/auth/RegisterPage";
 import { SignInPage } from "@/features/auth/SignInPage";
 import { CreateWorkspacePage } from "@/features/tenancy/CreateWorkspacePage";
@@ -152,6 +153,7 @@ export function App() {
         </div>
       </header>
 
+      <Breadcrumbs />
       <Outlet />
     </div>
   );

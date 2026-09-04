@@ -13,6 +13,7 @@
     "signInPrompt": "Already have an account?",
     "backToSignIn": "Sign in instead"
   },
+  "nav": { "breadcrumb": "Breadcrumb" },
   "workspace": {
     "label": "Workspace",
     "createTitle": "Create your first workspace",
