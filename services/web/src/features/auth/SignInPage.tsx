@@ -31,27 +31,31 @@ export function SignInPage({ onRegister }: { onRegister: () => void }) {
         <h1>{t("app.name")}</h1>
         <p className="muted">{t("app.tagline")}</p>
 
-        <label htmlFor="email">{t("auth.email")}</label>
-        <input
-          id="email"
-          type="email"
-          className="ltr"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
+        <div className="field">
+          <label htmlFor="email">{t("auth.email")}</label>
+          <input
+            id="email"
+            type="email"
+            className="ltr"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+        </div>
 
-        <label htmlFor="password">{t("auth.password")}</label>
-        <input
-          id="password"
-          type="password"
-          className="ltr"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
+        <div className="field">
+          <label htmlFor="password">{t("auth.password")}</label>
+          <input
+            id="password"
+            type="password"
+            className="ltr"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+        </div>
 
         {error && <p className="error">{error}</p>}
 

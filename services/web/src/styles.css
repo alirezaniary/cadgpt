@@ -6,7 +6,46 @@
  * The `.ltr` class is the exception that proves it: an email address, an IFC class name
  * and a GlobalId are identifiers, not prose, and they read left to right inside a
  * right-to-left page.
+ *
+ * Design origin: RTL Persian, not LTR mirrored for RTL (T-0070). The token layer below and
+ * the reference point behind it -- https://zohal.io/, a Farsi-native fintech product the
+ * product owner named as the quality bar -- are recorded in T-0070's evidence, not here;
+ * this file only carries the CSS that resulted. In short: a deep navy/indigo accent instead
+ * of a flat generic blue, a generous `rounded-xl`-style corner radius, an airy 4px-based
+ * spacing rhythm, a real modular type scale, and a self-hosted Persian webfont -- the same
+ * thing zohal.io does for IRANYekanX, which is why Vazirmatn is now bundled below instead of
+ * only named and left unserved.
  */
+
+/* Vazirmatn, self-hosted. Previously only named in `:lang(fa) body` with nothing serving it
+   -- a system-font gamble that silently fell through to Tahoma on any machine that had not
+   separately installed it. Two subset files (Persian/Arabic script, Latin) pulled from
+   Google Fonts' own hosting, vendored here as static assets so the glyphs load from this
+   origin like every other bundled asset -- no runtime dependency on fonts.googleapis.com,
+   consistent with a product built for tenants who may run offline or behind a firewall.
+   Upstream: github.com/rastikerdar/vazirmatn, SIL Open Font License. The family ships as a
+   variable font (weight axis 400-700 in the two files below); one @font-face per subset
+   with a weight *range* is the standard way to serve a variable font progressively, rather
+   than four near-duplicate @font-face blocks pointing at the same bytes. */
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./assets/fonts/vazirmatn-arabic.woff2") format("woff2");
+  unicode-range:
+    U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF,
+    U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./assets/fonts/vazirmatn-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 :root {
   --bg: #ffffff;
@@ -20,8 +59,56 @@
   --fail-bg: #fbeaea;
   --indeterminate: #8a5a00;
   --indeterminate-bg: #fdf3e0;
-  --accent: #2b5ce6;
-  --radius: 8px;
+
+  /* Accent: a deep navy-indigo rather than a flat generic blue -- the family zohal.io's
+     own `primary` scale sits in (their primary-6.5/-7, #2d3a5d/#2d3250, is the accent and
+     its border). Kept as a single hue with a hover-strong and a text-tint step, the same
+     shape the old flat `--accent` had, just replacing the one flat value with a small,
+     real scale. */
+  --accent: #35479e;
+  --accent-strong: #26326f;
+  --accent-soft: #eceffb;
+  --accent-fg: #ffffff;
+
+  /* Spacing: a 4px base unit, the same rhythm zohal.io's own Tailwind scale is built on
+     (their `gap-y-4`/`p-6`/`py-10` are 1rem/1.5rem/2.5rem -- exactly the steps below). */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+
+  /* Radius: a generously rounded scale -- zohal.io's dominant utility on the page is
+     `rounded-xl` (0.75rem), used more than any other single class. `--radius-pill` replaces
+     the bare `999px` that was inlined on `.pill`. */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-pill: 999px;
+
+  /* Type: a real modular scale in place of the magic numbers that were scattered through
+     this file (0.85rem, 0.78rem, 0.9rem, 0.87rem, 0.82rem, 1.7rem, ...). Base matches the
+     15px body copy that was already set on `body`, so running text is unaffected. */
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --leading-tight: 1.3;
+
+  --shadow-card: 0 1px 2px rgba(23, 26, 33, 0.04), 0 8px 20px rgba(23, 26, 33, 0.06);
+  --shadow-header: 0 2px 8px rgba(23, 26, 33, 0.06);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -34,6 +121,14 @@
     --pass-bg: #113023;
     --fail-bg: #3a1618;
     --indeterminate-bg: #382a10;
+
+    --accent: #7386d5;
+    --accent-strong: #93a3e2;
+    --accent-soft: #1e2338;
+    --accent-fg: #0d0f14;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.35);
+    --shadow-header: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
 }
 
@@ -43,7 +138,8 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
-  font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Vazirmatn, Tahoma, sans-serif;
+  font: var(--text-base) / 1.55 system-ui, -apple-system, "Segoe UI", Vazirmatn, Tahoma,
+    sans-serif;
 }
 
 :lang(fa) body { font-family: Vazirmatn, Tahoma, system-ui, sans-serif; }
@@ -64,15 +160,18 @@ body {
 .topbar {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1.25rem;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  background: var(--card);
   border-block-end: 1px solid var(--line);
+  box-shadow: var(--shadow-header);
 }
+.topbar strong { font-size: var(--text-lg); font-weight: var(--weight-bold); }
 
 .page {
   display: grid;
-  gap: 1.25rem;
-  padding: 1.25rem;
+  gap: var(--space-6);
+  padding: var(--space-6);
   max-inline-size: 72rem;
   margin-inline: auto;
 }
@@ -81,38 +180,97 @@ body {
   min-block-size: 100vh;
   display: grid;
   place-items: center;
-  padding: 1.25rem;
+  padding: var(--space-6);
+  background: radial-gradient(ellipse 60rem 40rem at 50% -10%, var(--accent-soft), transparent);
 }
 
 .card {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 1.25rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6);
   display: grid;
-  gap: 0.75rem;
+  gap: var(--space-5);
   min-inline-size: min(24rem, 100%);
 }
 
-h1, h2, h3, h4 { margin: 0; font-weight: 620; }
+h1, h2, h3, h4 { margin: 0; font-weight: var(--weight-semibold); letter-spacing: -0.01em; }
+h1 { font-size: var(--text-2xl); font-weight: var(--weight-bold); }
+h2 { font-size: var(--text-xl); }
+h3 { font-size: var(--text-lg); }
+h4 { font-size: var(--text-sm); }
 
-label { font-size: 0.85rem; color: var(--muted); }
+/* A field groups its label tight to its control; `.card`'s own `gap` (--space-5) is what
+   separates one field, or a field from the button beneath it, from the next. */
+.field { display: grid; gap: var(--space-1); }
 
-input, select, button {
+label { font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--muted); }
+
+input, select {
   font: inherit;
-  padding: 0.5rem 0.7rem;
+  font-size: var(--text-base);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--bg);
   color: var(--fg);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+input:focus-visible, select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+input::placeholder { color: var(--muted); }
+
+/* `<select>` keeps its native `appearance` deliberately: a custom dropdown arrow has to be
+   re-positioned per direction (it belongs at the inline-end, which is a physical flip
+   between rtl and ltr), and the browser already places its own arrow correctly for
+   whichever direction the page is in. Restyling the box (border/radius/padding/background)
+   gets it off "raw browser default" without re-solving a problem the platform already
+   solves for free -- the same "inherit before writing" call this codebase makes elsewhere. */
+select { padding-inline-end: var(--space-6); }
+
+/* The file picker's own button, `::file-selector-button`, is a real, broadly-supported
+   pseudo-element (Chrome, Firefox and Safari all implement it) -- this is what turns
+   "raw browser default file input" into something that matches the rest of the form
+   without a JS-driven fake file button. `margin-inline-end` keeps the button on the
+   control's start side and the chosen filename readable after it in both directions. */
+input[type="file"] {
+  padding: var(--space-1);
+  font-size: var(--text-sm);
+}
+input[type="file"]::file-selector-button {
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  padding: var(--space-1) var(--space-3);
+  margin-inline-end: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--fg);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+input[type="file"]::file-selector-button:hover { background: var(--accent-soft); border-color: var(--accent); }
 
 button {
+  font: inherit;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  padding: var(--space-2) var(--space-4);
   cursor: pointer;
-  border-color: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-fg);
+  transition: background 0.15s ease, transform 0.05s ease;
 }
+button:hover:not(:disabled) { background: var(--accent-strong); }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
 button:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .link-button {
@@ -122,61 +280,76 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
   color: var(--accent);
   text-decoration: underline;
   font: inherit;
+  font-weight: var(--weight-medium);
 }
 .link-button:hover { opacity: 0.85; }
+.link-button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); border-radius: var(--radius-sm); }
 
-.row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.row { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
 
-.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
 
-.review { border-block-start: 1px solid var(--line); padding-block-start: 0.6rem; }
-.review__head { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-.review__state { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.review { border-block-start: 1px solid var(--line); padding-block-start: var(--space-3); }
+.review__head { display: flex; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
+.review__state { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 
 .pill {
-  display: inline-block;
-  padding: 0.1rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.01em;
+}
+.pill::before {
+  content: "";
+  inline-size: 0.4em;
+  block-size: 0.4em;
+  border-radius: 50%;
+  background: currentColor;
 }
 .pill--pass { color: var(--pass); background: var(--pass-bg); }
 .pill--fail { color: var(--fail); background: var(--fail-bg); }
 .pill--indeterminate { color: var(--indeterminate); background: var(--indeterminate-bg); }
 
-.error { color: var(--fail); }
+.error { color: var(--fail); font-size: var(--text-sm); }
 
 .notice {
   margin: 0;
-  padding: 0.5rem 0.7rem;
-  border-radius: 6px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
   background: var(--indeterminate-bg);
   color: var(--indeterminate);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .report {
   display: grid;
-  gap: 1rem;
-  padding: 1.25rem;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  background: var(--card);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
   max-inline-size: 72rem;
   margin-inline: auto;
 }
-.report__header { display: flex; justify-content: space-between; gap: 1rem; align-items: start; }
+.report__header { display: flex; justify-content: space-between; gap: var(--space-4); align-items: start; }
+.report__header p { font-size: var(--text-sm); }
 
 /* Three columns, never two: indeterminate is displayed at the same weight as the other
    two so it cannot be read past. */
-.counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+.counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
 .count {
-  padding: 0.85rem;
-  border-radius: var(--radius);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
   display: grid;
-  gap: 0.15rem;
+  gap: var(--space-1);
 }
-.count__value { font-size: 1.7rem; font-weight: 680; line-height: 1; }
-.count__label { font-size: 0.82rem; }
+.count__value { font-size: var(--text-2xl); font-weight: var(--weight-bold); line-height: 1; }
+.count__label { font-size: var(--text-sm); font-weight: var(--weight-medium); }
 .count--pass { background: var(--pass-bg); color: var(--pass); }
 .count--fail { background: var(--fail-bg); color: var(--fail); }
 .count--indeterminate { background: var(--indeterminate-bg); color: var(--indeterminate); }
@@ -186,33 +359,40 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
    dismiss. The start border only sets it apart from the header above it. */
 .disclosure {
   display: grid;
-  gap: 0.3rem;
-  padding-inline-start: 0.85rem;
+  gap: var(--space-2);
+  padding-inline-start: var(--space-4);
   border-inline-start: 3px solid var(--line);
 }
-.disclosure h4 { font-size: 0.85rem; color: var(--muted); font-weight: 620; }
-.disclosure p { margin: 0; }
+.disclosure h4 { color: var(--muted); }
+.disclosure p { margin: 0; font-size: var(--text-base); }
 
-.coverage { display: grid; gap: 0.6rem; padding-block-end: 0.6rem; border-block-end: 1px solid var(--line); }
-.coverage__nothing ul { margin: 0.2rem 0 0; padding-inline-start: 1.25rem; }
-.coverage__nothing li { font-size: 0.87rem; }
+.coverage {
+  display: grid;
+  gap: var(--space-3);
+  padding-block-end: var(--space-3);
+  border-block-end: 1px solid var(--line);
+}
+.coverage__nothing ul { margin: var(--space-1) 0 0; padding-inline-start: 1.25rem; }
+.coverage__nothing li { font-size: var(--text-sm); }
 
-.filter { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
-.filter__label { font-size: 0.85rem; color: var(--muted); }
-.filter__option { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.87rem; color: var(--fg); }
+.filter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.filter__label { font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--muted); }
+.filter__option { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--text-sm); color: var(--fg); }
 .filter__option input { padding: 0; }
 
-.specs { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
-.spec { border: 1px solid var(--line); border-radius: var(--radius); padding: 0.9rem; }
-.spec__head { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
+.specs { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-4); }
+.spec { border: 1px solid var(--line); border-radius: var(--radius-md); padding: var(--space-4); }
+.spec__head { display: flex; justify-content: space-between; gap: var(--space-4); align-items: center; }
+.spec__head strong { font-size: var(--text-md); }
 
-.requirement { margin-block-start: 0.7rem; }
-.requirement__description { margin: 0 0 0.4rem; font-size: 0.9rem; }
+.requirement { margin-block-start: var(--space-3); }
+.requirement__description { margin: 0 0 var(--space-2); font-size: var(--text-base); }
 
-.entities { inline-size: 100%; border-collapse: collapse; font-size: 0.87rem; }
+.entities { inline-size: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .entities td {
-  padding: 0.35rem 0.5rem;
+  padding: var(--space-2) var(--space-3);
   border-block-start: 1px solid var(--line);
   vertical-align: top;
   text-align: start;
 }
+.entities tr:hover td { background: var(--accent-soft); }

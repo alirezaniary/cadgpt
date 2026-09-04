@@ -59,13 +59,15 @@ export function CreateWorkspacePage() {
         <h1>{t("workspace.createTitle")}</h1>
         <p className="muted">{t("workspace.createHint")}</p>
 
-        <label htmlFor="workspace-name">{t("workspace.name")}</label>
-        <input
-          id="workspace-name"
-          required
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
+        <div className="field">
+          <label htmlFor="workspace-name">{t("workspace.name")}</label>
+          <input
+            id="workspace-name"
+            required
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </div>
 
         {error && <p className="error">{error}</p>}
 

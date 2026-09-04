@@ -44,27 +44,31 @@ export function RegisterPage({ onSignIn }: { onSignIn: () => void }) {
         <h1>{t("app.name")}</h1>
         <p className="muted">{t("auth.registerTitle")}</p>
 
-        <label htmlFor="register-email">{t("auth.email")}</label>
-        <input
-          id="register-email"
-          type="email"
-          className="ltr"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
+        <div className="field">
+          <label htmlFor="register-email">{t("auth.email")}</label>
+          <input
+            id="register-email"
+            type="email"
+            className="ltr"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+        </div>
 
-        <label htmlFor="register-password">{t("auth.password")}</label>
-        <input
-          id="register-password"
-          type="password"
-          className="ltr"
-          autoComplete="new-password"
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
+        <div className="field">
+          <label htmlFor="register-password">{t("auth.password")}</label>
+          <input
+            id="register-password"
+            type="password"
+            className="ltr"
+            autoComplete="new-password"
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+        </div>
 
         {error && <p className="error">{error}</p>}
 

@@ -536,6 +536,43 @@ screen without a reload, `slugify` collapses every non-Latin name to one shared 
 `RegisterPage` never sends `language` so a Persian-UI signup still gets an English-language
 account).
 
+**T-0070 — a design framework, RTL-Persian-first, in place of bare HTML. Done 2026-09-04.**
+Requested directly by the product owner after seeing T-0067's new screens: `styles.css` was two
+structural classes and raw browser defaults on every input, select and file picker — that
+predated T-0067, which correctly matched the existing bare style rather than prettifying two
+screens in isolation. Settled in conversation: RTL Persian is the primary, native design
+target now — not an LTR design mirrored for RTL — with no change to dual-language support or
+`docs/decisions.md`'s multinational-tenant stance.
+
+Researched `https://zohal.io/` for real before writing any CSS — a Farsi-native fintech product
+built `dir="rtl"` from the ground up, not translated. Its characteristics, not its values,
+moved into this app's tokens: a deep navy-indigo accent scale in place of a flat blue, a
+generously rounded `rounded-xl`-equivalent radius in place of a flat 8px, a 4px-based spacing
+rhythm, a small real type scale, and — the most directly reusable finding — a self-hosted
+Persian webfont rather than a bare `font-family` hoping a system has it installed. That last
+one was a real, pre-existing bug: Vazirmatn was named in `:lang(fa) body` and served by nothing,
+silently falling back to Tahoma on almost every machine. Now vendored as two `woff2` subsets and
+confirmed loading with `200 font/woff2` over HTTP from the running container.
+
+Every scattered magic number in `styles.css` — font sizes, radii, weights — now reads from the
+new token layer; `--pass`/`--fail`/`--indeterminate` and the dark-mode block's existing lines
+are untouched, confirmed by an empty `git diff` on those specific lines. `<select>` deliberately
+keeps its native arrow rather than a custom one — a dropdown arrow's position flips physically
+between `rtl` and `ltr`, and the platform already gets this right for free, the same
+"inherit before writing" call this codebase makes everywhere else. `ReviewsPage` and the report
+view needed zero code changes — both already used the class names the new primitives target,
+so the whole visual pass on the two busiest screens is the primitives layer alone.
+
+Proven with twelve real screenshots — fa/RTL first as the primary target, en/LTR second
+confirming a clean mirror — through the actual sign-in → register → create-workspace →
+upload → check → report path, reaching a real 1 pass / 1 fail / 1 indeterminate report in both
+languages from a cold start. The existing six-spec e2e suite passes unmodified in behavior; the
+one spec asserting on `.pill`'s exact text confirms the new status-dot `::before` doesn't leak
+into `textContent`. Two items named NOT DONE rather than silently skipped: the native `<select>`
+arrow (a deliberate call, not a gap) and the file input's "Choose File" label, which stays in
+the browser's own UI language regardless of page language — a platform limitation, not something
+CSS can address.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
