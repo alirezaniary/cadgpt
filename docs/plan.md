@@ -501,6 +501,41 @@ still alive. Finally, the one user-facing string the task added was a raw Englis
 Persian translation added in the same diff sat unreachable — now through `gettext`, with the
 unproven "most likely the memory limit" claim dropped. 235 tests, 5 contracts kept.
 
+**T-0067 — a way in, and a first workspace. Done 2026-09-04.** Found by using the product, not by
+a task in the queue: the frontend had a sign-in form and nothing else — no registration screen and
+no link to one, so a person with no account and no invitation could not start using the product at
+all. `report.spec.ts` said as much in its own comments — account and tenant creation were seeded
+through the API "because the SPA has no screen for either." Registering alone would not have fixed
+it either: a freshly registered user has zero tenants, and the workspace `<select>` just rendered
+an empty "No workspace yet" with nothing to click. Product owner confirmed both belong in one task.
+`RegisterPage` reuses `useSession().signIn` rather than teaching `session.tsx` a second way to
+plant a token; `CreateWorkspacePage` derives a collision-resistant slug client-side rather than
+asking a brand-new user for a second field, justified against `Tenant.slug`'s uniqueness constraint
+in the evidence.
+
+**Reviewed, gated on the tenancy invariant, and two of four findings were fix-now — one of them a
+real tenant-isolation leak this task introduced the path to.** `session.tsx`'s `signOut` cleared
+the user, tenant and access token but never the TanStack Query cache; query keys are not
+user-scoped, so the next person to sign in on the same tab rendered off the previous user's cached
+tenant name and rule sets — live-reproduced by the reviewer. It also broke this task's own
+acceptance criterion: a stale cache meant `CreateWorkspacePage` never rendered for the new user at
+all. Fixed with `queryClient.clear()` on sign-out. The second finding falsified the evidence block
+itself: the "no more empty dropdown" guard fell through to the shell while the tenant list was
+still loading, flashing the exact broken state the task existed to remove — the first-round
+Playwright assertion had auto-retried past the window rather than proving it absent. Fixed with an
+explicit loading state, and the fix uncovered its own test bug in the process: the original
+`toHaveCount(0)` check auto-retried past the same window it was meant to catch and passed against
+both the broken and fixed code; rewritten as a non-retrying point-in-time sample, then proven to
+fail against the reverted code before being restored. Both fixes are mutation-tested — reverted,
+shown to fail for the stated reason, restored, shown green — against a freshly rebuilt container,
+not a cached bundle. Two smaller findings queued rather than fixed here: **T-0068** (registration's
+failure path never explains why — a 12-character password minimum enforced but never stated, and a
+throttled second call can strand a created-but-unconfirmed account with no recovery messaging), and
+**T-0069** (three onboarding edges: a revoked last membership has no way back to the workspace
+screen without a reload, `slugify` collapses every non-Latin name to one shared stem, and
+`RegisterPage` never sends `language` so a Persian-UI signup still gets an English-language
+account).
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -579,6 +614,12 @@ the first of them:
 - **T-0064** — the old 512MB ceiling is still live at nginx, and nothing guards client-side.
 - **T-0065** — the memory model is a two-point line and its one corroborating point disagrees.
 - **T-0066** — `scripts/` is outside the type gate.
+
+- **T-0068** — registration fails and the form never says why: a 12-character password minimum
+  enforced but never stated, and a throttled second call can strand a created account mid-signup.
+- **T-0069** — three onboarding edges the happy path skips: a revoked last membership has no way
+  back to the workspace screen without a reload; `slugify` collapses every non-Latin name to one
+  shared stem; `RegisterPage` never sends `language`.
 
 ## Phase 4 — Toward the PRD
 

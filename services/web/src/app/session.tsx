@@ -6,6 +6,7 @@
  * script cannot read out of `localStorage`. What lives here is only what the UI renders.
  */
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { api, setAccessToken, setTenant } from "@/api/client";
@@ -22,6 +23,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [tenant, setTenantState] = useState<Tenant | null>(null);
   const [ready, setReady] = useState(false);
+  const queryClient = useQueryClient();
 
   const chooseTenant = useCallback((next: Tenant | null) => {
     setTenantState(next);
@@ -67,7 +69,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setTenantState(null);
     setTenant(null);
     localStorage.removeItem(LAST_TENANT_KEY);
-  }, []);
+    // Query keys (`keys.tenants`, `keys.reviews`, ...) are not user-scoped, so anything
+    // TanStack Query cached for this person -- their tenant list, rule sets, reviews --
+    // would otherwise still answer instantly for whoever signs in next on this same tab,
+    // rendered as if it were theirs. Clearing here, rather than trying to enumerate and
+    // invalidate every query key that could ever hold another user's data, is the only
+    // version of this that cannot miss one.
+    queryClient.clear();
+  }, [queryClient]);
 
   const value = useMemo<Session>(
     () => ({ user, tenant, ready, signIn, signOut, chooseTenant }),

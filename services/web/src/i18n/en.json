@@ -5,9 +5,23 @@
     "signOut": "Sign out",
     "email": "Email",
     "password": "Password",
-    "signingIn": "Signing in…"
+    "signingIn": "Signing in…",
+    "register": "Create account",
+    "registering": "Creating account…",
+    "registerTitle": "Create an account",
+    "registerPrompt": "Need an account?",
+    "signInPrompt": "Already have an account?",
+    "backToSignIn": "Sign in instead"
   },
-  "workspace": { "label": "Workspace", "none": "No workspace yet" },
+  "workspace": {
+    "label": "Workspace",
+    "none": "No workspace yet",
+    "createTitle": "Create your first workspace",
+    "createHint": "A workspace holds your rule sets, models and reviews.",
+    "name": "Workspace name",
+    "create": "Create workspace",
+    "creating": "Creating workspace…"
+  },
   "review": {
     "title": "Reviews",
     "new": "New review",

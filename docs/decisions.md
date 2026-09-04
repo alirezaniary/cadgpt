@@ -818,3 +818,28 @@ redelivered to a second live worker under normal operation (today this would onl
 overly short broker visibility timeout relative to real check duration, which `CELERY_BROKER_
 TRANSPORT_OPTIONS`'s `visibility_timeout` is set to avoid) -- `claim_count` would then bound
 concurrent contention together with genuine retries, which it is not designed to distinguish.
+
+---
+
+## 2026-09-04 — No transactional outbox, confirmed against a real trigger
+
+**Problem.** T-0056 (a lost check dispatch strands the review, not just the report) is the
+concrete case the standing "no outbox" line anticipated: the commit-then-`.delay()` dual write
+has a real gap, and if the dispatch call never lands, the run sits `pending` with nothing
+watching it. This is exactly the kind of measured evidence the original decision said would
+reopen the question.
+
+**Decision, from the product owner:** it does not reopen it. No scale-proven usage exists yet,
+so no outbox-shaped cost gets imposed on the project now. The general mechanism stays off the
+table; only the specific instance gets fixed.
+
+**What this means for T-0056 specifically:** it is still a bug and still gets closed, but with
+the narrower mechanism already proven for the same failure shape in T-0051/T-0033 -- a bound,
+observable, reconcilable state (e.g. a sweep that finds stuck-`pending` runs and re-dispatches
+or fails them by reason) instead of a transactional outbox table and relay. Same discipline as
+`claim_count`: solve the instance that has evidence, not the general case that does not yet.
+
+**Reopens if:** real usage shows this class of dual-write gap recurring across more than this
+one path, or a second one is found independently -- at that point the per-instance patches cost
+more than the general mechanism would have, which is the threshold the original decision was
+already written to wait for.

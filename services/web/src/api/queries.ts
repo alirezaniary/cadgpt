@@ -59,6 +59,22 @@ export function useTenants(enabled: boolean): UseQueryResult<Page<Tenant>> {
   });
 }
 
+/** A user's first (or next) workspace, via `TenantCreateSerializer`. The caller still has
+ * to call `chooseTenant` itself with the response -- this hook only performs the write and
+ * keeps the tenant list in step with it, the same division `useCreateReview` and its
+ * siblings already use. */
+export function useCreateTenant(): UseMutationResult<
+  Tenant,
+  Error,
+  { name: string; slug: string; language: string }
+> {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (payload) => api.post<Tenant>("/v1/tenants/", payload),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.tenants }),
+  });
+}
+
 export function useRuleSets(tenant: string | null): UseQueryResult<Page<RuleSet>> {
   return useQuery({
     queryKey: keys.ruleSets(tenant),
