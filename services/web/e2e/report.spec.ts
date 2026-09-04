@@ -1,16 +1,25 @@
 /**
- * The evidence instrument every later Phase 3 task uses.
+ * The evidence instrument every later Phase 3 task uses -- rewritten for T-0074's
+ * project/review/review-detail split (Django admin's shape: a changelist, an add form, a
+ * detail view, one level deep for projects and again for reviews).
  *
  * Everything from sign-in onward happens through the browser against the real compose
- * stack (`make up`): sign in, upload an IDS rule set, upload an IFC model, run the check,
- * open the report, and read the three-valued counts and the reasons off the rendered DOM.
+ * stack (`make up`): sign in, create a project, create a review inside it (model file
+ * only -- rule-set upload is gone from the UI per `docs/decisions.md`'s 2026-09-04
+ * entry), pick a catalogue pack on the review's own detail page, run the check, open the
+ * report, and read the three-valued counts and the reasons off the rendered DOM.
+ *
+ * The catalogue pack used here ("Accessible door width", jurisdiction "sample") is
+ * `RulePackService.seed`'s own dev fixture -- `packages/engine/tests/fixtures/
+ * door_width.ids` -- loaded by `python manage.py seed_rule_packs` (idempotent; the task
+ * file's Evidence section shows it run against the real stack before this suite). It is
+ * the same fixture Phase 2 ran end to end and `report.spec.ts` has always asserted
+ * against: three doors, one 1000mm (PASS against a 900mm minimum), one 800mm (FAIL,
+ * ATTRIBUTE_VALUE_MISMATCH), one with no width recorded at all (INDETERMINATE,
+ * ATTRIBUTE_EMPTY).
+ *
  * Only account and tenant creation are seeded through the API first (see fixtures.ts),
  * because the SPA has no screen for either.
- *
- * The fixtures are the same ones Phase 2 ran end to end: three doors, one 1000mm (PASS
- * against a 900mm minimum), one 800mm (FAIL, ATTRIBUTE_VALUE_MISMATCH), one with no width
- * recorded at all (INDETERMINATE, ATTRIBUTE_EMPTY). This spec is correct when it
- * reproduces that from the browser.
  */
 
 import path from "node:path";
@@ -20,22 +29,7 @@ import { expect, test } from "./fixtures";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = path.resolve(__dirname, "../../../packages/engine/tests/fixtures");
-const IDS_FILE = path.join(FIXTURES_DIR, "door_width.ids");
 const IFC_FILE = path.join(FIXTURES_DIR, "three_doors.ifc");
-
-// T-0025 fix-now round: the coverage sentence and `establishedNothing()` were both wrong,
-// and neither defect was reachable from the fixture above -- it has one specification that
-// matches everything. This fixture matches nothing on purpose, against the same IFC:
-//   "Door name recorded"       -- applies to the 3 doors, all pass. A real evaluation.
-//   "Wall fire rating recorded" -- optional cardinality, matches 0 walls (there are none).
-//                                   DOES_NOT_APPLY / INDETERMINATE / NO_SUBJECTS_NOTHING_CHECKED:
-//                                   this is the one specification that genuinely established
-//                                   nothing.
-//   "Wall count required"      -- required cardinality, also matches 0 walls, but an absent
-//                                   required element is a real finding, not an absence of
-//                                   evidence: APPLIES / FAIL / NO_SUBJECTS_BUT_REQUIRED. It
-//                                   must never be named alongside the specification above.
-const NOTHING_ESTABLISHED_IDS_FILE = path.join(__dirname, "fixtures", "nothing_established.ids");
 
 test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the browser", async ({
   page,
@@ -55,51 +49,50 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
   await expect(page.locator(".user-menu-header strong")).toHaveText(account.tenantName);
   await page.keyboard.press("Escape");
 
-  const ruleSetsCard = page.locator("section.card", {
-    has: page.getByRole("heading", { name: "مجموعه‌های قواعد" }),
-  });
-  const reviewsCard = page.locator("section.card", {
-    has: page.getByRole("heading", { name: "بررسی‌ها" }),
-  });
+  // "/" redirects to "/projects" -- the changelist, T-0074's outermost level.
+  await expect(page.getByRole("heading", { name: "پروژه‌ها" })).toBeVisible();
 
-  const ruleSetName = `door-width-${Date.now()}`;
-  await ruleSetsCard.getByPlaceholder("نام").fill(ruleSetName);
-  await ruleSetsCard.locator('input[type="file"]').setInputFiles(IDS_FILE);
-  await ruleSetsCard.getByRole("button", { name: "افزودن مجموعه قواعد" }).click();
-  await expect(ruleSetsCard.getByText(ruleSetName)).toBeVisible();
+  const projectName = `three-doors-project-${Date.now()}`;
+  await page.getByRole("link", { name: "افزودن پروژه" }).click();
+  await page.getByLabel("نام").fill(projectName);
+  await page.getByRole("button", { name: "ایجاد پروژه" }).click();
+
+  // "save and continue editing": lands on the new project's own detail page.
+  await expect(page.getByRole("heading", { name: projectName })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("هنوز بررسی‌ای نیست")).toBeVisible();
 
   const reviewName = `three-doors-${Date.now()}`;
-  await reviewsCard.getByPlaceholder("نام").fill(reviewName);
-  await reviewsCard.locator('select[name="rule_set"]').selectOption({ label: ruleSetName });
-  await reviewsCard.locator('input[type="file"]').setInputFiles(IFC_FILE);
-  await reviewsCard.getByRole("button", { name: "ایجاد بررسی" }).click();
+  await page.getByRole("link", { name: "افزودن بررسی" }).click();
+  await expect(page.getByRole("heading", { name: "افزودن بررسی" })).toBeVisible();
+  await page.getByLabel("نام").fill(reviewName);
+  await page.locator('input[type="file"]').setInputFiles(IFC_FILE);
+  await page.getByRole("button", { name: "ایجاد بررسی" }).click();
 
-  const reviewRow = reviewsCard.locator("li.review", { hasText: reviewName });
-  await expect(reviewRow).toBeVisible();
-  await reviewRow.getByRole("button", { name: "اجرای بررسی" }).click();
+  // Lands on the new review's own detail page -- the heading is the review's name.
+  await expect(page.getByRole("heading", { name: reviewName })).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator(".ltr", { hasText: "three_doors.ifc" })).toBeVisible();
 
-  // The page polls the run itself; wait for it to reach a terminal state rather than
-  // sleeping a fixed interval.
-  const summaryButton = reviewRow.getByRole("button", { name: "خلاصه" });
-  await expect(summaryButton).toBeVisible({ timeout: 30_000 });
-  await summaryButton.click();
+  // The catalogue picker: this review has no `rule_set` of its own (upload is gone from
+  // the UI), so every check against it selects packs here, per run.
+  const picker = page.getByTestId("catalogue-picker");
+  await expect(picker).toBeVisible();
+  const doorWidthPack = picker
+    .locator("li", { hasText: "Accessible door width" })
+    .filter({ hasText: "v0.1" });
+  await expect(doorWidthPack).toBeVisible({ timeout: 10_000 });
+  await doorWidthPack.getByRole("checkbox").check();
+  await picker.getByRole("button", { name: "اجرای بررسی با بسته‌های انتخاب‌شده" }).click();
 
+  // The page polls the run itself, and opens it automatically once queued -- wait for
+  // the report to render rather than sleeping a fixed interval.
   const report = page.locator("section.report");
-  await expect(report).toBeVisible();
+  await expect(report).toBeVisible({ timeout: 30_000 });
 
   // T-0029: the I7 disclosure -- what was checked (the model, by the filename the
   // architect uploaded) and what was not (the drawing set) -- reads before coverage.
-  // Coverage answers "how much of the rule set was evaluated"; the disclosure answers the
-  // prior question, "what artifact was evaluated at all". Asserted on document order, not
-  // presence: a disclosure rendered anywhere else on the page would satisfy a visibility
-  // check while failing the actual requirement.
   const disclosure = report.locator('[data-testid="disclosure"]');
   await expect(disclosure).toBeVisible();
   await expect(disclosure).toContainText("three_doors.ifc");
-  // Fix-now round: the filename alone does not prove the wording survived -- replacing
-  // the whole disclosure with the literal string "{{filename}}" would still contain
-  // "three_doors.ifc" and pass every other assertion here. This is the one that catches
-  // the deliverable being silently emptied.
   await expect(disclosure).toContainText("not the drawing set");
 
   const disclosureThenCoverage = report.locator('[data-testid="disclosure"], [data-testid="coverage"]');
@@ -132,34 +125,35 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
   await expect(requirementText).not.toContainText("object at 0x");
 
   // T-0027: the primary line is now the structured citation, rendered through gettext --
-  // "at least 900" from operator/value data, never ifctester's own dict-repr sentence
-  // `{'minInclusive': '900'}`.
+  // "at least 900" from operator/value data, never ifctester's own dict-repr sentence.
   await expect(requirementText).toHaveText("The OverallWidth shall be at least 900.");
   await expect(requirementText).not.toContainText("minInclusive");
 
-  // T-0027: the subject line -- what the rule applies to. The fixture's own
-  // `<ids:description>` is empty, so this is the only place the subject reaches the DOM.
+  // T-0027: the subject line -- what the rule applies to.
   const applicability = report.locator('[data-testid="applicability"]').first();
   await expect(applicability).toHaveText("All IFCDOOR data");
 
-  // T-0025.1: coverage is presented before findings — assert document order, not just
-  // presence. A coverage line rendered underneath the specification list would satisfy a
-  // simple visibility check while failing the actual requirement.
+  // T-0025.1: coverage is presented before findings -- assert document order.
   const coverageThenSpec = report.locator('[data-testid="coverage"], li.spec');
   await expect(coverageThenSpec.first()).toHaveAttribute("data-testid", "coverage");
 
   // T-0025.2: severity ordering. FAIL sorts before INDETERMINATE, in the DOM, never the
-  // reverse — sorting INDETERMINATE last would bury it under a pass-shaped read.
+  // reverse.
   const entityRows = report.locator('[data-testid="entity-row"]');
   await expect(entityRows).toHaveCount(2);
   await expect(entityRows.nth(0)).toHaveAttribute("data-status", "FAIL");
   await expect(entityRows.nth(1)).toHaveAttribute("data-status", "INDETERMINATE");
 
+  // T-0074: the disclosure paragraph gets its own bordered callout, not bare text --
+  // `.disclosure` carries a visible inline-start border in the current design system.
+  const disclosureBorder = await disclosure.evaluate(
+    (el) => getComputedStyle(el).borderInlineStartWidth,
+  );
+  expect(disclosureBorder).toBe("3px");
+
   // T-0051: the report file (T-0032) is generated by a second, separately-dispatched
   // task -- `useCheckRun`'s polling keeps going past the run's own "succeeded" until it
-  // shows up, so this waits for it rather than asserting immediately. Its presence is
-  // the "available" silence: neither of the other two (`report-file-pending`,
-  // `report-file-failed`) is rendered at the same time.
+  // shows up, so this waits for it rather than asserting immediately.
   const downloadButton = page.getByTestId("report-file-link");
   await expect(downloadButton).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId("report-file-pending")).toHaveCount(0);
@@ -171,10 +165,9 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
     fullPage: true,
   });
 
-  // T-0025.3: the status filter. This is the assertion the reviewer looks for first —
-  // filtering to FAIL only must not touch the indeterminate count in the summary, and the
-  // view must say that rows are being withheld rather than looking identical to the
-  // unfiltered report.
+  // T-0025.3: the status filter. Filtering to FAIL only must not touch the indeterminate
+  // count in the summary, and the view must say that rows are being withheld rather than
+  // looking identical to the unfiltered report.
   await report.getByRole("checkbox", { name: "نامشخص" }).uncheck();
 
   await expect(entityRows).toHaveCount(1);
@@ -189,54 +182,9 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
     "نمایش 1 از 2",
   );
 
-  // T-0025 fix-now: a second rule set that has a specification matching nothing, run
-  // against the same model, in the same session -- this is the branch F1 and F2 shipped
-  // broken on because nothing in this spec previously reached it.
-  const nothingRuleSetName = `nothing-established-${Date.now()}`;
-  await ruleSetsCard.getByPlaceholder("نام").fill(nothingRuleSetName);
-  await ruleSetsCard.locator('input[type="file"]').setInputFiles(NOTHING_ESTABLISHED_IDS_FILE);
-  await ruleSetsCard.getByRole("button", { name: "افزودن مجموعه قواعد" }).click();
-  await expect(ruleSetsCard.getByText(nothingRuleSetName)).toBeVisible();
-
-  const nothingReviewName = `three-doors-nothing-${Date.now()}`;
-  await reviewsCard.getByPlaceholder("نام").fill(nothingReviewName);
-  await reviewsCard
-    .locator('select[name="rule_set"]')
-    .selectOption({ label: nothingRuleSetName });
-  await reviewsCard.locator('input[type="file"]').setInputFiles(IFC_FILE);
-  await reviewsCard.getByRole("button", { name: "ایجاد بررسی" }).click();
-
-  const nothingReviewRow = reviewsCard.locator("li.review", { hasText: nothingReviewName });
-  await expect(nothingReviewRow).toBeVisible();
-  await nothingReviewRow.getByRole("button", { name: "اجرای بررسی" }).click();
-
-  const nothingSummaryButton = nothingReviewRow.getByRole("button", { name: "خلاصه" });
-  await expect(nothingSummaryButton).toBeVisible({ timeout: 30_000 });
-  await nothingSummaryButton.click();
-
-  // F1: 1 of the 3 specifications established nothing, so the sentence must read "2 of 3",
-  // never "3 of 3" -- the bug was that the old numerator was arithmetically identical to
-  // the denominator for every report the engine can produce.
-  const coverageSentence = report.locator('[data-testid="coverage"] > p').first();
-  await expect(coverageSentence).toHaveText(
-    "2 از 3 مشخصه بررسی شد.",
-  );
-
-  // The "established nothing" block names exactly the one specification that matched
-  // nothing under optional cardinality -- never the one the engine judged FAIL.
-  const nothingEstablishedBlock = report.locator('[data-testid="coverage-nothing-established"]');
-  await expect(nothingEstablishedBlock).toBeVisible();
-  const nothingEstablishedItems = nothingEstablishedBlock.locator("li");
-  await expect(nothingEstablishedItems).toHaveCount(1);
-  await expect(nothingEstablishedItems.first()).toHaveText("Wall fire rating recorded");
-
-  // F2: the specification the engine judged FAIL (a required element is absent) is a real
-  // finding, not an absence of evidence -- it must not be named here.
-  await expect(nothingEstablishedBlock).not.toContainText("Wall count required");
-
-  // That FAIL specification is genuinely rendered as a finding, with its own pill, so F2's
-  // fix is not merely hiding the specification -- it appears in the findings list below.
-  const wallCountRequiredSpec = report.locator("li.spec", { hasText: "Wall count required" });
-  await expect(wallCountRequiredSpec).toBeVisible();
-  await expect(wallCountRequiredSpec.locator(".pill--fail")).toHaveText("مردود");
+  // T-0074: the run appears in this review's own run-history table beneath the picker.
+  const runHistory = page.locator("section.card", {
+    has: page.getByRole("heading", { name: "تاریخچهٔ اجراها" }),
+  });
+  await expect(runHistory.locator("tbody tr")).toHaveCount(1);
 });

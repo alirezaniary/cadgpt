@@ -21,17 +21,28 @@
     "create": "Create workspace",
     "creating": "Creating workspace…"
   },
+  "project": {
+    "title": "Projects",
+    "new": "Add project",
+    "create": "Create project",
+    "name": "Name",
+    "reviewCount": "Reviews",
+    "createdAt": "Created",
+    "empty": "No projects yet. Add one to start a review."
+  },
   "review": {
     "title": "Reviews",
-    "new": "New review",
+    "new": "Add review",
     "name": "Name",
     "model": "IFC model",
-    "ruleSet": "Rule set",
-    "ruleSetNone": "No rule set — select packs from the catalogue instead",
+    "modelFile": "Model file",
+    "statusColumn": "Status",
+    "outcomeColumn": "Outcome",
+    "latestRun": "Latest run",
     "create": "Create review",
     "check": "Run check",
     "checking": "Checking…",
-    "empty": "No reviews yet. Upload a model and a rule set to start.",
+    "empty": "No reviews yet. Add one to start.",
     "neverRun": "Not checked yet",
     "modelSizeLimit": "Up to {{limit}} per model.",
     "catalogue": {
@@ -43,12 +54,11 @@
       "checkSelected": "Run check with selected packs"
     }
   },
-  "ruleSet": {
-    "title": "Rule sets",
-    "new": "Add rule set",
-    "file": "IDS file",
-    "specifications_one": "{{count}} specification",
-    "specifications_other": "{{count}} specifications"
+  "run": {
+    "history": "Run history",
+    "status": "Status",
+    "outcome": "Outcome",
+    "date": "Date"
   },
   "status": {
     "PASS": "Pass",

@@ -2,11 +2,18 @@
  * T-0067 review round 1, both fix-now findings, re-verified live against the real
  * compose stack -- not re-litigating the two MEDIUM findings queued as T-0068/T-0069.
  *
+ * The first test's data-isolation subject was, until T-0074, a rule set uploaded on the
+ * old single-page dashboard. Rule-set upload is gone from the UI entirely
+ * (`docs/decisions.md`'s 2026-09-04 entry) and the dashboard is gone too, split into a
+ * project changelist and a review detail page (T-0074). A project, created through the
+ * new add-project form, is user A's data instead -- the same class of bug (a stale
+ * TanStack Query cache surviving sign-out) is provable against it exactly the same way.
+ *
  * 1. HIGH -- `signOut` cleared the user, the tenant and the access token but never the
- *    TanStack Query cache. Query keys (`keys.tenants`, `keys.ruleSets`, ...) are not
+ *    TanStack Query cache. Query keys (`keys.tenants`, `keys.projects`, ...) are not
  *    user-scoped, so the next person to sign in on the same tab rendered off the
- *    previous user's cached tenant name and rule sets. Reproduced here exactly as the
- *    reviewer described it: user A signs in, creates a workspace, uploads a rule set,
+ *    previous user's cached tenant name and project list. Reproduced here exactly as the
+ *    reviewer described it: user A signs in, creates a workspace, creates a project,
  *    signs out; user B registers a brand-new account in the *same tab* (no new browser
  *    context -- that would sidestep the cache entirely and prove nothing) and must see
  *    none of A's data anywhere.
@@ -18,7 +25,8 @@
  *    the tenant-list GET open for 1.5s after a fresh registration and asserting, for the
  *    whole delay, that no `<select id="workspace">` exists in the DOM at all -- the fixed
  *    code renders a loading screen instead, the same as the existing `!ready` state, not
- *    a shell with an empty control.
+ *    a shell with an empty control. Untouched by T-0074 -- this test predates the
+ *    project/review split and does not reach past the account menu.
  */
 
 import path from "node:path";
@@ -27,13 +35,12 @@ import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const IDS_FILE = path.join(__dirname, "../../../packages/engine/tests/fixtures/door_width.ids");
 
 function unique(): string {
   return `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
 }
 
-test("signing out clears the previous user's cached tenant and rule-set data before the next person signs in on the same tab", async ({
+test("signing out clears the previous user's cached tenant and project data before the next person signs in on the same tab", async ({
   page,
 }) => {
   const a = unique();
@@ -42,10 +49,10 @@ test("signing out clears the previous user's cached tenant and rule-set data bef
   // second test below on why a too-similar password makes this whole spec pass vacuously.
   const passwordA = "Guarded#2026-HarnessA";
   const tenantA = `Tenant A ${a}`;
-  const ruleSetA = `ruleset-a-${a}`;
+  const projectA = `project-a-${a}`;
 
-  // --- User A: register, create a workspace, add a rule set that must not survive
-  // into the next session on this tab. ---
+  // --- User A: register, create a workspace, add a project that must not survive into
+  // the next session on this tab. ---
   await page.goto("/");
   await page.getByRole("button", { name: "ساخت حساب کاربری" }).click();
   await page.getByLabel("رایانامه").fill(emailA);
@@ -63,21 +70,17 @@ test("signing out clears the previous user's cached tenant and rule-set data bef
   await expect(page.locator(".user-menu-header strong")).toHaveText(tenantA);
   await page.keyboard.press("Escape");
 
-  const ruleSetsCard = page.locator("section.card", {
-    has: page.getByRole("heading", { name: "مجموعه‌های قواعد" }),
-  });
-  await ruleSetsCard.getByPlaceholder("نام").fill(ruleSetA);
-  // A real file is not the point of this spec -- any file the "IDS file" input accepts
-  // proves the point, so the same fixture the other specs use is reused here.
-  await ruleSetsCard.locator('input[type="file"]').setInputFiles(IDS_FILE);
-  await ruleSetsCard.getByRole("button", { name: "افزودن مجموعه قواعد" }).click();
-  await expect(ruleSetsCard.getByText(ruleSetA)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "پروژه‌ها" })).toBeVisible();
+  await page.getByRole("link", { name: "افزودن پروژه" }).click();
+  await page.getByLabel("نام").fill(projectA);
+  await page.getByRole("button", { name: "ایجاد پروژه" }).click();
+  await expect(page.getByRole("heading", { name: projectA })).toBeVisible({ timeout: 10_000 });
   await page.screenshot({
     path: path.resolve(__dirname, "screenshots/isolation-1-user-a-data.png"),
   });
 
   // --- Sign out. This is the fix under test: it must clear the query cache, not just
-  // the session state. Sign-out now lives inside the account menu, not a bare topbar
+  // the session state. Sign-out lives inside the account menu, not a bare topbar
   // button, so it has to be opened first. ---
   await page.locator(".avatar-trigger").click();
   await page.getByRole("menuitem", { name: "خروج" }).click();
@@ -86,7 +89,7 @@ test("signing out clears the previous user's cached tenant and rule-set data bef
 
   // --- User B: a different brand-new account, same tab, same page -- no reload. If the
   // query cache survived sign-out, B would render A's tenant name in the (stale, from
-  // cache) workspace list and/or A's rule set in a (stale) rule-sets list. ---
+  // cache) workspace list and/or A's project in a (stale) project list. ---
   const b = unique();
   const emailB = `isolation-b-${b}@cadgpt.test`;
   const passwordB = "Guarded#2026-HarnessB";
@@ -112,11 +115,9 @@ test("signing out clears the previous user's cached tenant and rule-set data bef
   await expect(page.getByText(tenantA)).toHaveCount(0);
   await page.keyboard.press("Escape");
 
-  // The rule-sets list must be B's (empty), not a stale render of A's list.
-  await expect(page.getByText(ruleSetA)).toHaveCount(0);
-  const emptyState = page.getByText(
-    "هنوز بررسی‌ای نیست. برای شروع یک مدل و یک مجموعه قواعد بارگذاری کنید.",
-  );
+  // The project list must be B's (empty), not a stale render of A's list.
+  await expect(page.getByText(projectA)).toHaveCount(0);
+  const emptyState = page.getByText("هنوز پروژه‌ای نیست");
   await expect(emptyState).toBeVisible();
   await page.screenshot({
     path: path.resolve(__dirname, "screenshots/isolation-2-user-b-clean-slate.png"),

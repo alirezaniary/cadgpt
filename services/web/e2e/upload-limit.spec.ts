@@ -1,10 +1,12 @@
 /**
  * T-0033: the upload ceiling is named before the user picks a file.
  *
- * A rejection message read only after a failed upload tells an architect the number too
- * late to act on it. `ReviewsPage` states `MAX_MODEL_UPLOAD_BYTES` (`src/lib/limits.ts`)
- * next to the model file input itself, before any file is chosen -- this proves that text
- * actually renders in the real browser, in the real built image.
+ * `ReviewAddPage` (T-0074's split of the old `ReviewsPage`) states
+ * `MAX_MODEL_UPLOAD_BYTES` (`src/lib/limits.ts`) next to the model file input itself,
+ * before any file is chosen -- this proves that text actually renders in the real
+ * browser, in the real built image. Reaching that page now goes through a project first
+ * (create one, open its detail page, follow "افزودن بررسی") since the hint no longer
+ * lives on a single dashboard.
  *
  * Previously asserted the same hint in both English and Persian by flipping a topbar
  * language `<select>` mid-test. That control is gone -- the frontend now hardcodes a
@@ -25,6 +27,14 @@ test("the model size ceiling is stated at upload time", async ({ page, account }
   await page.locator(".avatar-trigger").click();
   await expect(page.locator(".user-menu-header strong")).toHaveText(account.tenantName);
   await page.keyboard.press("Escape");
+
+  const projectName = `upload-limit-project-${Date.now()}`;
+  await page.getByRole("link", { name: "افزودن پروژه" }).click();
+  await page.getByLabel("نام").fill(projectName);
+  await page.getByRole("button", { name: "ایجاد پروژه" }).click();
+  await expect(page.getByRole("heading", { name: projectName })).toBeVisible({ timeout: 10_000 });
+
+  await page.getByRole("link", { name: "افزودن بررسی" }).click();
 
   const limitHint = page.getByTestId("model-size-limit");
   await expect(limitHint).toBeVisible();

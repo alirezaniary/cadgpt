@@ -379,6 +379,58 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .row { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
 
+/* The changelist header: a heading and its "add" action, T-0074's Django-admin shape --
+   `ProjectsListPage`, `ProjectDetailPage`. */
+.page__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+/* `<Link>` renders an `<a>`, which carries none of `button`'s styling by default --
+   this is that same look, so the "add" action reads identically whether it is a
+   `<button>` (a mutation) or a navigation (this one). */
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  font: inherit;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--accent-fg);
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+.button-link:hover { background: var(--accent-strong); }
+.button-link:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* The changelist and detail tables (T-0074): projects, a project's reviews, a review's
+   past runs. Each row navigates on click, so the pointer and hover feedback read as a
+   list of links rather than static data. */
+.table { inline-size: 100%; border-collapse: collapse; font-size: var(--text-base); }
+.table th, .table td {
+  padding: var(--space-3);
+  text-align: start;
+  border-block-end: 1px solid var(--line);
+}
+.table th {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.table tbody tr { cursor: pointer; transition: background 0.15s ease; }
+.table tbody tr:hover { background: var(--accent-soft); }
+.table tbody tr.active { background: var(--accent-soft); }
+.table a { color: var(--fg); text-decoration: none; font-weight: var(--weight-medium); }
+.table a:hover { color: var(--accent); text-decoration: underline; }
+
 .list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
 
 .review { border-block-start: 1px solid var(--line); padding-block-start: var(--space-3); }
@@ -434,14 +486,24 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 /* Three columns, never two: indeterminate is displayed at the same weight as the other
    two so it cannot be read past. */
 .counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+/* Brought in line with `.card`'s own padding/radius/shadow (T-0074's design pass) --
+   the earlier version's smaller radius and unbordered flat fill was the "three loose
+   swatches" the product owner flagged; the colors underneath were already correct. */
 .count {
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-card);
   display: grid;
   gap: var(--space-1);
 }
 .count__value { font-size: var(--text-2xl); font-weight: var(--weight-bold); line-height: 1; }
-.count__label { font-size: var(--text-sm); font-weight: var(--weight-medium); }
+.count__label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
 .count--pass { background: var(--pass-bg); color: var(--pass); }
 .count--fail { background: var(--fail-bg); color: var(--fail); }
 .count--indeterminate { background: var(--indeterminate-bg); color: var(--indeterminate); }
@@ -480,11 +542,22 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 .requirement { margin-block-start: var(--space-3); }
 .requirement__description { margin: 0 0 var(--space-2); font-size: var(--text-base); }
 
-.entities { inline-size: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+/* `table-layout: fixed` plus an explicit width per column (T-0074) is what makes the
+   columns line up: the previous auto layout sized each column from its own longest
+   line, so the mono GUID column and the prose reason/detail columns fought each other
+   and wrapped raggedly at ordinary report widths. Fixed widths make every row in a
+   table agree on where a column starts and ends. */
+.entities { inline-size: 100%; border-collapse: collapse; font-size: var(--text-sm); table-layout: fixed; }
 .entities td {
   padding: var(--space-2) var(--space-3);
   border-block-start: 1px solid var(--line);
   vertical-align: top;
   text-align: start;
+  overflow-wrap: break-word;
 }
+.entities td:nth-child(1) { inline-size: 5.5rem; }
+.entities td:nth-child(2) { inline-size: 8rem; }
+.entities td:nth-child(3) { inline-size: 13rem; }
+.entities td:nth-child(4) { inline-size: 11rem; }
+.entities td:nth-child(5) { inline-size: auto; }
 .entities tr:hover td { background: var(--accent-soft); }

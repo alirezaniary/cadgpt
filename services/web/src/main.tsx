@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import { App } from "@/app/App";
+import { router } from "@/app/router";
 import { SessionProvider } from "@/app/session";
 import "@/i18n";
 import "@/styles.css";
@@ -26,7 +27,7 @@ createRoot(container).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <SessionProvider>
-        <App />
+        <RouterProvider router={router} />
       </SessionProvider>
     </QueryClientProvider>
   </StrictMode>,

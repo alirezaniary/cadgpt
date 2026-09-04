@@ -1,3 +1,4 @@
+import { Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -5,13 +6,13 @@ import { useTenants } from "@/api/queries";
 import { LAST_TENANT_KEY, useSession } from "@/app/session-context";
 import { RegisterPage } from "@/features/auth/RegisterPage";
 import { SignInPage } from "@/features/auth/SignInPage";
-import { ReviewsPage } from "@/features/review/ReviewsPage";
 import { CreateWorkspacePage } from "@/features/tenancy/CreateWorkspacePage";
 
 export function App() {
   const { t } = useTranslation();
   const { user, tenant, ready, signOut, chooseTenant } = useSession();
   const tenants = useTenants(Boolean(user));
+  const navigate = useNavigate();
   const [authMode, setAuthMode] = useState<"signIn" | "register">("signIn");
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -118,6 +119,12 @@ export function App() {
                       onClick={() => {
                         chooseTenant(candidate);
                         setMenuOpen(false);
+                        // A project or review uuid in the current URL belongs to the
+                        // tenant being left -- carrying it into the new tenant's
+                        // session would 404 (T-0074's own e2e run against the real
+                        // stack caught this: the stale route rendered a project-detail
+                        // page scoped to another tenant's now-inaccessible project).
+                        void navigate({ to: "/projects" });
                       }}
                     >
                       {candidate.name}
@@ -130,7 +137,13 @@ export function App() {
                 type="button"
                 role="menuitem"
                 className="user-menu-signout"
-                onClick={() => void signOut()}
+                onClick={() => {
+                  void signOut();
+                  // Same reasoning as the workspace-switch handler above: the next
+                  // person to sign in on this tab must not inherit a project/review
+                  // route scoped to the account that just signed out.
+                  void navigate({ to: "/" });
+                }}
               >
                 {t("auth.signOut")}
               </button>
@@ -139,7 +152,7 @@ export function App() {
         </div>
       </header>
 
-      <ReviewsPage />
+      <Outlet />
     </div>
   );
 }

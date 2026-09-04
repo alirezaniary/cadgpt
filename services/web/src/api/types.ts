@@ -60,6 +60,16 @@ export interface RuleSet {
   created_at: string;
 }
 
+/** The changelist's container for reviews (T-0073) -- `ProjectSerializer`'s exact shape:
+ * `uuid`, `name`, `review_count` (annotated on the list query, falling back to a live
+ * count for an instance with no reviews yet), `created_at`. */
+export interface Project {
+  uuid: string;
+  name: string;
+  review_count: number;
+  created_at: string;
+}
+
 /** A shipped pack from the catalogue (T-0030) -- belongs to no tenant, every tenant reads
  * the same rows. Selected at check-request time rather than at review creation; see
  * `RulePackSelectionEntry`. */

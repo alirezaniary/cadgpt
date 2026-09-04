@@ -626,18 +626,24 @@ tenant-scoped — swapping in `Project.objects.all()` passes the whole suite tod
 belong to). T-0074, below, is not a new finding — the frontend's only review-creation
 call not yet sending `project` is exactly what T-0074 exists to close.
 
-**T-0074 — dispatched 2026-09-04, in progress.** The frontend half of the same rejection:
-the product owner wants Django admin's shape, minus the visual style — a changelist, a
-separate add form, a separate detail view, three levels deep,
-**workspace → projects → reviews**, a review's detail page carrying its own runs and
-report. Wires up `@tanstack/react-router` (a declared, unused dependency since before
-this session) into `/projects`, `/projects/new`, `/projects/:uuid`,
-`/projects/:uuid/reviews/new`, and `/projects/:uuid/reviews/:uuid` against T-0073's API.
-Also removes the user-facing rule-set upload card entirely: `prd.md:551` and this file's
-own "rule store" scope section above already said rules ship as a catalogue, not a file
-the architect uploads, and the frontend had it live anyway. Logged in
-`docs/decisions.md`'s 2026-09-04 entry — UI removal only, the backend `RuleSet` model and
-API are untouched for now.
+**T-0074 — a changelist, an add form, and a detail view, in place of one page. Done
+2026-09-04.** The frontend half of the same rejection: the product owner wants Django
+admin's shape, minus the visual style — a changelist, a separate add form, a separate
+detail view, three levels deep, **workspace → projects → reviews**, a review's detail
+page carrying its own runs and report. Wired up `@tanstack/react-router` (a declared,
+unused dependency since before this session) into `/projects`, `/projects/new`,
+`/projects/:uuid`, `/projects/:uuid/reviews/new`, and `/projects/:uuid/reviews/:uuid`
+against T-0073's API, and removed the user-facing rule-set upload card entirely per
+`docs/decisions.md`'s 2026-09-04 entry — UI removal only, backend `RuleSet` untouched.
+Not review-gated (touches no invariant). Full e2e suite (6/6) green against the rebuilt
+stack, reproduced twice; running the real stack — not the diff — caught and fixed two
+genuine bugs: sign-out/workspace-switch left a stale tenant-scoped URL in the router,
+404ing the next session's landing page, and the review-detail "busy" state lagged an
+already-succeeded run because it read a slower-polling query than the one that was
+actually current. One item flagged NOT DONE rather than fixed unilaterally: the
+`nothing_established.ids` coverage-math scenario lost its e2e path now that arbitrary IDS
+upload is gone from the UI and no catalogue-seeded pack reproduces it — queued as
+**T-0078** (a backend seed-manifest change, outside this frontend-only task's scope).
 
 ### Queued
 

@@ -1,12 +1,14 @@
 /**
  * T-0067: the path a person with no account and no invitation has to take to use the
  * product at all -- register, land on a first-workspace screen (not a broken empty
- * dropdown), create a workspace by typing a name, and reach `ReviewsPage` able to start a
- * review.
+ * dropdown), create a workspace by typing a name, and reach the changelist able to start
+ * a review. Extended by T-0074 to walk every one of the five routes the project/review
+ * split introduced -- a list, an add form and a detail view for projects, and again for
+ * reviews -- screenshotting each.
  *
  * Deliberately does not use `fixtures.ts`'s `account` fixture: that fixture seeds the
- * account and the tenant straight through the API specifically because, until this task,
- * the SPA had no screen for either. This spec is the one that now drives both through the
+ * account and the tenant straight through the API specifically because, until T-0067,
+ * the SPA had no screen for either. This spec is the one that drives both through the
  * browser instead, against the real compose stack (`make up`), the same way
  * `report.spec.ts` drives everything after sign-in.
  */
@@ -18,10 +20,9 @@ import { expect, test } from "@playwright/test";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = path.resolve(__dirname, "../../../packages/engine/tests/fixtures");
-const IDS_FILE = path.join(FIXTURES_DIR, "door_width.ids");
 const IFC_FILE = path.join(FIXTURES_DIR, "three_doors.ifc");
 
-test("a brand-new person registers, creates a workspace and starts a review, entirely in the browser", async ({
+test("a brand-new person registers, creates a workspace and walks every project/review route, entirely in the browser", async ({
   page,
 }) => {
   const unique = `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
@@ -32,13 +33,11 @@ test("a brand-new person registers, creates a workspace and starts a review, ent
   await page.goto("/");
 
   // Step 1: the sign-in screen is the only thing an unauthenticated visitor sees, and it
-  // must offer a way to a registration screen -- that link is this task's first gap.
+  // must offer a way to a registration screen.
   await expect(page.getByRole("heading", { name: "کدجی‌پی‌تی" })).toBeVisible();
   await page.getByRole("button", { name: "ساخت حساب کاربری" }).click();
 
-  // Step 2: the registration screen. Email and password only. The heading stays
-  // "کدجی‌پی‌تی" -- the same card layout as sign-in, just as a subtitle names which
-  // screen this is, the way `SignInPage`'s tagline does.
+  // Step 2: the registration screen. Email and password only.
   await expect(page.getByText("ثبت‌نام در کدجی‌پی‌تی", { exact: true })).toBeVisible();
   await page.getByLabel("رایانامه").fill(email);
   await page.getByLabel("گذرواژه").fill(password);
@@ -47,9 +46,8 @@ test("a brand-new person registers, creates a workspace and starts a review, ent
   });
   await page.getByRole("button", { name: "ساخت حساب کاربری" }).click();
 
-  // Step 3: registration signs the new user in (via the same `signIn` path login uses)
-  // and, because they have zero tenants, they land on the first-workspace screen -- not
-  // the broken empty `<select>` `App.tsx` used to render.
+  // Step 3: registration signs the new user in and, because they have zero tenants,
+  // they land on the first-workspace screen.
   await expect(page.getByRole("heading", { name: "فضای کاری نخست خود را بسازید" })).toBeVisible({
     timeout: 15_000,
   });
@@ -62,54 +60,68 @@ test("a brand-new person registers, creates a workspace and starts a review, ent
   await page.getByLabel("نام فضای کاری").fill(workspaceName);
   await page.getByRole("button", { name: "ایجاد فضای کاری" }).click();
 
-  // Step 5: the shell renders immediately, with no reload, and the new workspace is
-  // already selected -- `chooseTenant` was called directly with the create response.
+  // Step 5: the shell renders immediately, with no reload, the new workspace is already
+  // selected, and "/" redirects to "/projects" -- route 1 of 5.
   await expect(page.locator(".avatar-trigger")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole("heading", { name: "بررسی‌ها" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "پروژه‌ها" })).toBeVisible();
   await page.locator(".avatar-trigger").click();
   await expect(page.locator(".user-menu-header strong")).toHaveText(workspaceName);
   await page.keyboard.press("Escape");
+  await expect(page.getByText("هنوز پروژه‌ای نیست")).toBeVisible();
   await page.screenshot({
-    path: path.resolve(__dirname, "screenshots/onboarding-3-reviews-shell.png"),
+    path: path.resolve(__dirname, "screenshots/onboarding-3-projects-list.png"),
   });
 
-  // Step 6: able to start a review -- add a rule set, create a review against it, and run
-  // a check to a terminal state, the same real IDS/IFC fixtures `report.spec.ts` uses.
-  const ruleSetsCard = page.locator("section.card", {
-    has: page.getByRole("heading", { name: "مجموعه‌های قواعد" }),
+  // Route 2 of 5: /projects/new, the add-project form.
+  await page.getByRole("link", { name: "افزودن پروژه" }).click();
+  await expect(page.getByRole("heading", { name: "افزودن پروژه" })).toBeVisible();
+  const projectName = `onboarding-project-${unique}`;
+  await page.getByLabel("نام").fill(projectName);
+  await page.screenshot({
+    path: path.resolve(__dirname, "screenshots/onboarding-4-project-add.png"),
   });
-  const reviewsCard = page.locator("section.card", {
-    has: page.getByRole("heading", { name: "بررسی‌ها" }),
+  await page.getByRole("button", { name: "ایجاد پروژه" }).click();
+
+  // Route 3 of 5: /projects/:uuid, the project's own detail page -- "save and continue
+  // editing" landed here, not back on the list.
+  await expect(page.getByRole("heading", { name: projectName })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("هنوز بررسی‌ای نیست")).toBeVisible();
+  await page.screenshot({
+    path: path.resolve(__dirname, "screenshots/onboarding-5-project-detail.png"),
   });
 
-  const ruleSetName = `door-width-${unique}`;
-  await ruleSetsCard.getByPlaceholder("نام").fill(ruleSetName);
-  await ruleSetsCard.locator('input[type="file"]').setInputFiles(IDS_FILE);
-  await ruleSetsCard.getByRole("button", { name: "افزودن مجموعه قواعد" }).click();
-  await expect(ruleSetsCard.getByText(ruleSetName)).toBeVisible();
-
+  // Route 4 of 5: /projects/:uuid/reviews/new -- name and model file only, no rule-set
+  // picker (`docs/decisions.md`, 2026-09-04).
+  await page.getByRole("link", { name: "افزودن بررسی" }).click();
+  await expect(page.getByRole("heading", { name: "افزودن بررسی" })).toBeVisible();
   const reviewName = `onboarding-review-${unique}`;
-  await reviewsCard.getByPlaceholder("نام").fill(reviewName);
-  await reviewsCard.locator('select[name="rule_set"]').selectOption({ label: ruleSetName });
-  await reviewsCard.locator('input[type="file"]').setInputFiles(IFC_FILE);
-  await reviewsCard.getByRole("button", { name: "ایجاد بررسی" }).click();
+  await page.getByLabel("نام").fill(reviewName);
+  await page.locator('input[type="file"]').setInputFiles(IFC_FILE);
+  await page.screenshot({
+    path: path.resolve(__dirname, "screenshots/onboarding-6-review-add.png"),
+  });
+  await page.getByRole("button", { name: "ایجاد بررسی" }).click();
 
-  const reviewRow = reviewsCard.locator("li.review", { hasText: reviewName });
-  await expect(reviewRow).toBeVisible();
-  await reviewRow.getByRole("button", { name: "اجرای بررسی" }).click();
-
-  const summaryButton = reviewRow.getByRole("button", { name: "خلاصه" });
-  await expect(summaryButton).toBeVisible({ timeout: 30_000 });
-  await summaryButton.click();
+  // Route 5 of 5: /projects/:uuid/reviews/:uuid -- the review's own detail page: the
+  // catalogue picker, "run check", the run history and the report, all inline here.
+  await expect(page.getByRole("heading", { name: reviewName })).toBeVisible({ timeout: 10_000 });
+  const picker = page.getByTestId("catalogue-picker");
+  await expect(picker).toBeVisible();
+  const doorWidthPack = picker
+    .locator("li", { hasText: "Accessible door width" })
+    .filter({ hasText: "v0.1" });
+  await expect(doorWidthPack).toBeVisible({ timeout: 10_000 });
+  await doorWidthPack.getByRole("checkbox").check();
+  await picker.getByRole("button", { name: "اجرای بررسی با بسته‌های انتخاب‌شده" }).click();
 
   const report = page.locator("section.report");
-  await expect(report).toBeVisible();
+  await expect(report).toBeVisible({ timeout: 30_000 });
   await expect(report.locator(".count--pass .count__value")).toHaveText("1");
   await expect(report.locator(".count--fail .count__value")).toHaveText("1");
   await expect(report.locator(".count--indeterminate .count__value")).toHaveText("1");
 
   await page.screenshot({
-    path: path.resolve(__dirname, "screenshots/onboarding-4-report.png"),
+    path: path.resolve(__dirname, "screenshots/onboarding-7-review-detail-report.png"),
     fullPage: true,
   });
 });

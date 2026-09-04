@@ -24,9 +24,9 @@ import type {
   CheckRunSummary,
   Media,
   Page,
+  Project,
   Review,
   RulePack,
-  RuleSet,
   Tenant,
   User,
 } from "@/api/types";
@@ -35,10 +35,13 @@ import { isTerminal } from "@/api/types";
 export const keys = {
   me: ["me"] as const,
   tenants: ["tenants"] as const,
-  ruleSets: (tenant: string | null) => ["rule-sets", tenant] as const,
   rulePacks: (tenant: string | null) => ["rule-packs", tenant] as const,
-  reviews: (tenant: string | null) => ["reviews", tenant] as const,
+  projects: (tenant: string | null) => ["projects", tenant] as const,
+  project: (tenant: string | null, uuid: string) => ["project", tenant, uuid] as const,
+  reviews: (tenant: string | null, projectUuid: string | null) =>
+    ["reviews", tenant, projectUuid] as const,
   review: (uuid: string) => ["review", uuid] as const,
+  runs: (review: string | null) => ["runs", review] as const,
   run: (review: string, run: string) => ["run", review, run] as const,
 };
 
@@ -75,14 +78,6 @@ export function useCreateTenant(): UseMutationResult<
   });
 }
 
-export function useRuleSets(tenant: string | null): UseQueryResult<Page<RuleSet>> {
-  return useQuery({
-    queryKey: keys.ruleSets(tenant),
-    queryFn: () => api.get<Page<RuleSet>>("/v1/rule-sets/"),
-    enabled: Boolean(tenant),
-  });
-}
-
 /** The catalogue (T-0030), read-only and the same for every tenant. Every user needs it
  * the moment a review has no `rule_set` of its own -- fetched once and filtered on the
  * client rather than refetched per review's picker. */
@@ -94,11 +89,48 @@ export function useRulePacks(tenant: string | null): UseQueryResult<Page<RulePac
   });
 }
 
-export function useReviews(tenant: string | null): UseQueryResult<Page<Review>> {
+/** The changelist (T-0074): every project the tenant owns, with `review_count` -- one
+ * query for the whole page (`ProjectViewSet.get_queryset`'s annotation). */
+export function useProjects(tenant: string | null): UseQueryResult<Page<Project>> {
   return useQuery({
-    queryKey: keys.reviews(tenant),
-    queryFn: () => api.get<Page<Review>>("/v1/reviews/"),
+    queryKey: keys.projects(tenant),
+    queryFn: () => api.get<Page<Project>>("/v1/projects/"),
     enabled: Boolean(tenant),
+  });
+}
+
+/** A single project, for the detail page's own heading -- `GET /v1/projects/{uuid}/`
+ * rather than reusing the list's cache, so a detail page opened directly (a reload, a
+ * bookmark) does not depend on the changelist having been fetched first. */
+export function useProject(
+  tenant: string | null,
+  uuid: string,
+): UseQueryResult<Project> {
+  return useQuery({
+    queryKey: keys.project(tenant, uuid),
+    queryFn: () => api.get<Project>(`/v1/projects/${uuid}/`),
+    enabled: Boolean(tenant) && Boolean(uuid),
+  });
+}
+
+export function useCreateProject(
+  tenant: string | null,
+): UseMutationResult<Project, Error, { name: string }> {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (payload) => api.post<Project>("/v1/projects/", payload),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.projects(tenant) }),
+  });
+}
+
+export function useReviews(
+  tenant: string | null,
+  projectUuid: string | null,
+): UseQueryResult<Page<Review>> {
+  return useQuery({
+    queryKey: keys.reviews(tenant, projectUuid),
+    queryFn: () => api.get<Page<Review>>(`/v1/reviews/?project=${projectUuid}`),
+    enabled: Boolean(tenant) && Boolean(projectUuid),
     // A review's latest run changes while a check is in flight, so the list refreshes
     // itself only while at least one is unfinished.
     refetchInterval: (query) => {
@@ -109,6 +141,36 @@ export function useReviews(tenant: string | null): UseQueryResult<Page<Review>> 
       );
       return busy ? 2000 : false;
     },
+  });
+}
+
+/** A review's past runs (T-0074's `ReviewDetailPage`, "a list of this review's past
+ * runs") -- `CheckRunViewSet.list`, unchanged since before this task, just never called
+ * from the frontend until now. Refetches itself while any run in the page is still
+ * in flight, the same rule `useReviews` applies to a review's `latest_run`. */
+export function useCheckRuns(reviewUuid: string | null): UseQueryResult<Page<CheckRunSummary>> {
+  return useQuery({
+    queryKey: keys.runs(reviewUuid),
+    queryFn: () => api.get<Page<CheckRunSummary>>(`/v1/reviews/${reviewUuid}/runs/`),
+    enabled: Boolean(reviewUuid),
+    refetchInterval: (query) => {
+      const page = query.state.data;
+      if (!page) return false;
+      const busy = page.results.some((run) => !isTerminal(run.status));
+      return busy ? 2000 : false;
+    },
+  });
+}
+
+/** A single review, for `ReviewDetailPage`'s own heading (name, model filename) --
+ * `GET /v1/reviews/{uuid}/`, the same `ReviewViewSet.retrieve` `useReviews`'s list
+ * already reads through, just addressed one at a time so the detail page does not
+ * depend on the project's review list having been fetched first. */
+export function useReview(tenant: string | null, uuid: string): UseQueryResult<Review> {
+  return useQuery({
+    queryKey: keys.review(uuid),
+    queryFn: () => api.get<Review>(`/v1/reviews/${uuid}/`),
+    enabled: Boolean(tenant) && Boolean(uuid),
   });
 }
 
@@ -148,7 +210,9 @@ export function useGenerateReportFile(
       api.post<CheckRunSummary>(`/v1/reviews/${reviewUuid}/runs/${runUuid}/report-file/`),
     onSuccess: (_data, { reviewUuid, runUuid }) => {
       void client.invalidateQueries({ queryKey: keys.run(reviewUuid, runUuid) });
-      void client.invalidateQueries({ queryKey: keys.reviews(tenant) });
+      // Prefix match: the caller does not know which project's list is showing this
+      // review, so every `["reviews", tenant, *]` list is invalidated rather than one.
+      void client.invalidateQueries({ queryKey: ["reviews", tenant] });
     },
   });
 }
@@ -160,39 +224,24 @@ async function uploadMedia(file: File, kind: Media["kind"]): Promise<Media> {
   return api.post<Media>("/v1/media/", form);
 }
 
-export function useCreateRuleSet(
-  tenant: string | null,
-): UseMutationResult<RuleSet, Error, { file: File; name: string }> {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ file, name }) => {
-      // Two steps on purpose: a name collision must not cost the upload again.
-      const media = await uploadMedia(file, "ids_ruleset");
-      return api.post<RuleSet>("/v1/rule-sets/", {
-        source_file: media.uuid,
-        name,
-      });
-    },
-    onSuccess: () => client.invalidateQueries({ queryKey: keys.ruleSets(tenant) }),
-  });
-}
-
 export function useCreateReview(
   tenant: string | null,
-): UseMutationResult<Review, Error, { file: File; name: string; ruleSet: string }> {
+): UseMutationResult<Review, Error, { file: File; name: string; project: string }> {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ file, name, ruleSet }) => {
+    mutationFn: async ({ file, name, project }) => {
       const media = await uploadMedia(file, "ifc_model");
       return api.post<Review>("/v1/reviews/", {
         name,
         model_file: media.uuid,
-        // Empty selects the catalogue path: a review with no `rule_set` of its own,
-        // checked against a pack selection given per run instead (T-0031).
-        ...(ruleSet ? { rule_set: ruleSet } : {}),
+        project,
+        // No `rule_set` from here on (`docs/decisions.md`, 2026-09-04): every review
+        // created through this form takes the catalogue path, selected per check
+        // request instead (T-0031).
       });
     },
-    onSuccess: () => client.invalidateQueries({ queryKey: keys.reviews(tenant) }),
+    onSuccess: (_data, { project }) =>
+      client.invalidateQueries({ queryKey: keys.reviews(tenant, project) }),
   });
 }
 
@@ -209,6 +258,9 @@ export function useStartCheck(
       api.post<CheckRunSummary>(`/v1/reviews/${reviewUuid}/check/`, {
         rule_packs: rulePacks ?? [],
       }),
-    onSuccess: () => client.invalidateQueries({ queryKey: keys.reviews(tenant) }),
+    onSuccess: (_data, { reviewUuid }) => {
+      void client.invalidateQueries({ queryKey: ["reviews", tenant] });
+      void client.invalidateQueries({ queryKey: keys.runs(reviewUuid) });
+    },
   });
 }
