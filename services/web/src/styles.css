@@ -230,13 +230,99 @@ select {
 [dir="rtl"] select { background-position: left var(--space-3) center; }
 select::-ms-expand { display: none; }
 
-.topbar select {
-  background-color: transparent;
-  border-color: var(--line);
+/* The topbar's only interactive control besides sign-out is the account menu: an
+   avatar button that opens a panel naming the workspace and the signed-in email, with
+   workspace switching and sign-out inside it -- in place of the raw `<select>` this
+   replaced (T-0071 already fixed that select's own styling; the product owner then
+   rejected the pattern itself, native chrome or not, in favor of a proper account menu). */
+.user-menu { position: relative; }
+
+.avatar-trigger {
+  display: block;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  cursor: pointer;
+}
+.avatar-trigger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.user-menu-panel {
+  position: absolute;
+  inset-block-start: calc(100% + var(--space-2));
+  inset-inline-end: 0;
+  z-index: 10;
+  min-inline-size: 14rem;
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+.user-menu-header {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border-block-end: 1px solid var(--line);
+  margin-block-end: var(--space-1);
+}
+.user-menu-header strong { font-size: var(--text-base); }
+.user-menu-header span { font-size: var(--text-sm); }
+
+.user-menu-section { display: grid; padding-block-end: var(--space-1); }
+
+.user-menu-label {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.user-menu-panel button {
+  display: block;
+  inline-size: 100%;
+  text-align: start;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--fg);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.user-menu-panel button:hover { background: var(--accent-soft); }
+.user-menu-panel button.active {
+  color: var(--accent);
   font-weight: var(--weight-medium);
 }
-.topbar select:hover { border-color: var(--accent); }
+
+.user-menu-panel .user-menu-signout {
+  margin-block-start: var(--space-1);
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--line);
+  color: var(--fail);
+}
 
 /* The file picker's own button, `::file-selector-button`, is a real, broadly-supported
    pseudo-element (Chrome, Firefox and Safari all implement it) -- this is what turns

@@ -15,7 +15,6 @@
   },
   "workspace": {
     "label": "Workspace",
-    "none": "No workspace yet",
     "createTitle": "Create your first workspace",
     "createHint": "A workspace holds your rule sets, models and reviews.",
     "name": "Workspace name",

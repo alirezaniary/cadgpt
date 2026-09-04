@@ -37,11 +37,22 @@ class Review(TenantOwnedModel, SoftDeleteModelMixin, UuidBaseModel):
     its own, and each `CheckRun` beneath it must be given a catalogue selection when it is
     requested (`ReviewService.request_check`, `CheckRun.rule_pack_selection`). A review
     with a `rule_set` keeps working exactly as it always has -- that path is unchanged.
+
+    `project` is required, unlike `rule_set` -- every review lives inside exactly one
+    project, the organizing layer between a workspace and its reviews
+    (`docs/tasks/T-0073-a-project-to-hold-reviews.md`). `on_delete=PROTECT` mirrors
+    `model_file`: a project with reviews under it cannot be deleted out from under them.
     """
 
     tenant_related_name = "reviews"
 
     name = models.CharField(_("name"), max_length=255)
+    project = models.ForeignKey(
+        "project.Project",
+        on_delete=models.PROTECT,
+        related_name="reviews",
+        verbose_name=_("project"),
+    )
     model_file = models.ForeignKey(
         "media.Media",
         on_delete=models.PROTECT,

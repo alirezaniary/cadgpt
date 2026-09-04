@@ -8,6 +8,7 @@ from cadgpt.apps.review.models import CheckRun, Review
 
 class ReviewFilterSet(django_filters.FilterSet):
     name = django_filters.CharFilter(lookup_expr="icontains")
+    project = django_filters.UUIDFilter(field_name="project__uuid")
     rule_set = django_filters.UUIDFilter(field_name="rule_set__uuid")
     created_after = django_filters.IsoDateTimeFilter(
         field_name="created_at", lookup_expr="gte"
@@ -15,7 +16,7 @@ class ReviewFilterSet(django_filters.FilterSet):
 
     class Meta:
         model = Review
-        fields = ("name", "rule_set", "created_after")
+        fields = ("name", "project", "rule_set", "created_after")
 
 
 class CheckRunFilterSet(django_filters.FilterSet):

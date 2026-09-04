@@ -18,6 +18,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("", include("cadgpt.apps.base.urls")),
     path("", include("cadgpt.apps.account.urls")),
     path("", include("cadgpt.apps.tenancy.urls")),
+    path("", include("cadgpt.apps.project.urls")),
     path("", include("cadgpt.apps.media.urls")),
     path("", include("cadgpt.apps.rulepack.urls")),
     path("", include("cadgpt.apps.review.urls")),

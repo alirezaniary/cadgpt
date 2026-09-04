@@ -1,7 +1,7 @@
 /**
  * A signed-in user with zero tenants has nowhere to act -- every tenant-scoped request
- * needs an `X-Tenant` header, and `App.tsx`'s workspace `<select>` has nothing to offer
- * them. This is the screen that replaces that empty dropdown: one name field, calling
+ * needs an `X-Tenant` header, and `App.tsx`'s account menu has no workspace to name for
+ * them. This is the screen that fills that gap: one name field, calling
  * `POST /v1/tenants/` through `TenantCreateSerializer`.
  *
  * `TenantCreateSerializer` requires a `slug` field; nothing downstream depends on its
@@ -32,7 +32,7 @@ function slugify(name: string): string {
 }
 
 export function CreateWorkspacePage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { chooseTenant } = useSession();
   const createTenant = useCreateTenant();
   const [name, setName] = useState("");
@@ -45,7 +45,7 @@ export function CreateWorkspacePage() {
       const tenant = await createTenant.mutateAsync({
         name,
         slug: slugify(name),
-        language: i18n.language === "fa" ? "fa" : "en",
+        language: "fa",
       });
       chooseTenant(tenant);
     } catch (caught) {

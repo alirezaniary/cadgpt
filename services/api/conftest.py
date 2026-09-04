@@ -18,6 +18,7 @@ from cadgpt.apps.account.services import AccountService
 from cadgpt.apps.media.choices import MediaKind
 from cadgpt.apps.media.models import Media
 from cadgpt.apps.media.services import MediaService
+from cadgpt.apps.project.models import Project
 from cadgpt.apps.review.models import Review
 from cadgpt.apps.review.services import ReviewService
 from cadgpt.apps.rulepack.models import RulePack, RuleSet
@@ -105,18 +106,36 @@ def rule_pack(db: Any) -> RulePack:
 
 
 @pytest.fixture
-def review(tenant: Tenant, owner: User, ifc_media: Media, rule_set: RuleSet) -> Review:
-    return ReviewService(tenant=tenant).create(
-        name="Ground floor", model_file=ifc_media, rule_set=rule_set, created_by=owner
+def project(tenant: Tenant, owner: User) -> Project:
+    return Project.objects.create_project(
+        tenant=tenant, name="Ground floor project", created_by=owner
     )
 
 
 @pytest.fixture
-def catalogue_review(tenant: Tenant, owner: User, ifc_media: Media) -> Review:
+def review(
+    tenant: Tenant, owner: User, ifc_media: Media, project: Project, rule_set: RuleSet
+) -> Review:
+    return ReviewService(tenant=tenant).create(
+        name="Ground floor",
+        model_file=ifc_media,
+        project=project,
+        rule_set=rule_set,
+        created_by=owner,
+    )
+
+
+@pytest.fixture
+def catalogue_review(
+    tenant: Tenant, owner: User, ifc_media: Media, project: Project
+) -> Review:
     """A review with no uploaded rule set -- checked against a catalogue selection
     supplied per run instead (T-0031)."""
     return ReviewService(tenant=tenant).create(
-        name="Ground floor (catalogue)", model_file=ifc_media, created_by=owner
+        name="Ground floor (catalogue)",
+        model_file=ifc_media,
+        project=project,
+        created_by=owner,
     )
 
 

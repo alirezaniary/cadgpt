@@ -139,7 +139,7 @@ def test_a_second_check_while_one_is_in_flight_is_refused(
 
 
 def test_an_unreadable_model_fails_the_run_with_a_stated_reason(
-    api: APIClient, tenant: Tenant, owner: Any, rule_set: Any, commit: Any
+    api: APIClient, tenant: Tenant, owner: Any, project: Any, rule_set: Any, commit: Any
 ) -> None:
     """A rejected input and a crashed worker are different events, reported differently."""
     from django.core.files.uploadedfile import SimpleUploadedFile
@@ -153,7 +153,11 @@ def test_an_unreadable_model_fails_the_run_with_a_stated_reason(
         uploaded_by=owner,
     )
     review = ReviewService(tenant=tenant).create(
-        name="Broken", model_file=broken, rule_set=rule_set, created_by=owner
+        name="Broken",
+        model_file=broken,
+        project=project,
+        rule_set=rule_set,
+        created_by=owner,
     )
 
     with commit():

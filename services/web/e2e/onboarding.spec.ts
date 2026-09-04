@@ -33,40 +33,42 @@ test("a brand-new person registers, creates a workspace and starts a review, ent
 
   // Step 1: the sign-in screen is the only thing an unauthenticated visitor sees, and it
   // must offer a way to a registration screen -- that link is this task's first gap.
-  await expect(page.getByRole("heading", { name: "CADGPT" })).toBeVisible();
-  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.getByRole("heading", { name: "کدجی‌پی‌تی" })).toBeVisible();
+  await page.getByRole("button", { name: "ساخت حساب کاربری" }).click();
 
   // Step 2: the registration screen. Email and password only. The heading stays
-  // "CADGPT" -- the same card layout as sign-in, just as a subtitle names which screen
-  // this is, the way `SignInPage`'s tagline does.
-  await expect(page.getByText("Create an account", { exact: true })).toBeVisible();
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
+  // "کدجی‌پی‌تی" -- the same card layout as sign-in, just as a subtitle names which
+  // screen this is, the way `SignInPage`'s tagline does.
+  await expect(page.getByText("ثبت‌نام در کدجی‌پی‌تی", { exact: true })).toBeVisible();
+  await page.getByLabel("رایانامه").fill(email);
+  await page.getByLabel("گذرواژه").fill(password);
   await page.screenshot({
     path: path.resolve(__dirname, "screenshots/onboarding-1-register.png"),
   });
-  await page.getByRole("button", { name: "Create account" }).click();
+  await page.getByRole("button", { name: "ساخت حساب کاربری" }).click();
 
   // Step 3: registration signs the new user in (via the same `signIn` path login uses)
   // and, because they have zero tenants, they land on the first-workspace screen -- not
   // the broken empty `<select>` `App.tsx` used to render.
-  await expect(page.getByRole("heading", { name: "Create your first workspace" })).toBeVisible({
+  await expect(page.getByRole("heading", { name: "فضای کاری نخست خود را بسازید" })).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.locator("#workspace")).toHaveCount(0);
+  await expect(page.locator(".avatar-trigger")).toHaveCount(0);
   await page.screenshot({
     path: path.resolve(__dirname, "screenshots/onboarding-2-first-workspace.png"),
   });
 
   // Step 4: create the workspace by typing a name -- no slug field, one input.
-  await page.getByLabel("Workspace name").fill(workspaceName);
-  await page.getByRole("button", { name: "Create workspace" }).click();
+  await page.getByLabel("نام فضای کاری").fill(workspaceName);
+  await page.getByRole("button", { name: "ایجاد فضای کاری" }).click();
 
   // Step 5: the shell renders immediately, with no reload, and the new workspace is
   // already selected -- `chooseTenant` was called directly with the create response.
-  await expect(page.locator("#workspace")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole("heading", { name: "Reviews" })).toBeVisible();
-  await expect(page.locator("select#workspace option")).toHaveText([workspaceName]);
+  await expect(page.locator(".avatar-trigger")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("heading", { name: "بررسی‌ها" })).toBeVisible();
+  await page.locator(".avatar-trigger").click();
+  await expect(page.locator(".user-menu-header strong")).toHaveText(workspaceName);
+  await page.keyboard.press("Escape");
   await page.screenshot({
     path: path.resolve(__dirname, "screenshots/onboarding-3-reviews-shell.png"),
   });
@@ -74,29 +76,29 @@ test("a brand-new person registers, creates a workspace and starts a review, ent
   // Step 6: able to start a review -- add a rule set, create a review against it, and run
   // a check to a terminal state, the same real IDS/IFC fixtures `report.spec.ts` uses.
   const ruleSetsCard = page.locator("section.card", {
-    has: page.getByRole("heading", { name: "Rule sets" }),
+    has: page.getByRole("heading", { name: "مجموعه‌های قواعد" }),
   });
   const reviewsCard = page.locator("section.card", {
-    has: page.getByRole("heading", { name: "Reviews" }),
+    has: page.getByRole("heading", { name: "بررسی‌ها" }),
   });
 
   const ruleSetName = `door-width-${unique}`;
-  await ruleSetsCard.getByPlaceholder("Name").fill(ruleSetName);
+  await ruleSetsCard.getByPlaceholder("نام").fill(ruleSetName);
   await ruleSetsCard.locator('input[type="file"]').setInputFiles(IDS_FILE);
-  await ruleSetsCard.getByRole("button", { name: "Add rule set" }).click();
+  await ruleSetsCard.getByRole("button", { name: "افزودن مجموعه قواعد" }).click();
   await expect(ruleSetsCard.getByText(ruleSetName)).toBeVisible();
 
   const reviewName = `onboarding-review-${unique}`;
-  await reviewsCard.getByPlaceholder("Name").fill(reviewName);
+  await reviewsCard.getByPlaceholder("نام").fill(reviewName);
   await reviewsCard.locator('select[name="rule_set"]').selectOption({ label: ruleSetName });
   await reviewsCard.locator('input[type="file"]').setInputFiles(IFC_FILE);
-  await reviewsCard.getByRole("button", { name: "Create review" }).click();
+  await reviewsCard.getByRole("button", { name: "ایجاد بررسی" }).click();
 
   const reviewRow = reviewsCard.locator("li.review", { hasText: reviewName });
   await expect(reviewRow).toBeVisible();
-  await reviewRow.getByRole("button", { name: "Run check" }).click();
+  await reviewRow.getByRole("button", { name: "اجرای بررسی" }).click();
 
-  const summaryButton = reviewRow.getByRole("button", { name: "Summary" });
+  const summaryButton = reviewRow.getByRole("button", { name: "خلاصه" });
   await expect(summaryButton).toBeVisible({ timeout: 30_000 });
   await summaryButton.click();
 

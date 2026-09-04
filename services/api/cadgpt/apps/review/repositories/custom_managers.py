@@ -21,6 +21,7 @@ class ReviewManager(Manager.from_queryset(ReviewQuerySet)):  # type: ignore[misc
         tenant: Any,
         name: str,
         model_file: Any,
+        project: Any,
         rule_set: Any | None,
         created_by: Any | None,
     ) -> Review:
@@ -28,10 +29,13 @@ class ReviewManager(Manager.from_queryset(ReviewQuerySet)):  # type: ignore[misc
             tenant=tenant,
             name=name.strip(),
             model_file=model_file,
+            project=project,
             rule_set=rule_set,
             created_by=created_by,
         )
-        review.full_clean(exclude=["tenant", "model_file", "rule_set", "created_by"])
+        review.full_clean(
+            exclude=["tenant", "model_file", "project", "rule_set", "created_by"]
+        )
         review.save(using=self._db)
         return cast("Review", review)
 

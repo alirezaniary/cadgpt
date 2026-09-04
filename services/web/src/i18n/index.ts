@@ -6,6 +6,12 @@
  * so a component never has to know which way the page runs -- CSS logical properties do
  * the rest.
  *
+ * The language itself is a build-time decision, not a per-user setting: no UI in this
+ * app changes it. Product owner call -- a runtime switcher (previously a topbar
+ * `<select>`) implied per-user choice this single-tenant-language product does not offer.
+ * `en.json` stays loaded only as `fallbackLng`, for any key not yet translated into the
+ * active language.
+ *
  * Findings themselves are not translated here. The server sends `reason_label` already
  * written in the user's language, because the wording belongs with the rule engine's
  * vocabulary and not with the UI's.
@@ -29,18 +35,15 @@ export function applyDirection(language: string): void {
   root.dir = directionFor(language);
 }
 
+const ACTIVE_LANGUAGE = "fa";
+
 void i18n.use(initReactI18next).init({
   resources: { en: { translation: en }, fa: { translation: fa } },
-  lng: localStorage.getItem("language") ?? "en",
+  lng: ACTIVE_LANGUAGE,
   fallbackLng: "en",
   interpolation: { escapeValue: false },
 });
 
-i18n.on("languageChanged", (language) => {
-  localStorage.setItem("language", language);
-  applyDirection(language);
-});
-
-applyDirection(i18n.language);
+applyDirection(ACTIVE_LANGUAGE);
 
 export default i18n;

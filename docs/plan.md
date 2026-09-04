@@ -602,6 +602,43 @@ argument — the coordinator did not delegate this correction to a fresh agent a
 as pre-existing Postgres/Celery contention before trusting it, not waved off — nothing in a
 CSS-only diff touches timing or backend state).
 
+**T-0072 — an avatar menu in place of two selects. Done 2026-09-04.** The product owner
+rejected the topbar's styled `<select>` outright — "no ugly dropdown" — and settled two
+things in the same conversation: the account menu becomes an avatar-triggered popover
+(tenant name, email, workspace switch, sign-out), and the product is single-language,
+hardcoded to Persian, not user-switchable. Recorded in full in the task file; not yet
+committed as of this plan update.
+
+**T-0073 — a project to hold reviews. Done 2026-09-04.** The missing tenant-owned layer
+between the tenant and `Review`: `cadgpt.apps.project`, a three-step migration
+(`Review.project` added nullable, backfilled to one `"عمومی"` project per tenant with
+existing reviews, then made non-nullable), and the API — `ProjectViewSet` and a `project`
+filter on `ReviewFilterSet`. Migrated the live dev database cleanly (171 reviews, 118
+tenants). Reviewer-gated on the tenancy and import-contract invariants it touches;
+verdict was clean — no invariant violated, evidence held up under independent
+re-verification — with four findings queued rather than fixed in place: **T-0075** (a
+`review_count` that counts soft-deleted reviews, and a project that can never be deleted
+once any review has ever existed under it — `PROTECT` fires permanently with no release
+path), **T-0076** (the new app shipped with no test package; the structural isolation
+test only checks the class hierarchy, not that `get_queryset` actually stayed
+tenant-scoped — swapping in `Project.objects.all()` passes the whole suite today),
+**T-0077** (`ReviewSerializer` never exposes the `project` a review is now required to
+belong to). T-0074, below, is not a new finding — the frontend's only review-creation
+call not yet sending `project` is exactly what T-0074 exists to close.
+
+**T-0074 — dispatched 2026-09-04, in progress.** The frontend half of the same rejection:
+the product owner wants Django admin's shape, minus the visual style — a changelist, a
+separate add form, a separate detail view, three levels deep,
+**workspace → projects → reviews**, a review's detail page carrying its own runs and
+report. Wires up `@tanstack/react-router` (a declared, unused dependency since before
+this session) into `/projects`, `/projects/new`, `/projects/:uuid`,
+`/projects/:uuid/reviews/new`, and `/projects/:uuid/reviews/:uuid` against T-0073's API.
+Also removes the user-facing rule-set upload card entirely: `prd.md:551` and this file's
+own "rule store" scope section above already said rules ship as a catalogue, not a file
+the architect uploads, and the frontend had it live anyway. Logged in
+`docs/decisions.md`'s 2026-09-04 entry — UI removal only, the backend `RuleSet` model and
+API are untouched for now.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -686,6 +723,15 @@ the first of them:
 - **T-0069** — three onboarding edges the happy path skips: a revoked last membership has no way
   back to the workspace screen without a reload; `slugify` collapses every non-Latin name to one
   shared stem; `RegisterPage` never sends `language`.
+
+Added 2026-09-04 from T-0073's review — all three found against the new `Project` model,
+none blocking T-0074:
+
+- **T-0075** — a `review_count` that counts soft-deleted reviews, and a project that can
+  never be deleted once any review has ever existed under it.
+- **T-0076** — the `project` app has no test package; the structural isolation test only
+  checks the class hierarchy, not that tenant scoping actually held.
+- **T-0077** — a review never states which project it belongs to in its own API response.
 
 ## Phase 4 — Toward the PRD
 

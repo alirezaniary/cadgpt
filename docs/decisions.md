@@ -843,3 +843,25 @@ or fails them by reason) instead of a transactional outbox table and relay. Same
 one path, or a second one is found independently -- at that point the per-instance patches cost
 more than the general mechanism would have, which is the threshold the original decision was
 already written to wait for.
+
+---
+
+## 2026-09-04 — User rule-set upload comes off the main page, UI only for now
+
+**Problem.** The reviews dashboard shipped with a live `مجموعه‌های قواعد` card letting a user
+upload their own IDS file as a `RuleSet`, and a `rule_set` `<select>` on review creation
+offering it as an alternative to the catalogue. This directly contradicts a decision already on
+record twice -- `prd.md:551` ("user upload is post-MVP") and `docs/plan.md:90` ("Rules are a
+catalogue we ship, not a file the architect uploads") -- and duplicates the catalogue-picker
+path T-0030/T-0031 already built as the real MVP mechanism. The product owner rejected it on
+sight: "i didnt ask for user being able to upload their rules, remove it immediately."
+
+**Decision:** remove it from the frontend now -- the `مجموعه‌های قواعد` card, `onAddRuleSet`,
+and the `rule_set` `<select>` on the create-review form all go; review creation and checking
+becomes catalogue-only in the UI. The backend `RuleSet` model, its API, and the e2e fixtures
+that seed it are explicitly left alone in this pass -- not a statement that they're staying
+long-term, just that retiring them end-to-end (serializers, viewset, migration, fixture
+rewrites) is a separate, larger task the product owner did not ask for tonight.
+
+**Reopens if:** the product owner decides the backend path should be retired too, at which
+point it becomes its own task file rather than a rider on the dashboard redesign.

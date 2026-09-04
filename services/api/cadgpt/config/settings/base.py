@@ -49,6 +49,7 @@ LOCAL_APPS = [
     "cadgpt.apps.base",
     "cadgpt.apps.account",
     "cadgpt.apps.tenancy",
+    "cadgpt.apps.project",
     "cadgpt.apps.media",
     "cadgpt.apps.rulepack",
     "cadgpt.apps.review",

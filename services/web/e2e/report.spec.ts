@@ -43,41 +43,44 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
 }) => {
   await page.goto("/");
 
-  await page.getByLabel("Email").fill(account.email);
-  await page.getByLabel("Password").fill(account.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByLabel("رایانامه").fill(account.email);
+  await page.getByLabel("گذرواژه").fill(account.password);
+  await page.getByRole("button", { name: "ورود" }).click();
 
   // The seeded tenant is the user's only one, so App auto-selects it. Everything after
   // this needs the X-Tenant header the selection sets, so wait for it explicitly rather
   // than racing the mutation below against that effect.
-  await expect(page.locator("#workspace")).toHaveValue(account.tenantSlug);
+  await expect(page.locator(".avatar-trigger")).toBeVisible({ timeout: 15_000 });
+  await page.locator(".avatar-trigger").click();
+  await expect(page.locator(".user-menu-header strong")).toHaveText(account.tenantName);
+  await page.keyboard.press("Escape");
 
   const ruleSetsCard = page.locator("section.card", {
-    has: page.getByRole("heading", { name: "Rule sets" }),
+    has: page.getByRole("heading", { name: "مجموعه‌های قواعد" }),
   });
   const reviewsCard = page.locator("section.card", {
-    has: page.getByRole("heading", { name: "Reviews" }),
+    has: page.getByRole("heading", { name: "بررسی‌ها" }),
   });
 
   const ruleSetName = `door-width-${Date.now()}`;
-  await ruleSetsCard.getByPlaceholder("Name").fill(ruleSetName);
+  await ruleSetsCard.getByPlaceholder("نام").fill(ruleSetName);
   await ruleSetsCard.locator('input[type="file"]').setInputFiles(IDS_FILE);
-  await ruleSetsCard.getByRole("button", { name: "Add rule set" }).click();
+  await ruleSetsCard.getByRole("button", { name: "افزودن مجموعه قواعد" }).click();
   await expect(ruleSetsCard.getByText(ruleSetName)).toBeVisible();
 
   const reviewName = `three-doors-${Date.now()}`;
-  await reviewsCard.getByPlaceholder("Name").fill(reviewName);
+  await reviewsCard.getByPlaceholder("نام").fill(reviewName);
   await reviewsCard.locator('select[name="rule_set"]').selectOption({ label: ruleSetName });
   await reviewsCard.locator('input[type="file"]').setInputFiles(IFC_FILE);
-  await reviewsCard.getByRole("button", { name: "Create review" }).click();
+  await reviewsCard.getByRole("button", { name: "ایجاد بررسی" }).click();
 
   const reviewRow = reviewsCard.locator("li.review", { hasText: reviewName });
   await expect(reviewRow).toBeVisible();
-  await reviewRow.getByRole("button", { name: "Run check" }).click();
+  await reviewRow.getByRole("button", { name: "اجرای بررسی" }).click();
 
   // The page polls the run itself; wait for it to reach a terminal state rather than
   // sleeping a fixed interval.
-  const summaryButton = reviewRow.getByRole("button", { name: "Summary" });
+  const summaryButton = reviewRow.getByRole("button", { name: "خلاصه" });
   await expect(summaryButton).toBeVisible({ timeout: 30_000 });
   await summaryButton.click();
 
@@ -172,7 +175,7 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
   // filtering to FAIL only must not touch the indeterminate count in the summary, and the
   // view must say that rows are being withheld rather than looking identical to the
   // unfiltered report.
-  await report.getByRole("checkbox", { name: "Indeterminate" }).uncheck();
+  await report.getByRole("checkbox", { name: "نامشخص" }).uncheck();
 
   await expect(entityRows).toHaveCount(1);
   await expect(entityRows.first()).toHaveAttribute("data-status", "FAIL");
@@ -183,31 +186,31 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
   await expect(report.locator(".count--pass .count__value")).toHaveText("1");
 
   await expect(report.locator('[data-testid="filter-banner"]')).toContainText(
-    "Showing 1 of 2",
+    "نمایش 1 از 2",
   );
 
   // T-0025 fix-now: a second rule set that has a specification matching nothing, run
   // against the same model, in the same session -- this is the branch F1 and F2 shipped
   // broken on because nothing in this spec previously reached it.
   const nothingRuleSetName = `nothing-established-${Date.now()}`;
-  await ruleSetsCard.getByPlaceholder("Name").fill(nothingRuleSetName);
+  await ruleSetsCard.getByPlaceholder("نام").fill(nothingRuleSetName);
   await ruleSetsCard.locator('input[type="file"]').setInputFiles(NOTHING_ESTABLISHED_IDS_FILE);
-  await ruleSetsCard.getByRole("button", { name: "Add rule set" }).click();
+  await ruleSetsCard.getByRole("button", { name: "افزودن مجموعه قواعد" }).click();
   await expect(ruleSetsCard.getByText(nothingRuleSetName)).toBeVisible();
 
   const nothingReviewName = `three-doors-nothing-${Date.now()}`;
-  await reviewsCard.getByPlaceholder("Name").fill(nothingReviewName);
+  await reviewsCard.getByPlaceholder("نام").fill(nothingReviewName);
   await reviewsCard
     .locator('select[name="rule_set"]')
     .selectOption({ label: nothingRuleSetName });
   await reviewsCard.locator('input[type="file"]').setInputFiles(IFC_FILE);
-  await reviewsCard.getByRole("button", { name: "Create review" }).click();
+  await reviewsCard.getByRole("button", { name: "ایجاد بررسی" }).click();
 
   const nothingReviewRow = reviewsCard.locator("li.review", { hasText: nothingReviewName });
   await expect(nothingReviewRow).toBeVisible();
-  await nothingReviewRow.getByRole("button", { name: "Run check" }).click();
+  await nothingReviewRow.getByRole("button", { name: "اجرای بررسی" }).click();
 
-  const nothingSummaryButton = nothingReviewRow.getByRole("button", { name: "Summary" });
+  const nothingSummaryButton = nothingReviewRow.getByRole("button", { name: "خلاصه" });
   await expect(nothingSummaryButton).toBeVisible({ timeout: 30_000 });
   await nothingSummaryButton.click();
 
@@ -216,7 +219,7 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
   // the denominator for every report the engine can produce.
   const coverageSentence = report.locator('[data-testid="coverage"] > p').first();
   await expect(coverageSentence).toHaveText(
-    "2 of 3 specifications were evaluated.",
+    "2 از 3 مشخصه بررسی شد.",
   );
 
   // The "established nothing" block names exactly the one specification that matched
@@ -235,5 +238,5 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
   // fix is not merely hiding the specification -- it appears in the findings list below.
   const wallCountRequiredSpec = report.locator("li.spec", { hasText: "Wall count required" });
   await expect(wallCountRequiredSpec).toBeVisible();
-  await expect(wallCountRequiredSpec.locator(".pill--fail")).toHaveText("Fail");
+  await expect(wallCountRequiredSpec.locator(".pill--fail")).toHaveText("مردود");
 });

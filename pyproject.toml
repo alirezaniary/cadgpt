@@ -166,6 +166,7 @@ layers = [
     "cadgpt.apps.review",
     "cadgpt.apps.rulepack",
     "cadgpt.apps.media",
+    "cadgpt.apps.project",
     "cadgpt.apps.tenancy",
     "cadgpt.apps.account",
     "cadgpt.apps.base",

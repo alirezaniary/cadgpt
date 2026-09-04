@@ -49,29 +49,32 @@ test("the recovery button's own POST is what moves a pending report to failed", 
   account,
 }) => {
   await page.goto("/");
-  await page.getByLabel("Email").fill(account.email);
-  await page.getByLabel("Password").fill(account.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.locator("#workspace")).toHaveValue(account.tenantSlug);
+  await page.getByLabel("رایانامه").fill(account.email);
+  await page.getByLabel("گذرواژه").fill(account.password);
+  await page.getByRole("button", { name: "ورود" }).click();
+  await expect(page.locator(".avatar-trigger")).toBeVisible({ timeout: 15_000 });
+  await page.locator(".avatar-trigger").click();
+  await expect(page.locator(".user-menu-header strong")).toHaveText(account.tenantName);
+  await page.keyboard.press("Escape");
 
   const ruleSetsCard = page.locator("section.card", {
-    has: page.getByRole("heading", { name: "Rule sets" }),
+    has: page.getByRole("heading", { name: "مجموعه‌های قواعد" }),
   });
   const reviewsCard = page.locator("section.card", {
-    has: page.getByRole("heading", { name: "Reviews" }),
+    has: page.getByRole("heading", { name: "بررسی‌ها" }),
   });
 
   const ruleSetName = `door-width-${Date.now()}`;
-  await ruleSetsCard.getByPlaceholder("Name").fill(ruleSetName);
+  await ruleSetsCard.getByPlaceholder("نام").fill(ruleSetName);
   await ruleSetsCard.locator('input[type="file"]').setInputFiles(IDS_FILE);
-  await ruleSetsCard.getByRole("button", { name: "Add rule set" }).click();
+  await ruleSetsCard.getByRole("button", { name: "افزودن مجموعه قواعد" }).click();
   await expect(ruleSetsCard.getByText(ruleSetName)).toBeVisible();
 
   const reviewName = `recovery-${Date.now()}`;
-  await reviewsCard.getByPlaceholder("Name").fill(reviewName);
+  await reviewsCard.getByPlaceholder("نام").fill(reviewName);
   await reviewsCard.locator('select[name="rule_set"]').selectOption({ label: ruleSetName });
   await reviewsCard.locator('input[type="file"]').setInputFiles(IFC_FILE);
-  await reviewsCard.getByRole("button", { name: "Create review" }).click();
+  await reviewsCard.getByRole("button", { name: "ایجاد بررسی" }).click();
 
   const reviewRow = reviewsCard.locator("li.review", { hasText: reviewName });
   await expect(reviewRow).toBeVisible();
@@ -105,8 +108,8 @@ test("the recovery button's own POST is what moves a pending report to failed", 
     return route.fulfill({ response, json: { ...real, ...override } });
   });
 
-  await reviewRow.getByRole("button", { name: "Run check" }).click();
-  const summaryButton = reviewRow.getByRole("button", { name: "Summary" });
+  await reviewRow.getByRole("button", { name: "اجرای بررسی" }).click();
+  const summaryButton = reviewRow.getByRole("button", { name: "خلاصه" });
   await expect(summaryButton).toBeVisible({ timeout: 30_000 });
   await summaryButton.click();
 

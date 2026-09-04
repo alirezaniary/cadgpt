@@ -9,6 +9,7 @@ from rest_framework import serializers
 from cadgpt.apps.base.exceptions import NotFoundError
 from cadgpt.apps.media.api.v1.serializers import MediaSerializer
 from cadgpt.apps.media.models import Media
+from cadgpt.apps.project.models import Project
 from cadgpt.apps.review.models import CheckRun, Review
 from cadgpt.apps.review.services import ReviewService, localize_report
 from cadgpt.apps.rulepack.api.v1.serializers import RuleSetSerializer
@@ -127,17 +128,21 @@ class ReviewSerializer(serializers.ModelSerializer[Review]):
 
 
 class ReviewCreateSerializer(serializers.Serializer[Any]):
-    """References an uploaded model, and either a registered rule set or the catalogue.
+    """References an uploaded model, its project, and either a registered rule set or
+    the catalogue.
 
-    `rule_set` is optional: a review created without one has no rule source of its own,
-    and each check against it must be given a catalogue selection when requested
-    (`CheckRequestSerializer`, T-0031). Both `model_file` and `rule_set` are resolved
-    through the tenant-scoped queryset rather than trusted from the payload, so naming
-    another tenant's file is a 404 and not a leak.
+    `project` is required: every review lives inside exactly one project
+    (`docs/tasks/T-0073-a-project-to-hold-reviews.md`). `rule_set` stays optional -- a
+    review created without one has no rule source of its own, and each check against it
+    must be given a catalogue selection when requested (`CheckRequestSerializer`,
+    T-0031). `model_file`, `project` and `rule_set` are all resolved through the
+    tenant-scoped queryset rather than trusted from the payload, so naming another
+    tenant's row is a 404 and not a leak.
     """
 
     name = serializers.CharField(max_length=255)
     model_file = serializers.UUIDField(write_only=True)
+    project = serializers.UUIDField(write_only=True)
     rule_set = serializers.UUIDField(write_only=True, required=False, allow_null=True)
 
     def create(self, validated_data: dict[str, Any]) -> Review:
@@ -150,6 +155,14 @@ class ReviewCreateSerializer(serializers.Serializer[Any]):
         )
         if media is None:
             raise NotFoundError(_("That uploaded model does not exist."))
+
+        project = (
+            Project.objects.for_tenant(request.tenant)
+            .filter(uuid=validated_data["project"])
+            .first()
+        )
+        if project is None:
+            raise NotFoundError(_("That project does not exist."))
 
         rule_set = None
         rule_set_uuid = validated_data.get("rule_set")
@@ -165,6 +178,7 @@ class ReviewCreateSerializer(serializers.Serializer[Any]):
         return ReviewService(tenant=request.tenant).create(
             name=validated_data["name"],
             model_file=media,
+            project=project,
             rule_set=rule_set,
             created_by=request.user,
         )

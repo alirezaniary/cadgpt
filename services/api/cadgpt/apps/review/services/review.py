@@ -13,6 +13,7 @@ from cadgpt.apps.base.exceptions import ConflictError, ValidationError
 from cadgpt.apps.base.services import BaseTenantAwareService
 from cadgpt.apps.media.choices import MediaKind
 from cadgpt.apps.media.models import Media
+from cadgpt.apps.project.models import Project
 from cadgpt.apps.review.models import CheckRun, Review
 from cadgpt.apps.rulepack.models import RulePack, RuleSet
 from cadgpt.apps.rulepack.services import RulePackService
@@ -31,29 +32,35 @@ class ReviewService(BaseTenantAwareService):
         *,
         name: str,
         model_file: Media,
+        project: Project,
         rule_set: RuleSet | None = None,
         created_by: User | None = None,
     ) -> Review:
         if model_file.kind != MediaKind.IFC_MODEL:
             raise ValidationError(_("That file was not uploaded as a model."))
-        if model_file.tenant_id != self.tenant.pk or (
-            rule_set is not None and rule_set.tenant_id != self.tenant.pk
+        if (
+            model_file.tenant_id != self.tenant.pk
+            or project.tenant_id != self.tenant.pk
+            or (rule_set is not None and rule_set.tenant_id != self.tenant.pk)
         ):
-            # Unreachable through the API, which resolves both through tenant-scoped
+            # Unreachable through the API, which resolves all three through tenant-scoped
             # querysets. Asserted here because this service is also called from a
             # management command and a task, where nothing else checks.
             raise ValidationError(
-                _("The model and the rule set must belong to this workspace.")
+                _("The model, the project and the rule set must belong to this workspace.")
             )
 
         review = Review.objects.create_review(
             tenant=self.tenant,
             name=name,
             model_file=model_file,
+            project=project,
             rule_set=rule_set,
             created_by=created_by,
         )
-        self.log.info("review_created", review_id=str(review.uuid))
+        self.log.info(
+            "review_created", review_id=str(review.uuid), project_id=str(project.uuid)
+        )
         return review
 
     def request_check(
