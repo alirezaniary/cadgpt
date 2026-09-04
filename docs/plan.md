@@ -573,6 +573,35 @@ arrow (a deliberate call, not a gap) and the file input's "Choose File" label, w
 the browser's own UI language regardless of page language — a platform limitation, not something
 CSS can address.
 
+**T-0071 — T-0070 measured zohal.io's real colors and assigned them the wrong roles. Done
+2026-09-04.** The product owner rejected T-0070's result on sight: light background, a muted
+navy button — nothing like the reference. Correct. T-0070's evidence had the right raw numbers
+but backwards roles — it read the *darkest* navy in zohal's scale as a small accent to place on
+a white page, when that navy **is** the page background, unconditionally, with no light variant
+at all, and the warm orange it called "sparing" is the primary call-to-action color. Right
+ingredients, inverted recipe — a failure of verification, not of research: nobody had looked at
+the two results side by side before calling T-0070 done.
+
+Re-measured directly against the live site with `getComputedStyle` this time, not by reading
+markup for hex values — sampled at six points down the full page (`rgb(38, 41, 63)`
+unconditionally) and the actual signup button's rendered color, not a guess from a class name.
+`:root` now carries that identity directly: dark navy background and card layer, orange accent
+with dark text on its fill (matching how zohal itself sets it), and the old
+`prefers-color-scheme: dark` media block is gone — not merged, removed — because the default
+*is* the dark identity now, the same way the reference has no light variant to opt into. Also
+fixed in the same pass, raised separately: the topbar's native `<select>` elements were raw
+OS-chrome dropdowns clashing with any theme underneath them — `appearance: none` with a redrawn
+chevron, positioned with `right`/`left` and flipped under an explicit `[dir="rtl"]` override,
+the one place in the file a direction branch is correct because `background-position` has no
+logical-property equivalent.
+
+Verified directly against a live `zohal.io` screenshot taken in the same session, not by
+argument — the coordinator did not delegate this correction to a fresh agent a third time.
+`make web-verify` clean; full e2e suite passes at `--workers=1` (flaked twice under the default
+4 parallel workers on two different assertions in the same long spec, reproduced and diagnosed
+as pre-existing Postgres/Celery contention before trusting it, not waved off — nothing in a
+CSS-only diff touches timing or backend state).
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before

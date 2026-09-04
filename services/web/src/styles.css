@@ -7,14 +7,14 @@
  * and a GlobalId are identifiers, not prose, and they read left to right inside a
  * right-to-left page.
  *
- * Design origin: RTL Persian, not LTR mirrored for RTL (T-0070). The token layer below and
- * the reference point behind it -- https://zohal.io/, a Farsi-native fintech product the
- * product owner named as the quality bar -- are recorded in T-0070's evidence, not here;
- * this file only carries the CSS that resulted. In short: a deep navy/indigo accent instead
- * of a flat generic blue, a generous `rounded-xl`-style corner radius, an airy 4px-based
- * spacing rhythm, a real modular type scale, and a self-hosted Persian webfont -- the same
- * thing zohal.io does for IRANYekanX, which is why Vazirmatn is now bundled below instead of
- * only named and left unserved.
+ * Design origin: RTL Persian, not LTR mirrored for RTL (T-0070/T-0071). Reference:
+ * https://zohal.io/, a Farsi-native fintech product with a single dark-navy identity and no
+ * light variant -- confirmed by sampling its live `getComputedStyle` at six points down the
+ * full page, not by reading its markup for hex values. The page background is
+ * `rgb(38,41,63)` unconditionally; the warm orange (`rgb(245,176,120)` / `#d57630`) is its
+ * primary call-to-action color, not a minor accent. This file's `:root` is that identity
+ * directly -- one theme, matching the reference, not a light theme with a dark option nobody
+ * sees by default.
  */
 
 /* Vazirmatn, self-hosted. Previously only named in `:lang(fa) body` with nothing serving it
@@ -48,27 +48,32 @@
 }
 
 :root {
-  --bg: #ffffff;
-  --fg: #16181d;
-  --muted: #62666f;
-  --line: #e2e5ea;
-  --card: #f8f9fb;
-  --pass: #1a7f4b;
-  --pass-bg: #e6f4ec;
-  --fail: #b4232a;
-  --fail-bg: #fbeaea;
-  --indeterminate: #8a5a00;
-  --indeterminate-bg: #fdf3e0;
+  /* Page background and card layer are zohal.io's own two adjacent measured surfaces
+     (rgb(38,41,63) body, rgb(45,50,80) header/card) -- a dark navy field with a slightly
+     lighter raised layer on top of it, not a white page with a dark accent. */
+  --bg: #26293f;
+  --card: #2d3250;
+  --fg: #e7e9f2;
+  --muted: #9aa1ba;
+  --line: #3c4160;
 
-  /* Accent: a deep navy-indigo rather than a flat generic blue -- the family zohal.io's
-     own `primary` scale sits in (their primary-6.5/-7, #2d3a5d/#2d3250, is the accent and
-     its border). Kept as a single hue with a hover-strong and a text-tint step, the same
-     shape the old flat `--accent` had, just replacing the one flat value with a small,
-     real scale. */
-  --accent: #35479e;
-  --accent-strong: #26326f;
-  --accent-soft: #eceffb;
-  --accent-fg: #ffffff;
+  /* Semantic status colors keep their original hue -- unrelated to the reference swap --
+     but the *-bg tints are the ones already tuned for a dark surface (previously gated
+     behind `prefers-color-scheme: dark`; now the only surface there is). */
+  --pass: #4fd396;
+  --pass-bg: #113023;
+  --fail: #ef6a72;
+  --fail-bg: #3a1618;
+  --indeterminate: #e0b451;
+  --indeterminate-bg: #382a10;
+
+  /* Accent: zohal.io's own measured CTA color (rgb(245,176,120) / #d57630 on its filled
+     buttons), not a navy shade -- the earlier pass mistook the *page* hue for the *accent*
+     hue. Dark text on the orange fill matches how zohal itself sets its button label. */
+  --accent: #d57630;
+  --accent-strong: #c2661f;
+  --accent-soft: rgba(245, 176, 120, 0.18);
+  --accent-fg: #1d1a2e;
 
   /* Spacing: a 4px base unit, the same rhythm zohal.io's own Tailwind scale is built on
      (their `gap-y-4`/`p-6`/`py-10` are 1rem/1.5rem/2.5rem -- exactly the steps below). */
@@ -107,29 +112,10 @@
 
   --leading-tight: 1.3;
 
-  --shadow-card: 0 1px 2px rgba(23, 26, 33, 0.04), 0 8px 20px rgba(23, 26, 33, 0.06);
-  --shadow-header: 0 2px 8px rgba(23, 26, 33, 0.06);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #14161a;
-    --fg: #eceef2;
-    --muted: #9aa0ab;
-    --line: #2a2e36;
-    --card: #1b1e24;
-    --pass-bg: #113023;
-    --fail-bg: #3a1618;
-    --indeterminate-bg: #382a10;
-
-    --accent: #7386d5;
-    --accent-strong: #93a3e2;
-    --accent-soft: #1e2338;
-    --accent-fg: #0d0f14;
-
-    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.35);
-    --shadow-header: 0 2px 8px rgba(0, 0, 0, 0.3);
-  }
+  /* Shadows read as depth against a dark surface only with real spread and opacity --
+     the soft near-invisible light-mode values this replaced were tuned for a white page. */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-header: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 * { box-sizing: border-box; }
@@ -224,13 +210,33 @@ input:focus-visible, select:focus-visible {
 }
 input::placeholder { color: var(--muted); }
 
-/* `<select>` keeps its native `appearance` deliberately: a custom dropdown arrow has to be
-   re-positioned per direction (it belongs at the inline-end, which is a physical flip
-   between rtl and ltr), and the browser already places its own arrow correctly for
-   whichever direction the page is in. Restyling the box (border/radius/padding/background)
-   gets it off "raw browser default" without re-solving a problem the platform already
-   solves for free -- the same "inherit before writing" call this codebase makes elsewhere. */
-select { padding-inline-end: var(--space-6); }
+/* `appearance: none` strips the OS-chrome select box (a stock light-gray control that read
+   as broken against a dark theme -- the previous call to keep it native undersold how much
+   that mismatch would show). CSS has no logical `background-position` -- unlike margin/
+   padding/inset, that property was never given inline-start/end keywords -- so the chevron
+   is drawn with a physical `right`/`left` and flipped with an explicit `[dir="rtl"]`
+   override, the one place in this file a direction branch is the only correct tool rather
+   than a logical property doing the same job. `root.dir` (`src/i18n/index.ts`) is what sets
+   `[dir]` on the document element, so this selector is live, not speculative. The native
+   option *list* itself is unstyled by any browser via CSS -- that panel stays OS-drawn
+   either way; only the closed control, visible almost all the time, is themed here. */
+select {
+  appearance: none;
+  padding-inline-end: var(--space-8);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%239aa1ba' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+}
+[dir="rtl"] select { background-position: left var(--space-3) center; }
+select::-ms-expand { display: none; }
+
+.topbar select {
+  background-color: transparent;
+  border-color: var(--line);
+  color: var(--fg);
+  font-weight: var(--weight-medium);
+}
+.topbar select:hover { border-color: var(--accent); }
 
 /* The file picker's own button, `::file-selector-button`, is a real, broadly-supported
    pseudo-element (Chrome, Firefox and Safari all implement it) -- this is what turns
