@@ -865,3 +865,51 @@ rewrites) is a separate, larger task the product owner did not ask for tonight.
 
 **Reopens if:** the product owner decides the backend path should be retired too, at which
 point it becomes its own task file rather than a rider on the dashboard redesign.
+
+---
+
+## 2026-09-06 — The UI gets a workbench, and screenshots stop being the review surface
+
+**Problem.** Every piece of visual evidence in this repository was a PNG under
+`services/web/e2e/screenshots/`: one viewport, one state, one moment, all three chosen by the
+agent that took it. That proves something rendered. It does not let anyone *review* anything --
+they cannot resize it, tab through it, open the error state, or compare it to last week. The
+practical result was that of roughly twenty states across nine screens, only the desktop happy
+path had ever been looked at, and two shipped defects had been invisible for exactly as long.
+
+**Decision:** Storybook 10 plus MSW, as `services/web/.storybook` with stories co-located, built
+by `pnpm run build-workbench` and wired into `pnpm run verify` -- so it is part of `make verify`
+rather than a thing that rots. Three properties are the point, and a change that gives any of
+them up has turned the workbench back into a screenshot:
+
+1. **The mock sits at the network, never inside a component.** MSW intercepts `fetch`, so
+   `src/api/client.ts` runs unmodified -- same bearer header, same 401-triggered refresh, same
+   `ProblemDetail` parsing, same TanStack Query cache and polling. Nothing in `src/` knows a
+   story is rendering it. Threading fixture props into a page to make it previewable is the
+   anti-pattern this exists to avoid: it would prove the component renders, not that the app's
+   data path works.
+2. **Stories mount the real app at a route**, through the real router and the real
+   `SessionProvider`, and choose a screen by choosing what `/auth/refresh/` returns. There are no
+   preview-only page components to drift.
+3. **Fixtures are typed as the wire shapes in `@/api/types`**, so a server-side rename fails
+   `pnpm typecheck` in the workbench exactly as it would in a component.
+
+Its first run found three defects, all recorded in `docs/tasks/T-0079-*.md` and none fixed
+there: the report overflows horizontally by 318px at a 390px viewport, a failed run renders no
+reason although the server sends one, and the catalogue filter is placeholder-only.
+
+**On keeping the built exports.** They are ~8MB each and are *not* committed --
+`design-previews/_live/` is gitignored and `design-previews/_archive.md` is the index. The
+stories are code, so any past build is reproducible from its own commit, which is a better
+record than a directory of binaries. Automated visual diffing (Chromatic, Percy, Playwright
+`toHaveScreenshot`) is deliberately deferred: the UI still moves enough per milestone that a
+diff would be noise rather than signal.
+
+**What this does not replace.** The Playwright e2e suite still runs the real stack against a real
+IFC and a real IDS, and it remains the only thing that proves the backend. The workbench proves
+the *interface* -- what a person sees, in every state, at any width -- and a screenshot is now
+what an agent takes to convince itself something rendered, not what it hands over as a review.
+
+**Reopens if:** the mock handlers start needing knowledge no server response carries, which
+would mean a component is reading something that is not in the API and the seam has moved into
+the wrong place.

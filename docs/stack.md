@@ -93,6 +93,15 @@ download: upstream `jakob-beetz/DataSetSchependomlaan` commit
 SHA-256 `2c3565ca1904f2aa61adab92024cf3755b2c5b21a498144d3094d7cb58cebec7`, 49,286,967 bytes.
 It is IFC2X3 — useful, because rule sets written for IFC4 behave differently against it.
 
+## Seeing the frontend
+
+**Storybook 10 + MSW** (`services/web/.storybook`, `src/mocks/`). The workbench mounts the real
+app at a route with the network mocked, one entry per state; `pnpm run workbench` for the live
+version, `pnpm run build-workbench` for the static export, and the build runs inside
+`pnpm run verify`. Why it is shaped this way, and what it does not replace, is in
+`docs/decisions.md` (2026-09-06). What the screens are: `docs/ux/page-graph.md`. What the tokens
+are: `docs/design/DESIGN.md`.
+
 ## Deliberately not chosen
 
 | Rejected | Why |
@@ -107,3 +116,6 @@ It is IFC2X3 — useful, because rule sets written for IFC4 behave differently a
 | Findings as database rows | 3,623 findings in one specification is a document, not a table. Returns with dispositions. |
 | Any vendor cloud, marketplace, or partner programme | Permanent (I6). Public scripting interfaces and local install only. |
 | A managed-only database or queue | On-prem deployment is a requirement, not a variant. |
+| Ladle / Histoire, instead of Storybook | Lighter and Vite-native, but the addon surface we actually use (a11y, viewport, MSW, play functions) is Storybook's. Reconsider if startup time becomes the constraint. |
+| Chromatic / Percy visual diffing | The UI still changes shape every milestone, so a diff would be noise. Returns when a milestone passes without a screen moving. |
+| Committing the built workbench exports | ~8MB each. The stories are code, so any past build is reproducible from its commit -- `design-previews/_archive.md` is the index instead. |

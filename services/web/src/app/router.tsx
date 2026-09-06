@@ -59,7 +59,10 @@ const reviewDetailRoute = createRoute({
   component: ReviewDetailPage,
 });
 
-const routeTree = rootRoute.addChildren([
+/** Exported so the preview workbench (`.storybook/preview.tsx`) can build its own router
+ * over the *same* tree with a memory history, one fresh instance per story. Sharing the
+ * singleton below instead would carry one story's location and cache into the next. */
+export const routeTree = rootRoute.addChildren([
   indexRoute,
   projectsRoute,
   projectNewRoute,

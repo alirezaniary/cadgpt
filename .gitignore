@@ -22,3 +22,8 @@ dist/
 
 # Editor
 .idea/
+
+# Built workbench exports. Each is ~8 MB and fully reproducible: the stories are code, so
+# any dated build below is regenerated from its own commit. What is committed is the index
+# (design-previews/_archive.md), not the bytes.
+design-previews/_live/

@@ -1,0 +1,122 @@
+import type { Meta, StoryObj } from "@storybook/react-vite";
+
+import * as fx from "@/mocks/fixtures";
+import {
+  failing,
+  paths,
+  pending,
+  reportFileFailed,
+  reportFileMissing,
+  scenario,
+  session,
+} from "@/mocks/handlers";
+import { AppAt } from "@/mocks/preview-app";
+
+const meta = {
+  title: "Screens/Review/Detail",
+} satisfies Meta;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+function at(reviewUuid: string) {
+  return () => <AppAt route={`/projects/${fx.project.uuid}/reviews/${reviewUuid}`} />;
+}
+
+/**
+ * A review that has never been checked: the catalogue picker, filtered by jurisdiction,
+ * region and version, with the run button disabled until at least one pack is selected.
+ *
+ * **This is the story to click.** Select a pack and run the check: the mock advances the
+ * run on a real clock -- Queued for two seconds, Running for five, then Complete with its
+ * report rendered inline below. Everything in that sequence is the app's own polling
+ * (1.5s on the open run, 2s on the history), not an animation.
+ */
+export const NeverChecked: Story = {
+  parameters: {
+    msw: [
+      ...session(),
+      ...scenario({
+        reviews: { [fx.project.uuid]: [fx.neverRunReview] },
+        runs: { [fx.neverRunReview.uuid]: [] },
+      }),
+    ],
+  },
+  render: at(fx.neverRunReview.uuid),
+};
+
+/**
+ * A finished check, with the report open. Worth reading in this order, which is the order
+ * the page puts it in: what was checked at all (the disclosure), how much of the rule set
+ * was evaluated (coverage — four of six here, because two specifications established
+ * nothing), then the findings, FAIL first and INDETERMINATE never under PASS.
+ *
+ * The filter offers FAIL and INDETERMINATE only. Turn one off and the banner states how
+ * many rows are hidden rather than resolved, and the three counts do not move.
+ */
+export const Checked: Story = {
+  parameters: { msw: [...session(), ...scenario()] },
+  render: at(fx.checkedReview.uuid),
+};
+
+/** A check in flight. The button reads "Checking…" and is disabled, and both polls are
+ * live -- this story never settles, on purpose. */
+export const Running: Story = {
+  parameters: { msw: [...session(), ...scenario()] },
+  render: at(fx.runningReview.uuid),
+};
+
+/**
+ * A run that failed. The history row says so, and the report is absent because there is
+ * none -- the page never renders a partial report for a run that did not finish.
+ */
+export const RunFailed: Story = {
+  parameters: { msw: [...session(), ...scenario()] },
+  render: at(fx.failedReview.uuid),
+};
+
+/**
+ * The check succeeded but its report file was never generated -- the second, separately
+ * dispatched task (T-0032) whose message can be lost. The page distinguishes this from
+ * "cannot be generated" and offers the recovery button (T-0051). Press it: the mock
+ * generates the file and the download button replaces this line.
+ */
+export const ReportFileNotGenerated: Story = {
+  parameters: { msw: [reportFileMissing(), ...session(), ...scenario()] },
+  render: at(fx.checkedReview.uuid),
+};
+
+/**
+ * Generation failed for a reason a retry will not change -- the rendered report was too
+ * large to store. Said in the server's own words, in `.error`, with the retry still
+ * offered rather than hidden.
+ */
+export const ReportFileFailed: Story = {
+  parameters: { msw: [reportFileFailed(), ...session(), ...scenario()] },
+  render: at(fx.checkedReview.uuid),
+};
+
+/** The review and its runs still loading. The heading falls back to an ellipsis; nothing
+ * below it is guessed at. */
+export const Loading: Story = {
+  parameters: {
+    msw: [pending(paths.runs), pending(paths.rulePacks), ...session(), ...scenario()],
+  },
+  render: at(fx.checkedReview.uuid),
+};
+
+/** The catalogue itself is unreachable, so there are no packs to choose and no check can
+ * be started. */
+export const CatalogueFailed: Story = {
+  parameters: {
+    msw: [
+      failing(paths.rulePacks),
+      ...session(),
+      ...scenario({
+        reviews: { [fx.project.uuid]: [fx.neverRunReview] },
+        runs: { [fx.neverRunReview.uuid]: [] },
+      }),
+    ],
+  },
+  render: at(fx.neverRunReview.uuid),
+};
