@@ -99,22 +99,10 @@ stable spans, and ten-page bundles are bounded transport conveniences rather tha
 
 ```sh
 make verify
+make inbr-workspace
 
-transcription_root=$(mktemp -d /tmp/cadgpt-inbr-transcription.XXXXXX)
-
-uv run cadgpt-regulations page-probe \
-  --acquisition /tmp/cadgpt-inbr-acquisition.GzxDl0/acquisition.json \
-  --root /tmp/cadgpt-inbr-acquisition.GzxDl0 \
-  --output-root "$transcription_root"
-
-uv run cadgpt-regulations transcribe \
-  --probe "$transcription_root/page-probe.json" \
-  --root "$transcription_root"
-
-uv run cadgpt-regulations transcription-check \
-  "$transcription_root/transcription.json" \
-  --root "$transcription_root" \
-  --acquisition-root /tmp/cadgpt-inbr-acquisition.GzxDl0
+# Follow the durable page-probe and transcription sequence in docs/inbr-operations.md.
+# It uses `.cadgpt/inbr/acquisition/` and `.cadgpt/inbr/transcription/`, never /tmp.
 ```
 
 The evidence must show:

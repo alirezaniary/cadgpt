@@ -122,7 +122,9 @@ anchored semantic corpus; compiling accepted semantics into buildingSMART IDS re
 and separate step.
 
 All commits for this workstream remain on `feat/inbr-regulations-pipeline`; downloaded PDFs,
-page renders, OCR data, model inputs, and inference outputs remain outside Git.
+page renders, OCR data, model inputs, and inference outputs remain outside Git. Real runs use the
+ignored, restart-safe `.cadgpt/inbr/` workspace described in `docs/inbr-operations.md`, never
+`/tmp`.
 
 1. **Corpus contract and inventory — DONE 2026-09-02.** Immutable hashes, MIME checks, canonical Persian and
    English titles, official ordering, editions, relationships, coverage, and quarantine.

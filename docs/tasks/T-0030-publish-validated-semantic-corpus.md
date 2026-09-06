@@ -83,17 +83,11 @@ compliance knowledge.
 
 ```sh
 make verify
+make inbr-workspace
 
-publication_root=$(mktemp -d /tmp/cadgpt-inbr-publication.XXXXXX)
-
-uv run cadgpt-regulations publish-corpus \
-  --validation /tmp/cadgpt-inbr-validation.FINAL/semantic/validation.json \
-  --validation-root /tmp/cadgpt-inbr-validation.FINAL/semantic \
-  --output-root "$publication_root"
-
-uv run cadgpt-regulations corpus-check \
-  "$publication_root/manifest.json" \
-  --root "$publication_root"
+# When the final corpus-release commands land, publish below
+# `.cadgpt/inbr/publication/`, never /tmp. Retain the printed content-addressed manifest for
+# `corpus-check`; docs/inbr-operations.md is the durable-run contract.
 ```
 
 The evidence must show:

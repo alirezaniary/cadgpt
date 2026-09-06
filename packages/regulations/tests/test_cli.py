@@ -9,6 +9,25 @@ from cadgpt_regulations.inventory import build_inventory, write_inventory
 from cadgpt_regulations.jsonio import JsonObject, canonical_bytes
 
 
+def test_workspace_command_creates_durable_stage_roots(tmp_path: Path) -> None:
+    checkout = tmp_path / "checkout"
+    checkout.mkdir(mode=0o755)
+    root = checkout / ".cadgpt" / "inbr"
+
+    assert main(["workspace", "--root", str(root)]) == 0
+
+    stages = sorted(root.iterdir())
+    assert [path.name for path in stages] == [
+        "acquisition",
+        "extraction",
+        "publication",
+        "structure",
+        "transcription",
+        "validation",
+    ]
+    assert all(path.stat().st_mode & 0o777 == 0o700 for path in stages)
+
+
 def test_validate_and_publish_check_honor_custom_catalog(tmp_path: Path) -> None:
     source = tmp_path / "corpus"
     source.mkdir()

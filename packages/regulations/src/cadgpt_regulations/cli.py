@@ -42,6 +42,7 @@ from cadgpt_regulations.structure import build_structure, validate_structure
 from cadgpt_regulations.transcription import build_transcription
 from cadgpt_regulations.transcription_check import check_transcription
 from cadgpt_regulations.validation import check_publishable, validate_manifest
+from cadgpt_regulations.workspace import initialize_workspace
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -50,6 +51,11 @@ def _parser() -> argparse.ArgumentParser:
         description="Build and validate deterministic regulation corpus inventories.",
     )
     subcommands = parser.add_subparsers(dest="command", required=True)
+
+    workspace = subcommands.add_parser(
+        "workspace", help="create and attest a durable private INBR workspace"
+    )
+    workspace.add_argument("--root", type=Path, required=True)
 
     inventory = subcommands.add_parser(
         "inventory", help="inventory a local artifact directory"
@@ -196,6 +202,11 @@ def main(
 ) -> int:
     args = _parser().parse_args(argv)
     try:
+        if args.command == "workspace":
+            stages = initialize_workspace(args.root)
+            print(f"ready durable INBR workspace: {args.root}")
+            print("stages " + ", ".join(stage.name for stage in stages))
+            return 0
         if args.command == "inventory":
             ensure_output_outside_source(args.source, args.output)
             catalog = load_catalog(args.catalog)

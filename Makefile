@@ -8,7 +8,9 @@ COMPOSE := docker compose -f deploy/compose.yaml
 
 .PHONY: help verify lint format types contracts test test-fast web-verify install \
         migrations migrate run worker shell schema messages compile-messages \
-        up down logs reset
+        inbr-workspace up down logs reset
+
+INBR_WORKSPACE := .cadgpt/inbr
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -68,6 +70,9 @@ messages:  ## Extract translatable strings into the .po catalogues (needs gettex
 
 compile-messages:  ## Compile the .po catalogues to .mo (needs gettext)
 	cd $(API) && $(UV) --project .. python manage.py compilemessages
+
+inbr-workspace:  ## Create and attest durable local INBR artifact roots
+	$(UV) cadgpt-regulations workspace --root $(INBR_WORKSPACE)
 
 schema:  ## Regenerate the OpenAPI schema and the frontend's types from it
 	cd $(API) && $(UV) --project .. python manage.py spectacular --color --file \

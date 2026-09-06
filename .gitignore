@@ -20,6 +20,7 @@ services/api/staticfiles/
 /docs/inbr/
 /packages/regulations/artifacts/
 /packages/regulations/acquisition/
+/.cadgpt/inbr/
 
 # Node
 node_modules/

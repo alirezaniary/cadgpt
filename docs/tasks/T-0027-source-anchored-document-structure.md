@@ -85,18 +85,10 @@ assertions must reference.
 
 ```sh
 make verify
+make inbr-workspace
 
-structure_root=$(mktemp -d /tmp/cadgpt-inbr-structure.XXXXXX)
-
-uv run cadgpt-regulations structure \
-  --transcription /tmp/cadgpt-inbr-transcription.FINAL/transcription.json \
-  --root /tmp/cadgpt-inbr-transcription.FINAL \
-  --output-root "$structure_root"
-
-uv run cadgpt-regulations structure-check \
-  "$structure_root/structure.json" \
-  --root "$structure_root" \
-  --transcription-root /tmp/cadgpt-inbr-transcription.FINAL
+# Follow the durable structure sequence in docs/inbr-operations.md. It uses the explicit,
+# content-addressed receipts under `.cadgpt/inbr/`, never /tmp.
 ```
 
 The evidence must show:

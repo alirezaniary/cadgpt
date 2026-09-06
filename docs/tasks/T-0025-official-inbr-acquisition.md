@@ -97,29 +97,10 @@ not evidence.
 
 ```sh
 make verify
+make inbr-workspace
 
-inbr_acq_root=$(mktemp -d /tmp/cadgpt-inbr-acquisition.XXXXXX)
-uv run cadgpt-regulations acquire \
-  --catalog packages/regulations/src/cadgpt_regulations/data/inbr_catalog.json \
-  --output-root "$inbr_acq_root"
-
-uv run cadgpt-regulations acquisition-check \
-  "$inbr_acq_root/acquisition.json" \
-  --root "$inbr_acq_root" \
-  --catalog packages/regulations/src/cadgpt_regulations/data/inbr_catalog.json
-
-uv run cadgpt-regulations inventory \
-  "$inbr_acq_root/artifacts" \
-  --output "$inbr_acq_root/manifest.json" \
-  --catalog packages/regulations/src/cadgpt_regulations/data/inbr_catalog.json
-
-uv run cadgpt-regulations validate \
-  "$inbr_acq_root/manifest.json" \
-  --catalog packages/regulations/src/cadgpt_regulations/data/inbr_catalog.json
-
-uv run cadgpt-regulations publish-check \
-  "$inbr_acq_root/manifest.json" \
-  --catalog packages/regulations/src/cadgpt_regulations/data/inbr_catalog.json
+# Follow the durable acquisition sequence in docs/inbr-operations.md. It stores the real
+# corpus beneath the ignored `.cadgpt/inbr/acquisition/` root, never /tmp.
 ```
 
 The evidence must show:

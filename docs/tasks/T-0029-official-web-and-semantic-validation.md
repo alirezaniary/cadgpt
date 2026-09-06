@@ -86,25 +86,11 @@ Build the validation layer that preserves both facts without rewriting primary e
 
 ```sh
 make verify
+make inbr-workspace
 
-validation_root=$(mktemp -d /tmp/cadgpt-inbr-validation.XXXXXX)
-
-uv run cadgpt-regulations web-evidence \
-  --catalog packages/regulations/src/cadgpt_regulations/data/inbr_catalog.json \
-  --output-root "$validation_root/web"
-
-uv run cadgpt-regulations validate-semantics \
-  --extraction /tmp/cadgpt-inbr-extraction.FINAL/extraction.json \
-  --extraction-root /tmp/cadgpt-inbr-extraction.FINAL \
-  --structure-root /tmp/cadgpt-inbr-structure.FINAL \
-  --transcription-root /tmp/cadgpt-inbr-transcription.FINAL \
-  --web "$validation_root/web/web-evidence.json" \
-  --web-root "$validation_root/web" \
-  --output-root "$validation_root/semantic"
-
-uv run cadgpt-regulations validation-check \
-  "$validation_root/semantic/validation.json" \
-  --root "$validation_root/semantic"
+# When the validation commands land, their real artifacts belong below
+# `.cadgpt/inbr/validation/`, never /tmp. Keep each printed content-addressed receipt for the
+# following command; docs/inbr-operations.md is the durable-run contract.
 ```
 
 The evidence must show:

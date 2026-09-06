@@ -89,27 +89,10 @@ data instead of being averaged away.
 
 ```sh
 make verify
+make inbr-workspace
 
-extraction_root=$(mktemp -d /tmp/cadgpt-inbr-extraction.XXXXXX)
-
-uv run cadgpt-regulations extract-jobs \
-  --structure /tmp/cadgpt-inbr-structure.FINAL/structure.json \
-  --root /tmp/cadgpt-inbr-structure.FINAL \
-  --output-root "$extraction_root" \
-  --model gpt-5.6-luna \
-  --blind-passes 2
-
-# The coordinator drains pending job manifests with parallel Luna workers and stores each raw
-# response under the private extraction root. This command ingests completed responses and emits
-# validation jobs without trusting worker-written evidence strings.
-uv run cadgpt-regulations extract-ingest \
-  --jobs "$extraction_root/jobs.json" \
-  --root "$extraction_root"
-
-uv run cadgpt-regulations extraction-check \
-  "$extraction_root/extraction.json" \
-  --root "$extraction_root" \
-  --structure-root /tmp/cadgpt-inbr-structure.FINAL
+# Follow the durable extraction sequence in docs/inbr-operations.md. It uses explicit,
+# content-addressed receipts and `.cadgpt/inbr/extraction/`, never /tmp.
 ```
 
 The evidence must show:
