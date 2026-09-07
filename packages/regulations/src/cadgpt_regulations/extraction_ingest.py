@@ -72,6 +72,7 @@ def ingest_extraction_response(
     response_path: Path,
     transcription_root: Path,
     output_root: Path,
+    structure_root: Path | None = None,
 ) -> ExtractionIngestResult:
     """Validate and immutably store one blind response without editing the queue."""
     validate_extraction_jobs(jobs)
@@ -88,9 +89,25 @@ def ingest_extraction_response(
 
     _validate_response_identity(response, job)
     bundle_path = safe_path(transcription_root, _required_string(job, "bundle_path"))
+    semantic_job_path = bundle_path
+    if isinstance(job.get("structure"), dict):
+        if structure_root is None:
+            raise ExtractionIngestError(
+                "structured response ingestion requires structure_root"
+            )
+        semantic_job_path = safe_path(
+            structure_root,
+            _required_string(cast(JsonObject, job["structure"]), "structural_bundle_path"),
+        )
     try:
         semantic = check_semantic_artifact(
-            bundle_path, response_path, root=transcription_root
+            semantic_job_path,
+            response_path,
+            root=transcription_root,
+            structure_binding=cast(JsonObject, job["structure"])
+            if "structure" in job
+            else None,
+            structure_root=structure_root,
         )
     except (SemanticCheckError, StorageError) as exc:
         raise ExtractionIngestError(str(exc)) from exc
@@ -121,6 +138,14 @@ def ingest_extraction_response(
         "catalog_key": _required_string(job, "catalog_key"),
         "bundle_id": _required_string(job, "bundle_id"),
         "bundle_sha256": _required_string(job, "bundle_sha256"),
+        **(
+            {
+                "structure": job["structure"],
+                "semantic_bundle_sha256": _required_string(job, "semantic_bundle_sha256"),
+            }
+            if isinstance(job.get("structure"), dict)
+            else {}
+        ),
         "response": {
             "path": stored_response.relative_to(output_root).as_posix(),
             "sha256": response_snapshot.sha256,
@@ -158,6 +183,7 @@ def ingest_validator_response(
     response_path: Path,
     transcription_root: Path,
     output_root: Path,
+    structure_root: Path | None = None,
 ) -> ValidatorIngestResult:
     """Bind one independent validator decision to both stored blind responses."""
     validate_extraction_jobs(jobs)
@@ -200,9 +226,27 @@ def ingest_validator_response(
     except SemanticReconciliationError as exc:
         raise ExtractionIngestError(str(exc)) from exc
     bundle_path = safe_path(transcription_root, _required_string(bundle_job, "bundle_path"))
+    semantic_job_path = bundle_path
+    if isinstance(bundle_job.get("structure"), dict):
+        if structure_root is None:
+            raise ExtractionIngestError(
+                "structured validator ingestion requires structure_root"
+            )
+        semantic_job_path = safe_path(
+            structure_root,
+            _required_string(
+                cast(JsonObject, bundle_job["structure"]), "structural_bundle_path"
+            ),
+        )
     try:
         semantic = check_semantic_artifact(
-            bundle_path, response_path, root=transcription_root
+            semantic_job_path,
+            response_path,
+            root=transcription_root,
+            structure_binding=cast(JsonObject, bundle_job["structure"])
+            if "structure" in bundle_job
+            else None,
+            structure_root=structure_root,
         )
     except (SemanticCheckError, StorageError) as exc:
         raise ExtractionIngestError(str(exc)) from exc
@@ -245,6 +289,16 @@ def ingest_validator_response(
         "state": state,
         "bundle_id": bundle_id,
         "bundle_sha256": _required_string(bundle_job, "bundle_sha256"),
+        **(
+            {
+                "structure": bundle_job["structure"],
+                "semantic_bundle_sha256": _required_string(
+                    bundle_job, "semantic_bundle_sha256"
+                ),
+            }
+            if isinstance(bundle_job.get("structure"), dict)
+            else {}
+        ),
         "pass_a_job_id": _required_string(pass_jobs["A"], "job_id"),
         "pass_a_response_sha256": pass_response_sha256["A"],
         "pass_b_job_id": _required_string(pass_jobs["B"], "job_id"),
@@ -362,6 +416,7 @@ def _load_stored_response(receipt: JsonObject, *, output_root: Path) -> JsonObje
 def _validate_response_identity(response: JsonObject, job: JsonObject) -> None:
     if _canonical_pass(response.get("pass")) != _required_string(job, "pass"):
         raise ExtractionIngestError("response differs from queued pass")
+    structure = job.get("structure")
     if response.get("input_bundle_sha256") != _required_string(job, "bundle_sha256"):
         raise ExtractionIngestError("response differs from queued input_bundle_sha256")
 
@@ -374,6 +429,21 @@ def _validate_response_identity(response: JsonObject, job: JsonObject) -> None:
     for field, value in optional.items():
         if field in response and response[field] != value:
             raise ExtractionIngestError(f"response differs from queued {field}")
+    if isinstance(structure, dict):
+        structural_bundle_sha256 = _required_string(
+            cast(JsonObject, structure), "structural_bundle_sha256"
+        )
+        if response.get("input_structural_bundle_sha256") != structural_bundle_sha256:
+            raise ExtractionIngestError(
+                "response differs from queued input_structural_bundle_sha256"
+            )
+        for field in (
+            "structure_sha256",
+            "structure_graph_sha256",
+        ):
+            expected = _required_string(cast(JsonObject, structure), field)
+            if response.get(field) != expected:
+                raise ExtractionIngestError(f"response differs from queued {field}")
 
     schema_version = response.get("schema_version")
     if not isinstance(schema_version, str) or not schema_version:
@@ -419,6 +489,16 @@ def _validate_validator_identity(
         "pass_a_sha256": pass_a_sha256,
         "pass_b_sha256": pass_b_sha256,
     }
+    structure = bundle_job.get("structure")
+    if isinstance(structure, dict):
+        structural_bundle_sha256 = _required_string(
+            cast(JsonObject, structure), "structural_bundle_sha256"
+        )
+        if response.get("input_structural_bundle_sha256") != structural_bundle_sha256:
+            raise ExtractionIngestError(
+                "validator differs from queued input_structural_bundle_sha256"
+            )
+        expected["structural_bundle_sha256"] = structural_bundle_sha256
     for field, value in expected.items():
         if provenance.get(field) != value:
             raise ExtractionIngestError(f"validator provenance differs at {field}")

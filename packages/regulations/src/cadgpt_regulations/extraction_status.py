@@ -110,6 +110,10 @@ def _bundle_status(
         "pass_a_job_id": pass_a_id,
         "pass_b_job_id": pass_b_id,
     }
+    if isinstance(pass_a_job.get("structure"), dict):
+        base["structure"] = pass_a_job["structure"]
+        base["semantic_bundle_path"] = pass_a_job["semantic_bundle_path"]
+        base["semantic_bundle_sha256"] = pass_a_job["semantic_bundle_sha256"]
     if pass_a_receipt is None or pass_b_receipt is None:
         return {**base, "state": "pending", "validation": None}
 
@@ -134,6 +138,7 @@ def _bundle_status(
         bundle_id=bundle_id,
         pass_a_sha256=pass_a_sha256,
         pass_b_sha256=pass_b_sha256,
+        structure=pass_a_job.get("structure"),
         output_root=output_root,
     )
     return {
@@ -186,6 +191,10 @@ def _validate_job_receipt(
         "pass": _required_string(job, "pass"),
         "model": _required_string(job, "model"),
     }
+    if isinstance(job.get("structure"), dict):
+        expected["semantic_bundle_sha256"] = _required_string(job, "semantic_bundle_sha256")
+        if receipt.get("structure") != job["structure"]:
+            raise ExtractionStatusError("job receipt structure binding differs")
     for field, value in expected.items():
         if receipt.get(field) != value:
             raise ExtractionStatusError(f"job receipt differs at {field}: {value}")
@@ -199,12 +208,19 @@ def _validate_validator_receipt(
     pass_a_sha256: str,
     pass_b_sha256: str,
     output_root: Path,
+    structure: object,
 ) -> None:
     expected = {
         "bundle_id": bundle_id,
         "pass_a_response_sha256": pass_a_sha256,
         "pass_b_response_sha256": pass_b_sha256,
     }
+    if isinstance(structure, dict):
+        expected["semantic_bundle_sha256"] = _required_string(
+            cast(JsonObject, structure), "structural_bundle_sha256"
+        )
+        if receipt.get("structure") != structure:
+            raise ExtractionStatusError("validator receipt structure binding differs")
     for field, value in expected.items():
         if receipt.get(field) != value:
             raise ExtractionStatusError(f"validator receipt differs at {field}: {value}")

@@ -242,6 +242,29 @@ still race pathname-based directory operations; directory re-attestation mitigat
 the remaining local race is documented in `docs/decisions.md` for later `openat`/dirfd
 hardening if the threat model expands.
 
+## 2026-09-06 cohort-revision record
+
+This entry is additive. The preceding proof records the completed 2026-09-03 43-artifact cohort
+and its historical `/tmp` root; it is not changed or treated as evidence for this revision.
+
+A later durable acquisition found that the two configured endpoints for Volume 11 and Volume 24
+returned `404`, while their official WordPress records exposed replacements. The active catalog
+therefore explicitly selects only these replacements, preserving the 43-artifact cohort shape:
+
+- post 7042 identifies `m11-2.pdf` for Volume 11: 13,622,631 bytes, 144 pages, SHA-256
+  `07283f909f9e7c3f9189f6518a1ec9f3215025c78d72727e19528282794ad477`; its cover keeps the
+  third-edition / 1400 identity;
+- post 7061 identifies `mabhas24-4.pdf` for Volume 24: 2,975,003 bytes, 53 pages, SHA-256
+  `3a5bfd8efb03b8dc53c8bcd00c3e432c71f6b99f729344ff015570a679076623`; its cover identifies
+  the first edition / 1404; and
+- the revised catalog has ten metadata sources, 43 artifacts, 5,892 pages, and 470,674,872 bytes.
+
+The old incomplete durable attempt remains in its original ignored workspace. A fresh root,
+`.cadgpt/inbr/acquisition/revision-2026-09-06`, is required for the new receipt and all associated
+raw/projection evidence. No revised acquisition has been asserted by this record: it must reach
+10/10 metadata and 43/43 PDF readiness and pass `acquisition-check` before any page-probe input is
+created. The selection rationale and the non-overwrite rule are recorded in `docs/decisions.md`.
+
 ## Review
 
 The review identified three fix-now findings. This remediation preserves the first successful

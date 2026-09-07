@@ -106,3 +106,13 @@ def test_validate_extraction_jobs_rejects_job_identity_drift(tmp_path: Path) -> 
 
     with pytest.raises(ExtractionJobError, match="identity drift"):
         validate_extraction_jobs(manifest)
+
+
+def test_validate_extraction_jobs_rejects_stale_top_level_structure_hash(
+    tmp_path: Path,
+) -> None:
+    manifest = build_extraction_jobs(_fixture(tmp_path), root=tmp_path)
+    manifest["structure_sha256"] = "a" * 64
+
+    with pytest.raises(ExtractionJobError, match="structure hash"):
+        validate_extraction_jobs(manifest)

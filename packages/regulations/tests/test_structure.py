@@ -5,6 +5,7 @@ import copy
 import pytest
 from cadgpt_regulations.errors import StructureError
 from cadgpt_regulations.structure import (
+    _align_alternate_lines,
     _formula_record,
     _unit_record,
     _validate_graph_schema,
@@ -32,6 +33,7 @@ def _graph() -> dict[str, object]:
                 "printed_page_label": "1",
                 "state": "ready",
                 "reason_codes": [],
+                "source_artifacts": [],
                 "node_ids": [node_id],
                 "formula_ids": [],
                 "unit_ids": [],
@@ -50,6 +52,7 @@ def _graph() -> dict[str, object]:
                 "source_kind": "native",
                 "source_span_ids": [span],
                 "raw_text": "source",
+                "normalized_text": "source",
                 "bbox": [0, 0, 10, 10],
                 "state": "ready",
             }
@@ -122,3 +125,22 @@ def test_source_graph_schema_rejects_unknown_fields() -> None:
 
     with pytest.raises(StructureError, match="schema error"):
         _validate_graph_schema(invalid)
+
+
+def test_alternate_lines_are_not_linked_by_position_when_text_differs() -> None:
+    canonical = [
+        {"span_id": "ocr-1", "raw_text": "اول"},
+        {"span_id": "ocr-2", "raw_text": "دوم"},
+    ]
+    native = [
+        {"span_id": "native-extra", "raw_text": "عنوان"},
+        {"span_id": "native-1", "raw_text": "اول"},
+        {"span_id": "native-2", "raw_text": "دوم"},
+    ]
+
+    aligned = _align_alternate_lines(canonical, native)
+
+    assert [line["span_id"] if line is not None else None for line in aligned] == [
+        "native-1",
+        "native-2",
+    ]

@@ -76,6 +76,13 @@ def build_semantic_publication(
     validate_output_root(extraction_root, description="extraction root")
     validate_output_root(structure_root, description="structure root")
     validate_output_root(output_root, description="publication output root")
+    bound_structure_sha256 = jobs.get("structure_sha256")
+    if bound_structure_sha256 is not None and bound_structure_sha256 != sha256_json(
+        structure
+    ):
+        raise SemanticPublishError(
+            "extraction jobs are bound to a different structure manifest"
+        )
     if (acquisition is None) != (acquisition_root is None):
         raise SemanticPublishError(
             "acquisition receipt and acquisition root must be supplied together"
@@ -460,12 +467,23 @@ def _formats_payload() -> JsonObject:
                 "catalog_key",
                 "bundle_id",
                 "bundle_sha256",
+                "structure_sha256",
+                "structure_graph_sha256",
+                "structural_bundle_path",
+                "structural_bundle_sha256",
                 "validation_id",
                 "validator_response_sha256",
                 "pass_a_response_sha256",
                 "pass_b_response_sha256",
             ],
-            "source_anchor_fields": ["source_span_ids", "qualifier_span_ids"],
+            "source_anchor_fields": [
+                "source_node_ids",
+                "formula_ids",
+                "table_ids",
+                "unit_ids",
+                "source_span_ids",
+                "qualifier_span_ids",
+            ],
         },
         "formulas": {
             "preferred_semantic_format": "Content MathML",
@@ -542,6 +560,16 @@ def _publish_validated_bundle(
         "pass_a_response_sha256": receipt["pass_a_response_sha256"],
         "pass_b_response_sha256": receipt["pass_b_response_sha256"],
     }
+    if isinstance(bundle.get("structure"), dict):
+        structure_binding = cast(JsonObject, bundle["structure"])
+        provenance.update(
+            {
+                "structure_sha256": structure_binding["structure_sha256"],
+                "structure_graph_sha256": structure_binding["structure_graph_sha256"],
+                "structural_bundle_path": bundle["semantic_bundle_path"],
+                "structural_bundle_sha256": bundle["semantic_bundle_sha256"],
+            }
+        )
     try:
         reconciliation = reconcile_validator(response, pass_a=pass_a, pass_b=pass_b)
     except SemanticReconciliationError as exc:

@@ -165,8 +165,8 @@ def test_complete_acquisition_is_attested_and_second_run_reuses_without_rewrite(
     }
 
     assert first["summary"] == {
-        "metadata_expected": 9,
-        "metadata_ready": 9,
+        "metadata_expected": 10,
+        "metadata_ready": 10,
         "metadata_quarantined": 0,
         "artifacts_expected": 43,
         "artifacts_ready": 43,
@@ -381,7 +381,7 @@ def test_discovery_drift_is_terminal_for_every_link_change(
 
     assert result["state"] == "quarantined"
     assert cast(JsonObject, result["error"])["code"] == "SOURCE_DISCOVERY_DRIFT"
-    assert receipt["summary"]["metadata_expected"] == 9
+    assert receipt["summary"]["metadata_expected"] == 10
     assert receipt["summary"]["metadata_quarantined"] == 1
     assert receipt["summary"]["artifacts_ready"] == 43
 

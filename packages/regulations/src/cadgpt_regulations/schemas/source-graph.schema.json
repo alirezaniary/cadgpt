@@ -69,6 +69,7 @@
         "printed_page_label",
         "state",
         "reason_codes",
+        "source_artifacts",
         "node_ids",
         "formula_ids",
         "unit_ids",
@@ -80,10 +81,23 @@
         "printed_page_label": {"type": ["string", "null"]},
         "state": {"$ref": "#/$defs/state"},
         "reason_codes": {"type": "array", "items": {"type": "string"}},
+        "source_artifacts": {"type": "array", "items": {"$ref": "#/$defs/artifact"}},
         "node_ids": {"$ref": "#/$defs/idList"},
         "formula_ids": {"$ref": "#/$defs/idList"},
         "unit_ids": {"$ref": "#/$defs/idList"},
         "table_ids": {"$ref": "#/$defs/idList"}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "path", "sha256", "bytes", "media_type"],
+      "properties": {
+        "role": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "minLength": 1, "not": {"pattern": "(^/|(^|/)\\.\\.?(/|$)|\\\\)"}},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"type": "integer", "minimum": 0},
+        "media_type": {"type": "string", "minLength": 1}
       }
     },
     "node": {
@@ -100,6 +114,7 @@
         "source_kind",
         "source_span_ids",
         "raw_text",
+        "normalized_text",
         "bbox",
         "state"
       ],
@@ -120,6 +135,9 @@
         "source_kind": {"enum": ["native", "ocr"]},
         "source_span_ids": {"$ref": "#/$defs/spanIds"},
         "raw_text": {"type": "string", "minLength": 1},
+        "normalized_text": {"type": "string"},
+        "alternate_source_span_ids": {"$ref": "#/$defs/idList"},
+        "alternate_raw_text": {"type": "string"},
         "bbox": {"$ref": "#/$defs/bbox"},
         "state": {"$ref": "#/$defs/state"}
       }

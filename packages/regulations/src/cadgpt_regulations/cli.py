@@ -15,7 +15,10 @@ from cadgpt_regulations.extraction_ingest import (
     ingest_extraction_response,
     ingest_validator_response,
 )
-from cadgpt_regulations.extraction_jobs import DEFAULT_MODEL, build_extraction_jobs
+from cadgpt_regulations.extraction_jobs import (
+    DEFAULT_MODEL,
+    build_structured_extraction_jobs,
+)
 from cadgpt_regulations.extraction_status import build_extraction_status
 from cadgpt_regulations.inventory import (
     build_inventory,
@@ -132,10 +135,22 @@ def _parser() -> argparse.ArgumentParser:
     structure_check.add_argument("--transcription-root", type=Path, required=True)
 
     extract_jobs = subcommands.add_parser(
-        "extract-jobs", help="queue two blind Luna passes for every transcription bundle"
+        "extract-jobs", help="queue two blind Luna passes for every structured bundle"
     )
     extract_jobs.add_argument("--transcription", type=Path, required=True)
     extract_jobs.add_argument("--root", type=Path, required=True)
+    extract_jobs.add_argument(
+        "--structure",
+        type=Path,
+        required=True,
+        help="validated T-0027 structure manifest; binds jobs to source blocks",
+    )
+    extract_jobs.add_argument(
+        "--structure-root",
+        type=Path,
+        required=True,
+        help="root containing attested source graphs",
+    )
     extract_jobs.add_argument("--output-root", type=Path, required=True)
     extract_jobs.add_argument("--model", default=DEFAULT_MODEL)
 
@@ -146,6 +161,7 @@ def _parser() -> argparse.ArgumentParser:
     extract_ingest.add_argument("--job-id", required=True)
     extract_ingest.add_argument("--response", type=Path, required=True)
     extract_ingest.add_argument("--transcription-root", type=Path, required=True)
+    extract_ingest.add_argument("--structure-root", type=Path, required=True)
     extract_ingest.add_argument("--output-root", type=Path, required=True)
 
     validator_ingest = subcommands.add_parser(
@@ -155,6 +171,7 @@ def _parser() -> argparse.ArgumentParser:
     validator_ingest.add_argument("--bundle-id", required=True)
     validator_ingest.add_argument("--response", type=Path, required=True)
     validator_ingest.add_argument("--transcription-root", type=Path, required=True)
+    validator_ingest.add_argument("--structure-root", type=Path, required=True)
     validator_ingest.add_argument("--output-root", type=Path, required=True)
 
     extraction_status = subcommands.add_parser(
@@ -366,10 +383,12 @@ def main(
             return 0
         if args.command == "extract-jobs":
             transcription = _load_receipt(args.transcription)
-            queue = build_extraction_jobs(
+            queue = build_structured_extraction_jobs(
                 transcription,
                 root=args.root,
                 model=args.model,
+                structure=_load_receipt(args.structure),
+                structure_root=args.structure_root,
             )
             validate_output_root(args.output_root, description="extraction output root")
             queue_install = install_immutable_bytes(
@@ -391,6 +410,7 @@ def main(
                 response_path=args.response,
                 transcription_root=args.transcription_root,
                 output_root=args.output_root,
+                structure_root=args.structure_root,
             )
             print(f"response {ingest_run.response_status}: {ingest_run.response_path}")
             print(
@@ -406,6 +426,7 @@ def main(
                 response_path=args.response,
                 transcription_root=args.transcription_root,
                 output_root=args.output_root,
+                structure_root=args.structure_root,
             )
             print(
                 f"validator response {validator_run.response_status}: "

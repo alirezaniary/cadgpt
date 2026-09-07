@@ -39,8 +39,9 @@ Set stable shell variables once per shell:
 
 ```sh
 inbr_root=$PWD/.cadgpt/inbr
-acquisition_root=$inbr_root/acquisition
-transcription_root=$inbr_root/transcription
+cohort_id=revision-2026-09-06
+acquisition_root=$inbr_root/acquisition/$cohort_id
+transcription_root=$inbr_root/transcription/$cohort_id
 structure_root=$inbr_root/structure
 extraction_root=$inbr_root/extraction
 validation_root=$inbr_root/validation
@@ -50,7 +51,14 @@ catalog=packages/regulations/src/cadgpt_regulations/data/inbr_catalog.json
 
 ### 1. Acquire and attest the pinned official cohort
 
+Create the cohort-specific output roots once. The workspace initializer intentionally creates only
+the stable stage roots; each cohort root remains caller-created so the acquisition trust boundary can
+attest its ownership and permissions.
+
 ```sh
+mkdir -m 700 "$acquisition_root"
+mkdir -m 700 "$transcription_root"
+
 uv run cadgpt-regulations acquire \
   --catalog "$catalog" \
   --output-root "$acquisition_root"
@@ -61,9 +69,12 @@ uv run cadgpt-regulations acquisition-check \
   --catalog "$catalog"
 ```
 
-The acquisition receipt is the stable entry point for downstream stages. Rerunning `acquire`
-with the same catalog and root re-attests existing immutable artifacts and reuses identical bytes
-without changing their mtimes; it does not overwrite differing evidence.
+The acquisition receipt is the stable entry point for downstream stages. `cohort_id` must identify
+the exact curated snapshot: use a new, never-before-used ID when the catalog changes. Do not rerun a
+revised catalog against a previous cohort root; that preserves its receipt, raw official responses,
+and immutable artifacts as historical evidence. Rerunning `acquire` with the same catalog and root
+re-attests existing immutable artifacts and reuses identical bytes without changing their mtimes; it
+does not overwrite differing evidence.
 
 ### 2. Probe and transcribe pages
 
@@ -124,10 +135,17 @@ uv run cadgpt-regulations structure-check \
 external coordinator must store raw responses under `extraction_root` and submit each one through
 `extract-ingest` or `validator-ingest`.
 
+Each structured job carries both the original T-0026 transcription bundle hash and the exact
+T-0027 structural-bundle hash/path. A worker response must preserve both identities; candidates
+must cite at least one structural source node, and formula/table references are checked against the
+attested structural bundle before ingestion.
+
 ```sh
 uv run cadgpt-regulations extract-jobs \
   --transcription "$transcription_manifest" \
   --root "$transcription_root" \
+  --structure "$structure_manifest" \
+  --structure-root "$structure_root" \
   --output-root "$extraction_root"
 
 jobs=$extraction_root/jobs.json
@@ -137,6 +155,7 @@ uv run cadgpt-regulations extract-ingest \
   --job-id <job-id> \
   --response /private/path/to/response.json \
   --transcription-root "$transcription_root" \
+  --structure-root "$structure_root" \
   --output-root "$extraction_root"
 
 uv run cadgpt-regulations validator-ingest \
@@ -144,6 +163,7 @@ uv run cadgpt-regulations validator-ingest \
   --bundle-id <bundle-id> \
   --response /private/path/to/validator-response.json \
   --transcription-root "$transcription_root" \
+  --structure-root "$structure_root" \
   --output-root "$extraction_root"
 
 uv run cadgpt-regulations extraction-status \

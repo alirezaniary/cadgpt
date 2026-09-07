@@ -466,3 +466,30 @@ not silently replace an attested PDF or expand the active cohort mid-run. A late
 must be explicit, acquire new hashes, preserve the old cohort, and rerun affected stages.
 
 **Reopens if:** the user explicitly selects a new official-source snapshot as the active cohort.
+
+## 2026-09-06 — Revise the active 43-document INBR cohort for official Volume 11 and 24 replacements
+
+The user selected the current official replacements for the two endpoint failures recorded by the
+first durable acquisition attempt. This is a replacement-only revision: the cohort remains 43
+artifacts and 5,892 pages, with the same supplemental documents and relationships. It does not
+claim every historical edition or every subsequently published INBR document.
+
+- Volume 11 (`volume-11-edition-1400`) now pins the official post-7042 PDF
+  `mabhas11-2.pdf`: 13,622,631 bytes, 144 pages, SHA-256
+  `07283f909f9e7c3f9189f6518a1ec9f3215025c78d72727e19528282794ad477`. The official cover
+  retains its third-edition / 1400 identity, so the existing amendment relationship remains
+  directed to the same catalog key.
+- Volume 24 (`volume-24-current-1404`) now pins the official post-7061 PDF
+  `mabhas24-4.pdf`: 2,975,003 bytes, 53 pages, SHA-256
+  `3a5bfd8efb03b8dc53c8bcd00c3e432c71f6b99f729344ff015570a679076623`. Its official cover
+  supplies the previously unset identity: first edition / 1404.
+- The revised catalog snapshots post 7042 in addition to the existing sources, and pins the
+  current post-7061 semantic projection. Its total is 470,674,872 bytes.
+
+The failed pre-revision durable acquisition remains preserved under its original ignored root. The
+revised cohort must use a separate durable `cohort_id`, acquire all artifacts and official metadata
+again, and pass `acquisition-check` before page processing. No historical receipt or stored source
+payload is overwritten or reinterpreted as evidence for this revision.
+
+**Reopens if:** INBR replaces either pinned endpoint again, or the user selects an expansion beyond
+this 43-artifact cohort.

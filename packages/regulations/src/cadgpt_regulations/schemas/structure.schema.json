@@ -80,7 +80,8 @@
         "path",
         "sha256",
         "bytes",
-        "counts"
+        "counts",
+        "bundles"
       ],
       "properties": {
         "catalog_key": {"type": "string", "minLength": 1},
@@ -90,7 +91,22 @@
         "path": {"type": "string", "minLength": 1},
         "sha256": {"$ref": "#/$defs/sha256"},
         "bytes": {"type": "integer", "minimum": 1},
-        "counts": {"$ref": "#/$defs/graphCounts"}
+        "counts": {"$ref": "#/$defs/graphCounts"},
+        "bundles": {"type": "array", "items": {"$ref": "#/$defs/bundle"}}
+      }
+    },
+    "bundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "start_pdf_page", "end_pdf_page", "page_count", "path", "sha256", "bytes"],
+      "properties": {
+        "sequence": {"type": "integer", "minimum": 1},
+        "start_pdf_page": {"type": "integer", "minimum": 1},
+        "end_pdf_page": {"type": "integer", "minimum": 1},
+        "page_count": {"type": "integer", "minimum": 1},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"type": "integer", "minimum": 1}
       }
     }
   }

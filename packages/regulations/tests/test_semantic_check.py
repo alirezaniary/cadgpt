@@ -170,3 +170,116 @@ def test_check_semantic_artifact_accepts_transcription_bundle(tmp_path: Path) ->
 
     assert result.allowed_span_ids == 1
     assert result.files_checked == 3
+
+
+def _structured_fixture(tmp_path: Path) -> tuple[Path, Path, dict[str, object]]:
+    page_id = "sha256:" + "c" * 64 + ":page:000001"
+    span_id = page_id + ":ocr:line:000000"
+    node_id = page_id + ":structure:000001:ocr"
+    bundle_path = tmp_path / "structural.json"
+    bundle = {
+        "schema_version": "1.0.0",
+        "catalog_key": "volume-01",
+        "source_sha256": "c" * 64,
+        "graph_sha256": "d" * 64,
+        "sequence": 1,
+        "start_pdf_page": 1,
+        "end_pdf_page": 1,
+        "continuation_edges": [],
+        "pages": [
+            {
+                "page_id": page_id,
+                "pdf_page": 1,
+                "printed_page_label": "1",
+                "state": "ready",
+                "reason_codes": [],
+                "source_artifacts": [],
+                "node_ids": [node_id],
+                "formula_ids": [],
+                "unit_ids": [],
+                "table_ids": [],
+                "blocks": [
+                    {
+                        "node_id": node_id,
+                        "kind": "paragraph",
+                        "source_order": 1,
+                        "pdf_page": 1,
+                        "parent_id": None,
+                        "children_ids": [],
+                        "printed_label": None,
+                        "source_kind": "ocr",
+                        "source_span_ids": [span_id],
+                        "raw_text": "متن",
+                        "normalized_text": "متن",
+                        "bbox": [0, 0, 10, 10],
+                        "state": "ready",
+                    }
+                ],
+            }
+        ],
+        "formulas": [],
+        "tables": [],
+        "units": [],
+    }
+    _write_json(bundle_path, bundle)
+    bundle_sha256 = hashlib.sha256(bundle_path.read_bytes()).hexdigest()
+    structure_binding: dict[str, object] = {
+        "page_ids": [page_id],
+        "node_ids": [node_id],
+        "formula_ids": [],
+        "table_ids": [],
+        "unit_ids": [],
+        "structural_bundle_path": bundle_path.name,
+        "structural_bundle_sha256": bundle_sha256,
+    }
+    artifact_path = tmp_path / "structured-artifact.json"
+    _write_json(
+        artifact_path,
+        {
+            "input_structural_bundle_sha256": bundle_sha256,
+            "pages": [1],
+            "candidates": [
+                {
+                    "candidate_id": "C1",
+                    "kind": "rule",
+                    "source_node_ids": [node_id],
+                    "formula_ids": [],
+                    "table_ids": [],
+                    "source_span_ids": [span_id],
+                    "qualifier_span_ids": [],
+                }
+            ],
+        },
+    )
+    return bundle_path, artifact_path, structure_binding
+
+
+def test_check_semantic_artifact_accepts_structural_bundle(tmp_path: Path) -> None:
+    bundle_path, artifact_path, binding = _structured_fixture(tmp_path)
+
+    result = check_semantic_artifact(
+        bundle_path,
+        artifact_path,
+        root=tmp_path,
+        structure_binding=binding,
+        structure_root=tmp_path,
+    )
+
+    assert result.candidates == 1
+    assert result.allowed_span_ids == 1
+
+
+def test_check_semantic_artifact_rejects_unknown_source_node(tmp_path: Path) -> None:
+    bundle_path, artifact_path, binding = _structured_fixture(tmp_path)
+    artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+    artifact["candidates"][0]["source_node_ids"] = ["unknown-node"]
+    _write_json(artifact_path, artifact)
+
+    with pytest.raises(SemanticCheckError, match="unknown source_node_ids"):
+        check_semantic_artifact(
+            bundle_path,
+            artifact_path,
+            root=tmp_path,
+            structure_binding=binding,
+            structure_root=tmp_path,
+        )
