@@ -14,6 +14,7 @@
     "tables",
     "formulas",
     "units",
+    "abbreviations",
     "continuation_edges",
     "counts"
   ],
@@ -28,6 +29,7 @@
     "tables": {"type": "array", "items": {"$ref": "#/$defs/table"}},
     "formulas": {"type": "array", "items": {"$ref": "#/$defs/formula"}},
     "units": {"type": "array", "items": {"$ref": "#/$defs/unit"}},
+    "abbreviations": {"type": "array", "items": {"$ref": "#/$defs/abbreviation"}},
     "continuation_edges": {
       "type": "array",
       "items": {"$ref": "#/$defs/continuation"}
@@ -73,6 +75,7 @@
         "node_ids",
         "formula_ids",
         "unit_ids",
+        "abbreviation_ids",
         "table_ids"
       ],
       "properties": {
@@ -85,6 +88,7 @@
         "node_ids": {"$ref": "#/$defs/idList"},
         "formula_ids": {"$ref": "#/$defs/idList"},
         "unit_ids": {"$ref": "#/$defs/idList"},
+        "abbreviation_ids": {"$ref": "#/$defs/idList"},
         "table_ids": {"$ref": "#/$defs/idList"}
       }
     },
@@ -124,7 +128,7 @@
           "enum": [
             "part", "chapter", "section", "clause", "subclause", "paragraph",
             "list_item", "definition", "note", "exception", "example", "table",
-            "figure", "equation", "annex", "unclassified"
+            "equation", "annex", "unclassified"
           ]
         },
         "source_order": {"type": "integer", "minimum": 1},
@@ -234,6 +238,21 @@
         "mapping_status": {"enum": ["mapped", "unknown"]}
       }
     },
+    "abbreviation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "abbreviation_id", "pdf_page", "source_kind", "source_span_ids", "bbox", "printed"
+      ],
+      "properties": {
+        "abbreviation_id": {"type": "string", "minLength": 1},
+        "pdf_page": {"type": "integer", "minimum": 1},
+        "source_kind": {"enum": ["native", "ocr"]},
+        "source_span_ids": {"$ref": "#/$defs/spanIds"},
+        "bbox": {"$ref": "#/$defs/bbox"},
+        "printed": {"type": "string", "minLength": 1}
+      }
+    },
     "continuation": {
       "type": "object",
       "additionalProperties": false,
@@ -252,7 +271,8 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "pages", "nodes", "tables", "formulas", "units", "continuation_edges", "needs_review"
+        "pages", "nodes", "tables", "formulas", "units", "abbreviations",
+        "continuation_edges", "needs_review"
       ],
       "properties": {
         "pages": {"type": "integer", "minimum": 0},
@@ -260,6 +280,7 @@
         "tables": {"type": "integer", "minimum": 0},
         "formulas": {"type": "integer", "minimum": 0},
         "units": {"type": "integer", "minimum": 0},
+        "abbreviations": {"type": "integer", "minimum": 0},
         "continuation_edges": {"type": "integer", "minimum": 0},
         "needs_review": {"type": "integer", "minimum": 0}
       }

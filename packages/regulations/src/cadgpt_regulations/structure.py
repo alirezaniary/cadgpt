@@ -280,6 +280,7 @@ def _validate_structural_bundle_contents(
         ("formulas", "formula_id"),
         ("tables", "table_id"),
         ("units", "unit_id"),
+        ("abbreviations", "abbreviation_id"),
     ):
         expected = [
             item
@@ -307,6 +308,7 @@ def _build_document_graph(document: JsonObject, *, root: Path) -> JsonObject:
     nodes: list[JsonObject] = []
     formulas: list[JsonObject] = []
     units: list[JsonObject] = []
+    abbreviations: list[JsonObject] = []
     tables: list[JsonObject] = []
     pages: list[JsonObject] = []
     parent_stack: dict[int, str] = {}
@@ -316,6 +318,7 @@ def _build_document_graph(document: JsonObject, *, root: Path) -> JsonObject:
         page_nodes: list[str] = []
         page_formulas: list[str] = []
         page_units: list[str] = []
+        page_abbreviations: list[str] = []
         page_tables: list[str] = []
         evidence: JsonObject | None = None
         if page["package_path"] is not None:
@@ -380,6 +383,12 @@ def _build_document_graph(document: JsonObject, *, root: Path) -> JsonObject:
                     record = _unit_record(candidate, page_id=cast(str, page["page_id"]))
                     units.append(record)
                     page_units.append(cast(str, record["unit_id"]))
+                elif kind == "method_abbreviation":
+                    record = _abbreviation_record(
+                        candidate, page_id=cast(str, page["page_id"])
+                    )
+                    abbreviations.append(record)
+                    page_abbreviations.append(cast(str, record["abbreviation_id"]))
             for index, candidate in enumerate(cast(list[JsonObject], semantic["tables"])):
                 table_id = f"{page['page_id']}:table:{index:04d}"
                 record = {
@@ -405,6 +414,7 @@ def _build_document_graph(document: JsonObject, *, root: Path) -> JsonObject:
                 "node_ids": page_nodes,
                 "formula_ids": page_formulas,
                 "unit_ids": page_units,
+                "abbreviation_ids": page_abbreviations,
                 "table_ids": page_tables,
             }
         )
@@ -428,6 +438,7 @@ def _build_document_graph(document: JsonObject, *, root: Path) -> JsonObject:
         "tables": tables,
         "formulas": formulas,
         "units": units,
+        "abbreviations": abbreviations,
         "continuation_edges": continuations,
         "counts": {
             "pages": len(pages),
@@ -435,6 +446,7 @@ def _build_document_graph(document: JsonObject, *, root: Path) -> JsonObject:
             "tables": len(tables),
             "formulas": len(formulas),
             "units": len(units),
+            "abbreviations": len(abbreviations),
             "continuation_edges": len(continuations),
             "needs_review": sum(page["state"] != "ready" for page in pages)
             + len(tables)
@@ -461,6 +473,7 @@ def _install_structural_bundles(
     formulas = cast(list[JsonObject], graph["formulas"])
     tables = cast(list[JsonObject], graph["tables"])
     units = cast(list[JsonObject], graph["units"])
+    abbreviations = cast(list[JsonObject], graph["abbreviations"])
     for reference in cast(list[JsonObject], transcription_document["bundles"]):
         sequence = cast(int, reference["sequence"])
         start = cast(int, reference["start_pdf_page"])
@@ -496,6 +509,11 @@ def _install_structural_bundles(
             ],
             "units": [
                 item for item in units if cast(int, item["pdf_page"]) in page_numbers
+            ],
+            "abbreviations": [
+                item
+                for item in abbreviations
+                if cast(int, item["pdf_page"]) in page_numbers
             ],
         }
         payload = canonical_bytes(payload_object)
@@ -681,6 +699,19 @@ def _unit_record(candidate: JsonObject, *, page_id: str) -> JsonObject:
         "printed": printed,
         "ucum_code": ucum,
         "mapping_status": "mapped" if ucum is not None else "unknown",
+    }
+
+
+def _abbreviation_record(candidate: JsonObject, *, page_id: str) -> JsonObject:
+    printed = cast(str, candidate["raw_text"])
+    return {
+        "abbreviation_id": candidate.get("candidate_id")
+        or f"{page_id}:abbreviation:{hashlib.sha256(printed.encode()).hexdigest()[:12]}",
+        "pdf_page": _page_from_span(cast(str, candidate["span_id"])),
+        "source_kind": candidate["source_kind"],
+        "source_span_ids": [candidate["span_id"]],
+        "bbox": candidate["bbox"],
+        "printed": printed,
     }
 
 
@@ -928,13 +959,14 @@ def _validate_graph(
     _validate_node_order_and_cycles(graph)
     _validate_page_record_lists(graph)
     _validate_continuations(graph)
-    for collection in ("tables", "formulas", "units"):
+    for collection in ("tables", "formulas", "units", "abbreviations"):
         ids: set[str] = set()
         for record in cast(list[JsonObject], graph[collection]):
             id_field = {
                 "tables": "table_id",
                 "formulas": "formula_id",
                 "units": "unit_id",
+                "abbreviations": "abbreviation_id",
             }[collection]
             record_id = cast(str, record[id_field])
             if record_id in ids:
@@ -1003,10 +1035,18 @@ def _validate_semantic_record(
     canonical_lines_by_page: dict[int, dict[str, JsonObject]],
 ) -> None:
     page_number = cast(int, record["pdf_page"])
-    if collection in {"formulas", "units"}:
-        id_field = "formula_id" if collection == "formulas" else "unit_id"
+    if collection in {"formulas", "units", "abbreviations"}:
+        id_field = {
+            "formulas": "formula_id",
+            "units": "unit_id",
+            "abbreviations": "abbreviation_id",
+        }[collection]
         candidate = symbols_by_page.get(page_number, {}).get(cast(str, record[id_field]))
-        expected_kind = "equation" if collection == "formulas" else "unit_mention"
+        expected_kind = {
+            "formulas": "equation",
+            "units": "unit_mention",
+            "abbreviations": "method_abbreviation",
+        }[collection]
         if candidate is None or candidate.get("kind") != expected_kind:
             raise StructureError("source graph semantic candidate differs from evidence")
         expected = {
@@ -1091,7 +1131,12 @@ def _validate_node_order_and_cycles(graph: JsonObject) -> None:
 def _validate_page_record_lists(graph: JsonObject) -> None:
     pages = cast(list[JsonObject], graph["pages"])
     by_id = {cast(str, page["page_id"]): page for page in pages}
-    collections = (("formulas", "formula_id"), ("tables", "table_id"), ("units", "unit_id"))
+    collections = (
+        ("formulas", "formula_id"),
+        ("tables", "table_id"),
+        ("units", "unit_id"),
+        ("abbreviations", "abbreviation_id"),
+    )
     for collection, id_field in collections:
         records = cast(list[JsonObject], graph[collection])
         by_page: dict[int, set[str]] = {}
@@ -1129,6 +1174,7 @@ def _graph_counts(graph: JsonObject) -> JsonObject:
         "tables": len(cast(list[JsonObject], graph["tables"])),
         "formulas": len(cast(list[JsonObject], graph["formulas"])),
         "units": len(cast(list[JsonObject], graph["units"])),
+        "abbreviations": len(cast(list[JsonObject], graph["abbreviations"])),
         "continuation_edges": len(cast(list[JsonObject], graph["continuation_edges"])),
         "needs_review": sum(page["state"] != "ready" for page in pages)
         + len(cast(list[JsonObject], graph["tables"]))
@@ -1144,6 +1190,9 @@ def _manifest_summary(references: list[JsonObject]) -> JsonObject:
         "tables": sum(cast(int, item["counts"]["tables"]) for item in references),
         "formulas": sum(cast(int, item["counts"]["formulas"]) for item in references),
         "units": sum(cast(int, item["counts"]["units"]) for item in references),
+        "abbreviations": sum(
+            cast(int, item["counts"]["abbreviations"]) for item in references
+        ),
         "continuation_edges": sum(
             cast(int, item["counts"]["continuation_edges"]) for item in references
         ),

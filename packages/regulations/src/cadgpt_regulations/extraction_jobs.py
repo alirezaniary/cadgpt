@@ -395,6 +395,7 @@ def _structure_binding(
         "nodes": nodes,
         "formulas": graph.get("formulas", []),
         "tables": graph.get("tables", []),
+        "units": graph.get("units", []),
         "bundles": reference.get("bundles", []),
     }
 

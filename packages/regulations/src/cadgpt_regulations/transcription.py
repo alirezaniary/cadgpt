@@ -1029,11 +1029,18 @@ def _build_bundles(
     created = 0
     reused = 0
     source_sha256 = cast(str, document["source_sha256"])
-    for sequence, chunk in enumerate(chunks, start=1):
+    sequence = 0
+    for chunk in chunks:
         start = cast(int, chunk[0]["pdf_page"])
         end = cast(int, chunk[-1]["pdf_page"])
         page_refs = [_bundle_page_ref(page, root=root) for page in chunk]
         byte_size = sum(cast(int, ref["input_bytes"]) for ref in page_refs)
+        if byte_size == 0:
+            # Every page in this chunk failed transcription (a failed page always
+            # carries `input_bytes: 0`). There is no transcribed content to bundle,
+            # so no hollow, content-addressed bundle is written or counted.
+            continue
+        sequence += 1
         bundle_id = (
             f"sha256:{source_sha256}:bundle:{start:06d}-{end:06d}:"
             f"{cast(str, configuration['sha256'])[:16]}"
@@ -1341,16 +1348,24 @@ def _validate_document_bundles(document: JsonObject) -> None:
     if [bundle["sequence"] for bundle in bundles] != list(range(1, len(bundles) + 1)):
         raise TranscriptionError("bundle sequences are missing or reordered")
     page_numbers = [cast(int, page["pdf_page"]) for page in pages]
+    failed_numbers = {
+        cast(int, page["pdf_page"]) for page in pages if page["state"] == "failed"
+    }
     covered: set[int] = set()
     previous_end: int | None = None
     for bundle in bundles:
         start = cast(int, bundle["start_pdf_page"])
         end = cast(int, bundle["end_pdf_page"])
         if previous_end is not None and start not in {previous_end, previous_end + 1}:
-            raise TranscriptionError("bundle ranges have a gap or excessive overlap")
+            # A chunk made entirely of failed pages is never written as a bundle
+            # (see `_build_bundles`), so a gap here is only legitimate when every
+            # page it skips over failed transcription outright.
+            gap = range(previous_end + 1, start)
+            if start < previous_end or not all(page in failed_numbers for page in gap):
+                raise TranscriptionError("bundle ranges have a gap or excessive overlap")
         covered.update(range(start, end + 1))
         previous_end = end
-    if covered != set(page_numbers):
+    if set(page_numbers) - covered - failed_numbers:
         raise TranscriptionError("bundles do not cover every document page")
 
 

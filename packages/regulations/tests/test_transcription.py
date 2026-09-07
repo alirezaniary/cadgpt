@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import stat
 from pathlib import Path
 
@@ -7,7 +8,12 @@ import pytest
 from cadgpt_regulations.errors import TranscriptionError
 from cadgpt_regulations.page_tools import run_probe_worker
 from cadgpt_regulations.store_index import validate_output_inventory
-from cadgpt_regulations.transcription import ascii_digit_view, normalize_search_text
+from cadgpt_regulations.transcription import (
+    _build_bundles,
+    _validate_document_bundles,
+    ascii_digit_view,
+    normalize_search_text,
+)
 
 
 def test_normalization_preserves_mathematics_identifiers_and_source_digits() -> None:
@@ -81,6 +87,103 @@ def test_generated_store_inventory_rejects_unindexed_empty_directories(
 
     with pytest.raises(TranscriptionError, match="unindexed_directories"):
         validate_output_inventory(root)
+
+
+def _write_bytes(path: Path, payload: bytes) -> None:
+    missing: list[Path] = []
+    current = path.parent
+    while not current.exists():
+        missing.append(current)
+        current = current.parent
+    for directory in reversed(missing):
+        directory.mkdir(mode=0o700)
+    path.write_bytes(payload)
+    path.chmod(0o600)
+
+
+def _ready_page(root: Path, page_number: int) -> dict[str, object]:
+    """Write the on-disk files `_bundle_page_ref` re-attests for a real, ready page."""
+    source_sha256 = "a" * 64
+    page_id = f"sha256:{source_sha256}:page:{page_number:06d}"
+    span_id = f"{page_id}:native:line:000000"
+    probe_relative = Path("probe") / f"{page_number:06d}"
+    _write_bytes(
+        root / probe_relative / "native.json",
+        json.dumps({"lines": [{"span_id": span_id}]}).encode(),
+    )
+    evidence_relative = Path("evidence") / f"{page_number:06d}"
+    _write_bytes(root / evidence_relative / "raw-native.txt", b"text\n")
+    _write_bytes(root / evidence_relative / "normalized.txt", b"text\n")
+    _write_bytes(root / evidence_relative / "model.jpg", b"jpeg")
+    _write_bytes(
+        root / evidence_relative / "evidence.json",
+        json.dumps(
+            {"probe": {"package_path": probe_relative.as_posix(), "route": "native"}}
+        ).encode(),
+    )
+    return {
+        "page_id": page_id,
+        "pdf_page": page_number,
+        "state": "ready",
+        "package_path": evidence_relative.as_posix(),
+        "model_input_bytes": 100,
+    }
+
+
+def _failed_page(page_number: int) -> dict[str, object]:
+    source_sha256 = "a" * 64
+    return {
+        "page_id": f"sha256:{source_sha256}:page:{page_number:06d}",
+        "pdf_page": page_number,
+        "state": "failed",
+        "package_path": None,
+        "model_input_bytes": 0,
+    }
+
+
+def test_build_bundles_skips_a_chunk_where_every_page_failed(tmp_path: Path) -> None:
+    """Regression test for F5: a fully-failed page chunk got written as a hollow,
+    0-byte bundle. `transcribe` reported bundles created for a page range that
+    carried no transcribed content at all.
+    """
+    document = {
+        "catalog_key": "volume-01",
+        "source_sha256": "a" * 64,
+        "pages": [_ready_page(tmp_path, 1), _failed_page(2), _ready_page(tmp_path, 3)],
+    }
+
+    records, created, reused = _build_bundles(
+        document,
+        root=tmp_path,
+        configuration={"sha256": "b" * 64},
+        max_pages=1,
+        max_bytes=8 * 1024 * 1024,
+    )
+
+    assert [record["sequence"] for record in records] == [1, 2]
+    assert [record["start_pdf_page"] for record in records] == [1, 3]
+    assert all(record["input_bytes"] > 0 for record in records)
+    assert created == 2
+    assert reused == 0
+
+
+def test_validate_document_bundles_tolerates_a_gap_over_failed_pages_only(
+    tmp_path: Path,
+) -> None:
+    pages = [_ready_page(tmp_path, 1), _failed_page(2), _ready_page(tmp_path, 3)]
+    records, _, _ = _build_bundles(
+        {"catalog_key": "volume-01", "source_sha256": "a" * 64, "pages": pages},
+        root=tmp_path,
+        configuration={"sha256": "b" * 64},
+        max_pages=1,
+        max_bytes=8 * 1024 * 1024,
+    )
+
+    _validate_document_bundles({"pages": pages, "bundles": records})
+
+    not_actually_failed = [dict(pages[0]), {**pages[1], "state": "ready"}, dict(pages[2])]
+    with pytest.raises(TranscriptionError, match="gap"):
+        _validate_document_bundles({"pages": not_actually_failed, "bundles": records})
 
 
 def _native_pdf(text: bytes) -> bytes:

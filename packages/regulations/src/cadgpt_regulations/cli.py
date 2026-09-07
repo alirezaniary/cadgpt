@@ -212,12 +212,28 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _resolve_root_arguments(args: argparse.Namespace) -> None:
+    """Resolve every "*root" path argument to absolute, in place.
+
+    `tempfile.mkdtemp()` always returns an absolute path even when given a relative
+    `dir=`. Every "*root" argument is later combined with that absolute temporary
+    directory and compared for sibling identity (see storage.install_terminal_directory),
+    so a relative root fails that comparison even when the paths are really siblings.
+    Resolving every root-style path here, once, at the CLI boundary avoids that class
+    of bug for every subcommand rather than patching each comparison site.
+    """
+    for name, value in vars(args).items():
+        if "root" in name and isinstance(value, Path):
+            setattr(args, name, value.resolve())
+
+
 def main(
     argv: list[str] | None = None,
     *,
     _testing_allowed_origins: frozenset[str] | None = None,
 ) -> int:
     args = _parser().parse_args(argv)
+    _resolve_root_arguments(args)
     try:
         if args.command == "workspace":
             stages = initialize_workspace(args.root)

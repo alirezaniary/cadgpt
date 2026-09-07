@@ -280,6 +280,36 @@ def test_terminal_directory_requires_a_sibling_temporary_and_real_destination(
     assert same.is_dir()
 
 
+def test_relative_root_destination_is_rejected_until_resolved_to_absolute(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Regression test for F2: a relative --output-root failed every page.
+
+    `tempfile.mkdtemp()` always returns an absolute path even when given a
+    relative `dir=`. If the caller's output root itself stays relative, the
+    destination built from it stays relative too, so real siblings failed this
+    comparison. `cadgpt_regulations.cli._resolve_root_arguments` now resolves
+    every "*root" CLI argument to absolute before it reaches this layer; this
+    proves that resolving the destination is what fixes it, not a change to
+    `install_terminal_directory` itself.
+    """
+    monkeypatch.chdir(tmp_path)
+    relative_root = Path("output-root")
+    _private_directory(relative_root)
+    temporary = _package(relative_root, b"raw", b"render")
+    destination = relative_root / "terminal"
+    assert not destination.is_absolute()
+
+    with pytest.raises(StorageError, match="must be siblings"):
+        install_terminal_directory(temporary, destination)
+    assert temporary.is_dir()
+
+    result = install_terminal_directory(temporary, destination.resolve())
+
+    assert result.status is InstallStatus.INSTALLED
+    assert destination.resolve().is_dir()
+
+
 def test_terminal_directory_publish_never_replaces_a_raced_empty_directory(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

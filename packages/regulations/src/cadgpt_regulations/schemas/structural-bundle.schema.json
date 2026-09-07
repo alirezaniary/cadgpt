@@ -3,7 +3,7 @@
   "$id": "https://cadgpt.local/schemas/regulations/structural-bundle-1.0.0.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "catalog_key", "source_sha256", "graph_sha256", "sequence", "start_pdf_page", "end_pdf_page", "continuation_edges", "pages", "formulas", "tables", "units"],
+  "required": ["schema_version", "catalog_key", "source_sha256", "graph_sha256", "sequence", "start_pdf_page", "end_pdf_page", "continuation_edges", "pages", "formulas", "tables", "units", "abbreviations"],
   "properties": {
     "schema_version": {"const": "1.0.0"},
     "catalog_key": {"type": "string", "minLength": 1},
@@ -16,7 +16,8 @@
     "pages": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/page"}},
     "formulas": {"type": "array", "items": {"$ref": "#/$defs/formula"}},
     "tables": {"type": "array", "items": {"$ref": "#/$defs/table"}},
-    "units": {"type": "array", "items": {"$ref": "#/$defs/unit"}}
+    "units": {"type": "array", "items": {"$ref": "#/$defs/unit"}},
+    "abbreviations": {"type": "array", "items": {"$ref": "#/$defs/abbreviation"}}
   },
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
@@ -36,14 +37,15 @@
     },
     "page": {
       "type": "object", "additionalProperties": false,
-      "required": ["page_id", "pdf_page", "printed_page_label", "state", "reason_codes", "source_artifacts", "node_ids", "formula_ids", "unit_ids", "table_ids", "blocks"],
+      "required": ["page_id", "pdf_page", "printed_page_label", "state", "reason_codes", "source_artifacts", "node_ids", "formula_ids", "unit_ids", "abbreviation_ids", "table_ids", "blocks"],
       "properties": {
         "page_id": {"type": "string", "minLength": 1}, "pdf_page": {"type": "integer", "minimum": 1},
         "printed_page_label": {"type": ["string", "null"]}, "state": {"$ref": "#/$defs/state"},
         "reason_codes": {"type": "array", "items": {"type": "string"}},
         "source_artifacts": {"type": "array", "items": {"$ref": "#/$defs/artifact"}},
         "node_ids": {"$ref": "#/$defs/idList"}, "formula_ids": {"$ref": "#/$defs/idList"},
-        "unit_ids": {"$ref": "#/$defs/idList"}, "table_ids": {"$ref": "#/$defs/idList"},
+        "unit_ids": {"$ref": "#/$defs/idList"}, "abbreviation_ids": {"$ref": "#/$defs/idList"},
+        "table_ids": {"$ref": "#/$defs/idList"},
         "blocks": {"type": "array", "items": {"$ref": "#/$defs/node"}}
       }
     },
@@ -101,6 +103,14 @@
         "unit_id": {"type": "string", "minLength": 1}, "pdf_page": {"type": "integer", "minimum": 1}, "source_kind": {"enum": ["native", "ocr"]},
         "source_span_ids": {"$ref": "#/$defs/spanIds"}, "bbox": {"$ref": "#/$defs/bbox"}, "printed": {"type": "string", "minLength": 1},
         "ucum_code": {"type": ["string", "null"]}, "mapping_status": {"enum": ["mapped", "unknown"]}
+      }
+    },
+    "abbreviation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["abbreviation_id", "pdf_page", "source_kind", "source_span_ids", "bbox", "printed"],
+      "properties": {
+        "abbreviation_id": {"type": "string", "minLength": 1}, "pdf_page": {"type": "integer", "minimum": 1}, "source_kind": {"enum": ["native", "ocr"]},
+        "source_span_ids": {"$ref": "#/$defs/spanIds"}, "bbox": {"$ref": "#/$defs/bbox"}, "printed": {"type": "string", "minLength": 1}
       }
     }
     ,"row": {

@@ -94,6 +94,9 @@ def check_transcription(
         if isinstance(documents, list)
         else []
     )
+    failed_blocker = _failed_pages_blocker(pages)
+    if failed_blocker is not None:
+        blockers.append(failed_blocker)
     report: JsonObject = {
         "schema_version": "1.0.0",
         "transcription_sha256": sha256_json(manifest),
@@ -129,6 +132,24 @@ def _blocker(subject: str, code: str, exc: BaseException) -> JsonObject:
         "subject": subject,
         "code": code,
         "diagnostic": f"{type(exc).__name__}: {exc}"[:1000],
+    }
+
+
+def _failed_pages_blocker(pages: list[JsonObject]) -> JsonObject | None:
+    """Fail closed when any page never transcribed, instead of just counting it.
+
+    A page probe or transcription run can complete "successfully" while every one
+    of its pages is terminally failed (missing OCR toolchain, unreadable source,
+    ...). Without this, an operator reading a green ``0 blocker(s)`` line would
+    advance past a manifest that carries no usable evidence at all.
+    """
+    failed = sum(page.get("state") == "failed" for page in pages)
+    if not failed:
+        return None
+    return {
+        "subject": "transcription",
+        "code": "PAGES_FAILED",
+        "diagnostic": f"{failed} of {len(pages)} transcribed pages failed",
     }
 
 

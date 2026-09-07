@@ -33,6 +33,7 @@
         "tables",
         "formulas",
         "units",
+        "abbreviations",
         "continuation_edges",
         "needs_review"
       ],
@@ -43,6 +44,7 @@
         "tables": {"$ref": "#/$defs/nonNegative"},
         "formulas": {"$ref": "#/$defs/nonNegative"},
         "units": {"$ref": "#/$defs/nonNegative"},
+        "abbreviations": {"$ref": "#/$defs/nonNegative"},
         "continuation_edges": {"$ref": "#/$defs/nonNegative"},
         "needs_review": {"$ref": "#/$defs/nonNegative"}
       }
@@ -56,6 +58,7 @@
         "tables",
         "formulas",
         "units",
+        "abbreviations",
         "continuation_edges",
         "needs_review"
       ],
@@ -65,6 +68,7 @@
         "tables": {"$ref": "#/$defs/nonNegative"},
         "formulas": {"$ref": "#/$defs/nonNegative"},
         "units": {"$ref": "#/$defs/nonNegative"},
+        "abbreviations": {"$ref": "#/$defs/nonNegative"},
         "continuation_edges": {"$ref": "#/$defs/nonNegative"},
         "needs_review": {"$ref": "#/$defs/nonNegative"}
       }

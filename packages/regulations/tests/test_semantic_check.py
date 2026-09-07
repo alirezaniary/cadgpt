@@ -197,6 +197,7 @@ def _structured_fixture(tmp_path: Path) -> tuple[Path, Path, dict[str, object]]:
                 "node_ids": [node_id],
                 "formula_ids": [],
                 "unit_ids": [],
+                "abbreviation_ids": [],
                 "table_ids": [],
                 "blocks": [
                     {
@@ -220,6 +221,7 @@ def _structured_fixture(tmp_path: Path) -> tuple[Path, Path, dict[str, object]]:
         "formulas": [],
         "tables": [],
         "units": [],
+        "abbreviations": [],
     }
     _write_json(bundle_path, bundle)
     bundle_sha256 = hashlib.sha256(bundle_path.read_bytes()).hexdigest()
