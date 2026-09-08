@@ -308,6 +308,43 @@ class CheckRunExecutor(BaseService):
             self.log.warning("stalled_check_runs_reaped", count=count)
         return count
 
+    def reap_lost_dispatch(self) -> int:
+        """Fail `PENDING` runs whose dispatch never reached a worker, across every tenant.
+
+        The PENDING-side sibling of `reap_stalled` above -- this is what Beat now ticks
+        alongside it (`docs/tasks/
+        T-0085-the-lost-dispatch-recovery-is-blind-until-someone-asks.md`).
+        `ReviewService._reap_lost_dispatch` already does exactly this atomic UPDATE, but
+        only reactively, scoped to one review's runs, at the moment `request_check` is
+        about to refuse a new check. This method is the same safety-reasoned UPDATE --
+        `CheckRunQuerySet.dispatch_lost` is unchanged, still the single filtered UPDATE
+        that closes the TOCTOU race against a worker concurrently claiming the row, see
+        that method's docstring -- given a second caller: a periodic tick that finds a
+        lost dispatch even when nobody ever happens to retry.
+
+        Not scoped by `for_tenant`, the same way `reap_stalled` above is not: a periodic
+        sweep runs once per tick for every tenant at once, so there is no single tenant to
+        scope it to -- `CheckRun.objects.dispatch_lost(...)` reads the manager's default
+        queryset directly rather than going through `for_tenant`, exactly as `.stalled(...)`
+        does above.
+        """
+        lost = CheckRun.objects.dispatch_lost(settings.CHECK_RUN_STALL_SECONDS)
+        count: int = lost.update(
+            status=CheckRunStatus.FAILED,
+            finished_at=timezone.now(),
+            failure_reason=CheckRunFailure.DISPATCH_LOST,
+            failure_detail=str(
+                _(
+                    "This check was requested but its dispatch never reached a worker, "
+                    "so it was ended. Request the check again."
+                )
+            ),
+            updated_at=timezone.now(),
+        )
+        if count:
+            self.log.warning("check_run_dispatch_lost_reaped_by_sweep", count=count)
+        return count
+
 
 def _status_from_counts(passed: int, failed: int, indeterminate: int) -> Status:
     """A known violation decides FAIL; otherwise an unknown prevents PASS.

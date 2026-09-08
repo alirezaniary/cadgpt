@@ -90,11 +90,14 @@ class ReviewService(BaseTenantAwareService):
         `.delay()` itself raises because the broker is unreachable -- `_dispatch` never
         runs at all, and the run it would have queued sits `PENDING` forever with no
         `task_id`. Because `MAX_IN_FLIGHT_RUNS` counts that row, it then blocks every
-        future call here too. `_reap_lost_dispatch` is the self-heal: it runs only when
-        this method is about to refuse, looks for exactly that shape of row, and fails it
-        so the request below can proceed -- the user's way out is asking again, not a
-        separate recovery action. See `docs/tasks/
-        T-0056-a-lost-check-dispatch-kills-the-review.md`.
+        future call here too. `_reap_lost_dispatch` is the reactive half of the self-heal:
+        it runs when this method is about to refuse, looks for exactly that shape of row,
+        and fails it so the request below can proceed -- the user's way out is asking
+        again, not a separate recovery action. `CheckRunExecutor.reap_lost_dispatch`
+        (T-0085) is the proactive half, run from Celery beat, so the row is usually already
+        gone before anyone retries. See `docs/tasks/
+        T-0056-a-lost-check-dispatch-kills-the-review.md` and `docs/tasks/
+        T-0085-the-lost-dispatch-recovery-is-blind-until-someone-asks.md`.
         """
         from cadgpt.apps.review.tasks import execute_check_run
 
@@ -182,11 +185,15 @@ class ReviewService(BaseTenantAwareService):
         """Fail a `PENDING` run in `runs` whose dispatch was lost, so it stops blocking.
 
         Called only from `request_check`, only at the moment it is about to refuse a new
-        check -- never speculatively, and never as a periodic sweep. That restraint is
-        what keeps this safe: `CheckRunQuerySet.dispatch_lost` already limits its match to
-        a run old enough that a live dispatch would certainly have set `task_id` by now
-        (`settings.CHECK_RUN_STALL_SECONDS`), so nothing here fails a run that is merely
-        waiting behind a busy queue.
+        check -- this method itself is never a periodic sweep. `CheckRunExecutor.
+        reap_lost_dispatch` (T-0085) is a second, independent caller of the same
+        `CheckRunQuerySet.dispatch_lost` UPDATE, run from Celery beat on the same cadence
+        as the RUNNING-side sweep -- so a lost dispatch no longer depends on this method
+        ever running at all. What actually keeps *this* method safe is not being the only
+        caller; it is that `CheckRunQuerySet.dispatch_lost` already limits its match to a
+        run old enough that a live dispatch would certainly have set `task_id` by now
+        (`settings.CHECK_RUN_STALL_SECONDS`), so nothing here -- called reactively or from
+        beat -- fails a run that is merely waiting behind a busy queue.
 
         Re-dispatching instead of failing was considered and rejected. `CheckRunExecutor.
         execute` is documented idempotent for a *redelivered* Celery message, but that

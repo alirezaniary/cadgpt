@@ -949,3 +949,43 @@ ever needs to run faster; lower `CHECK_RUN_STALL_SECONDS` instead.
 `PersistentScheduler`'s at-least-once, restart-can-duplicate behaviour stops being free and
 `django-celery-beat` (or an external scheduler with real exactly-once delivery) needs a real
 comparison instead of inheriting this one's reasoning by default.
+
+---
+
+## 2026-09-09 — `_reap_lost_dispatch` also runs from beat's periodic tick; no frontend label added
+
+**Problem.** `ReviewService._reap_lost_dispatch` (T-0056) only ever ran reactively, from inside
+`request_check`, at the instant it was about to refuse a new check with a 409. A run whose
+dispatch was genuinely lost, in a review nobody happened to retry, rendered as an ordinary
+`pending` run -- indistinguishable from a healthy queued one -- for up to
+`CHECK_RUN_STALL_SECONDS` (30 minutes at the default). `docs/tasks/T-0085-*.md` closes it.
+
+**Decision, proactive sweep.** Beat's tick (T-0084, `CHECK_RUN_STALL_SECONDS / 4`) now also
+runs a second task, `review.tasks.reap_lost_dispatch_runs`, calling the new
+`CheckRunExecutor.reap_lost_dispatch()` -- the RUNNING-side (`reap_stalled`) and PENDING-side
+(`reap_lost_dispatch`) sweeps are two tasks on the same cadence rather than one task doing two
+unrelated things, so each keeps its own name, log line and return-value meaning. Both are
+registered as separate `CELERY_BEAT_SCHEDULE` entries at the same `CHECK_RUN_STALL_SECONDS / 4`
+interval T-0084 already established, not a second number invented separately. This is a second
+caller of the exact same atomic UPDATE `ReviewService._reap_lost_dispatch` already used
+reactively (`CheckRunQuerySet.dispatch_lost`, unchanged) -- T-0056's TOCTOU-race reasoning is
+untouched, only where and how often the query runs.
+
+**Decision, no frontend rendering change.** The task's own scope text treats a rendered
+distinguishing label as an alternative to the periodic sweep ("even a distinguishing label ...
+narrows the gap *without needing the full sweep*"), and its "how to prove it ran" section
+accepts either "the run actually gets recovered via the new periodic path... and/or a rendered
+distinction" as sufficient evidence. With the periodic sweep landing, the blind window is now
+bounded to `CHECK_RUN_STALL_SECONDS / 4` -- 450s at the production default, the same bound
+T-0084 already established and put into production for the RUNNING side -- rather than the
+previous unbounded wait for someone to retry. No additional frontend change was made on top of
+that. A `PENDING` run genuinely is pending for up to that bound; it is not a false signal, only
+a bounded delay before either an automatic recovery or a real dispatch. See
+`docs/tasks/T-0085-the-lost-dispatch-recovery-is-blind-until-someone-asks.md`'s Evidence
+section for the reasoning stated at the point of decision, not just here.
+
+**Reopens if:** `CHECK_RUN_STALL_SECONDS` is ever widened enough (or a jurisdiction's
+tolerance for an unexplained wait is ever found to be shorter than a quarter of it) that 450s of
+silent "pending" reads as a false signal in practice rather than an ordinary queueing delay --
+at which point the deferred rendered-label option from T-0085's scope is the next lever, not a
+shorter sweep interval, which is already tied to the RUNNING-side sweep's own cadence.

@@ -62,3 +62,18 @@ def generate_report_file(run_uuid: str) -> str:
 def reap_stalled_runs() -> int:
     """Fail runs whose worker died, so a review is never blocked by a phantom check."""
     return CheckRunExecutor().reap_stalled()
+
+
+@shared_task(
+    base=BaseTask,
+    name="review.tasks.reap_lost_dispatch_runs",
+    queue="default",
+)
+def reap_lost_dispatch_runs() -> int:
+    """Fail PENDING runs whose dispatch never reached a worker at all.
+
+    The proactive counterpart of `ReviewService._reap_lost_dispatch`, which only ever ran
+    reactively, at the moment a new check was about to be refused -- see
+    `docs/tasks/T-0085-the-lost-dispatch-recovery-is-blind-until-someone-asks.md`.
+    """
+    return CheckRunExecutor().reap_lost_dispatch()

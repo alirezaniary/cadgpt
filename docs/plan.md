@@ -709,6 +709,31 @@ itself order-dependent on Celery's lazy task discovery and was corrected to call
 `app.loader.import_default_modules()`, the same call a real worker's bootstep makes, before
 being trusted.
 
+**T-0085 — a lost-dispatch run is invisible and the review looks falsely blocked for up to 30
+minutes. Done 2026-09-09.** T-0056's `_reap_lost_dispatch` only ever ran reactively, from
+inside `request_check`, at the instant it was about to refuse a new check — a run whose
+dispatch was genuinely lost, in a review nobody happened to retry, rendered as an ordinary
+`pending` run for up to `CHECK_RUN_STALL_SECONDS` (30 minutes at the default), with no better
+signal than before T-0056 landed at all. Closed by giving Beat's tick (T-0084) a second task,
+`review.tasks.reap_lost_dispatch_runs`, calling a new `CheckRunExecutor.reap_lost_dispatch()`
+— a second caller of the exact same atomic UPDATE `_reap_lost_dispatch` already used
+(`CheckRunQuerySet.dispatch_lost`, byte-for-byte unchanged), on the same
+`CHECK_RUN_STALL_SECONDS / 4` cadence T-0084 already established. The blind window is now
+bounded to ≤450s at the production default, down from unbounded. Deliberately no frontend
+rendering change — the task's own scope treated the periodic sweep as sufficient on its own,
+and a `PENDING` run within that bound is a genuinely bounded delay, not a false signal. Both
+decisions (proactive sweep, no frontend change, with its reopen condition) logged in
+`docs/decisions.md`.
+
+Not reviewer-gated, so the coordinator audited it directly: independently re-ran `make verify`
+(242 passed, 5/5 contracts), read every diff, and confirmed the cross-tenant test's fixtures
+were real rather than assumed. One thing fixed: `_reap_lost_dispatch`'s own docstring still
+said "never as a periodic sweep — that restraint is what keeps this safe," which this task's
+own change made false — a future reader would have believed caller-count was the safety
+property instead of the UPDATE's `WHERE` clause. Reworded, along with `request_check`'s
+docstring, to name both the reactive and proactive halves of the recovery; `make verify`
+re-run clean after.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -786,11 +811,8 @@ Added 2026-09-08, from the T-0056 review:
 
 - ~~**T-0084** — `reap_stalled_runs` is registered nowhere.~~ **Done 2026-09-08.** See "What
   has landed" below.
-- **T-0085** — T-0056's recovery is reactive-only (fires only from inside a refused
-  `request_check`), so a lost-dispatch run is indistinguishable from a healthy queued one for
-  up to 30 minutes, and any retry inside that window sees the same false "already running"
-  refusal. Likely resolved as a side effect once T-0084 wires up a periodic tick — check
-  T-0084's status before scoping this independently.
+- ~~**T-0085** — T-0056's recovery is reactive-only.~~ **Done 2026-09-09.** See "What has
+  landed" below.
 - **T-0083** — the product was decided single-language, hardcoded Persian (T-0072), but the
   server never activates that language itself: `LANGUAGE_CODE="en"`, and `services/web` never
   sends `Accept-Language`. Every server-generated user-facing string (report prose, failure

@@ -274,9 +274,23 @@ CHECK_RUN_STALL_SECONDS = env.int("CHECK_RUN_STALL_SECONDS", default=CELERY_TASK
 # rather than a number invented separately, so a run is caught within a quarter of its own
 # stall window of stalling rather than up to a whole extra window late. See
 # docs/tasks/T-0084-the-stalled-run-sweep-has-never-run-in-production.md.
+#
+# `review.tasks.reap_lost_dispatch_runs` is the same tick's PENDING-side sibling: before
+# this entry existed, `ReviewService._reap_lost_dispatch` (T-0056) only ever ran
+# reactively, at the instant `request_check` was about to refuse a new check -- a run
+# whose dispatch was lost and whose review nobody happened to retry sat rendering as an
+# ordinary queued run for up to `CHECK_RUN_STALL_SECONDS` (30 minutes at the default).
+# Giving it the same beat tick as the RUNNING-side sweep bounds that blind window to the
+# same `CHECK_RUN_STALL_SECONDS / 4` this tick already established, rather than a second
+# interval invented separately. See
+# docs/tasks/T-0085-the-lost-dispatch-recovery-is-blind-until-someone-asks.md.
 CELERY_BEAT_SCHEDULE = {
     "reap-stalled-check-runs": {
         "task": "review.tasks.reap_stalled_runs",
+        "schedule": CHECK_RUN_STALL_SECONDS / 4,
+    },
+    "reap-lost-dispatch-check-runs": {
+        "task": "review.tasks.reap_lost_dispatch_runs",
         "schedule": CHECK_RUN_STALL_SECONDS / 4,
     },
 }

@@ -11,6 +11,7 @@ from datetime import timedelta
 from typing import Any
 
 import pytest
+from conftest import IDS_FIXTURE, IFC_FIXTURE
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -339,3 +340,134 @@ def test_a_list_of_runs_does_not_load_the_report_documents(
     assert response.status_code == 200
     assert response.data["count"] == 1
     assert "report" not in response.data["results"][0]
+
+
+def test_the_periodic_sweep_recovers_a_lost_dispatch_run_with_nobody_retrying(
+    tenant: Tenant, review: Review, owner: Any, settings: Any
+) -> None:
+    """T-0085: the recovery no longer needs a second request to happen at all.
+
+    Same reproduction as `test_a_run_whose_dispatch_was_lost_can_be_recovered` -- a
+    `PENDING` run whose `on_commit` callback never fired, backdated past
+    `CHECK_RUN_STALL_SECONDS` -- but this time nothing calls `request_check` again.
+    `CheckRunExecutor().reap_lost_dispatch()` is the periodic tick beat now runs
+    (`review.tasks.reap_lost_dispatch_runs`); it must find and fail the row on its own.
+    """
+    settings.CHECK_RUN_STALL_SECONDS = 60
+    stuck = ReviewService(tenant=tenant).request_check(review=review, requested_by=owner)
+    assert stuck.task_id == "", "the on_commit dispatch must not have run in this test"
+    CheckRun.objects.filter(pk=stuck.pk).update(
+        created_at=timezone.now() - timedelta(seconds=120)
+    )
+
+    reaped = CheckRunExecutor().reap_lost_dispatch()
+
+    assert reaped == 1
+    stuck.refresh_from_db()
+    assert stuck.status == CheckRunStatus.FAILED
+    assert stuck.failure_reason == CheckRunFailure.DISPATCH_LOST
+    assert stuck.failure_detail
+
+    # And the review is checkable again, still without any manual sweep or retry loop --
+    # `MAX_IN_FLIGHT_RUNS` no longer sees a phantom in-flight run.
+    recovered = ReviewService(tenant=tenant).request_check(
+        review=review, requested_by=owner
+    )
+    assert recovered.status == CheckRunStatus.PENDING
+
+
+def test_the_periodic_sweep_does_not_touch_a_genuinely_queued_run(
+    tenant: Tenant, review: Review, owner: Any, settings: Any
+) -> None:
+    """The false-positive direction for the periodic sweep, mirroring the reactive test."""
+    settings.CHECK_RUN_STALL_SECONDS = 60
+    run = CheckRun.objects.create_run(review=review, requested_by=owner)
+    CheckRun.objects.filter(pk=run.pk).update(
+        task_id="celery-task-id-still-queued",
+        queued_at=timezone.now() - timedelta(seconds=120),
+        created_at=timezone.now() - timedelta(seconds=120),
+    )
+
+    assert CheckRunExecutor().reap_lost_dispatch() == 0
+
+    run.refresh_from_db()
+    assert run.status == CheckRunStatus.PENDING, (
+        "a run that was actually dispatched must never be reaped just for being old"
+    )
+
+
+def test_the_periodic_sweep_reaps_lost_dispatches_across_every_tenant(
+    tenant: Tenant,
+    review: Review,
+    owner: Any,
+    other_tenant: Tenant,
+    other_owner: Any,
+    settings: Any,
+) -> None:
+    """Cross-tenant by construction: one tick must recover both tenants' stuck runs.
+
+    `reap_lost_dispatch` reads `CheckRun.objects.dispatch_lost(...)` directly rather than
+    a `for_tenant(...)`-scoped queryset -- exactly `reap_stalled`'s existing pattern
+    (`execution.py`) for the RUNNING side. This is that property, exercised: a second
+    tenant's own lost-dispatch run, created independently, is reaped in the same call as
+    the first tenant's, with no tenant argument anywhere on the call.
+    """
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    from cadgpt.apps.media.choices import MediaKind
+    from cadgpt.apps.media.services import MediaService
+    from cadgpt.apps.project.models import Project
+    from cadgpt.apps.rulepack.services import RuleSetService
+
+    settings.CHECK_RUN_STALL_SECONDS = 60
+
+    first = ReviewService(tenant=tenant).request_check(review=review, requested_by=owner)
+    CheckRun.objects.filter(pk=first.pk).update(
+        created_at=timezone.now() - timedelta(seconds=120)
+    )
+
+    other_ids_media = MediaService(tenant=other_tenant).store(
+        upload=SimpleUploadedFile(
+            IDS_FIXTURE.name, IDS_FIXTURE.read_bytes(), content_type="application/xml"
+        ),
+        kind=MediaKind.IDS_RULESET,
+        uploaded_by=other_owner,
+    )
+    other_ifc_media = MediaService(tenant=other_tenant).store(
+        upload=SimpleUploadedFile(
+            IFC_FIXTURE.name,
+            IFC_FIXTURE.read_bytes(),
+            content_type="application/octet-stream",
+        ),
+        kind=MediaKind.IFC_MODEL,
+        uploaded_by=other_owner,
+    )
+    other_rule_set = RuleSetService(tenant=other_tenant).create(
+        source_file=other_ids_media, name="Rival's doors", created_by=other_owner
+    )
+    other_project = Project.objects.create_project(
+        tenant=other_tenant, name="Rival's project", created_by=other_owner
+    )
+    other_review = ReviewService(tenant=other_tenant).create(
+        name="Rival's review",
+        model_file=other_ifc_media,
+        project=other_project,
+        rule_set=other_rule_set,
+        created_by=other_owner,
+    )
+    second = ReviewService(tenant=other_tenant).request_check(
+        review=other_review, requested_by=other_owner
+    )
+    CheckRun.objects.filter(pk=second.pk).update(
+        created_at=timezone.now() - timedelta(seconds=120)
+    )
+
+    reaped = CheckRunExecutor().reap_lost_dispatch()
+
+    assert reaped == 2
+    first.refresh_from_db()
+    second.refresh_from_db()
+    assert first.status == CheckRunStatus.FAILED
+    assert first.failure_reason == CheckRunFailure.DISPATCH_LOST
+    assert second.status == CheckRunStatus.FAILED
+    assert second.failure_reason == CheckRunFailure.DISPATCH_LOST
