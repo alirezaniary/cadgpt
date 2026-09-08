@@ -11,6 +11,9 @@ from cadgpt_regulations.jsonio import sha256_json
 from cadgpt_regulations.structure import (
     _align_alternate_lines,
     _formula_record,
+    _page_lines,
+    _printed_label,
+    _repeated_numeric_labels,
     _unit_record,
     _validate_graph_schema,
     build_structure,
@@ -152,6 +155,130 @@ def test_alternate_lines_are_not_linked_by_position_when_text_differs() -> None:
         "native-1",
         "native-2",
     ]
+
+
+@pytest.mark.parametrize(
+    ("raw_text", "expected"),
+    [
+        ("  2  -5  -1  -1  عنوان", "2-5-1-1"),
+        ("\u06f2 - \u06f5 - \u06f1", "\u06f2-\u06f5-\u06f1"),
+        ("978-600-301-002-4 ISBN", None),
+        (
+            (
+                "\u06f9\u06f7\u06f8-\u06f6\u06f0\u06f0-"
+                "\u06f3\u06f0\u06f1-\u06f0\u06f0\u06f2-\u06f4 ISBN"
+            ),
+            None,
+        ),
+        ("30.000", None),
+    ],
+)
+def test_printed_label_normalizes_spaced_hyphens_and_rejects_numeric_artifacts(
+    raw_text: str, expected: str | None
+) -> None:
+    assert _printed_label({"raw_text": raw_text, "bbox": [100, 100, 300, 200]}) == expected
+
+
+def test_printed_label_rejects_running_header_in_page_margin() -> None:
+    line = {
+        "raw_text": "1-1",
+        "bbox": [100, 900, 300, 950],
+        "_coordinate_height": 1000,
+    }
+
+    assert _printed_label(line) is None
+
+
+def test_repeated_numeric_labels_are_identified_as_running_headers(tmp_path: Path) -> None:
+    pages: list[dict[str, object]] = []
+    for page_number in (1, 2, 3):
+        probe_path = Path("probe") / f"{page_number:06d}"
+        evidence_path = Path("evidence") / f"{page_number:06d}"
+        native = {
+            "coordinate_space": {
+                "height": 1000,
+                "origin": "bottom_left",
+            },
+            "lines": [
+                {
+                    "span_id": f"native-{page_number}",
+                    "raw_text": "1-1",
+                    "bbox": [100, 450, 200, 470],
+                }
+            ],
+        }
+        _write_bytes(tmp_path / probe_path / "native.json", json.dumps(native).encode())
+        evidence = {
+            "probe": {
+                "package_path": probe_path.as_posix(),
+                "route": "native",
+            }
+        }
+        _write_bytes(
+            tmp_path / evidence_path / "evidence.json", json.dumps(evidence).encode()
+        )
+        pages.append({"pdf_page": page_number, "package_path": evidence_path.as_posix()})
+
+    repeated = _repeated_numeric_labels(
+        {"pages": pages},
+        root=tmp_path,
+    )
+
+    assert repeated == {"1-1"}
+
+
+def test_mixed_native_plus_ocr_keeps_native_text_and_adds_unique_ocr_lines(
+    tmp_path: Path,
+) -> None:
+    package = Path("page")
+    native_path = tmp_path / "probe" / "native.json"
+    ocr_path = tmp_path / package / "ocr.json"
+    _write_bytes(
+        native_path,
+        json.dumps(
+            {
+                "coordinate_space": {"height": 1000},
+                "lines": [
+                    {
+                        "span_id": "native-1",
+                        "raw_text": "Native text",
+                        "bbox": [0, 100, 10, 110],
+                    }
+                ],
+            }
+        ).encode(),
+    )
+    _write_bytes(
+        ocr_path,
+        json.dumps(
+            {
+                "coordinate_space": {"height": 1000},
+                "lines": [
+                    {
+                        "span_id": "ocr-duplicate",
+                        "raw_text": "Native text",
+                        "bbox": [0, 100, 10, 110],
+                    },
+                    {
+                        "span_id": "ocr-unique",
+                        "raw_text": "OCR figure caption",
+                        "bbox": [0, 200, 10, 210],
+                    },
+                ],
+            }
+        ).encode(),
+    )
+    evidence = {
+        "probe": {
+            "package_path": "probe",
+            "route": "native_plus_ocr",
+            "classification": "mixed",
+        }
+    }
+
+    lines = _page_lines(evidence, package=package, root=tmp_path)
+
+    assert [line["span_id"] for line in lines] == ["native-1", "ocr-unique"]
 
 
 def _write_bytes(path: Path, payload: bytes) -> None:

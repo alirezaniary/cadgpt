@@ -119,9 +119,10 @@ def _bundle_status(
 
     pass_a_sha256 = _receipt_response_sha256(pass_a_receipt)
     pass_b_sha256 = _receipt_response_sha256(pass_b_receipt)
+    bundle_sha256 = _required_string(pass_a_job, "bundle_sha256")
     validation_token = sha256_json(
         {
-            "bundle_sha256": _required_string(pass_a_job, "bundle_sha256"),
+            "bundle_sha256": bundle_sha256,
             "pass_a_sha256": pass_a_sha256,
             "pass_b_sha256": pass_b_sha256,
         }
@@ -136,6 +137,7 @@ def _bundle_status(
     _validate_validator_receipt(
         validation,
         bundle_id=bundle_id,
+        bundle_sha256=bundle_sha256,
         pass_a_sha256=pass_a_sha256,
         pass_b_sha256=pass_b_sha256,
         structure=pass_a_job.get("structure"),
@@ -178,7 +180,12 @@ def _optional_receipt(
         raise ExtractionStatusError(
             f"receipt cardinality is not one for {description}: {len(entries)}"
         )
-    return load_ingested_receipt(entries[0])
+    try:
+        return load_ingested_receipt(entries[0])
+    except RegulationsError as exc:
+        raise ExtractionStatusError(
+            f"cannot load receipt for {description}: {exc}"
+        ) from exc
 
 
 def _validate_job_receipt(
@@ -198,13 +205,20 @@ def _validate_job_receipt(
     for field, value in expected.items():
         if receipt.get(field) != value:
             raise ExtractionStatusError(f"job receipt differs at {field}: {value}")
-    _validate_response_reference(receipt, output_root=output_root)
+    if receipt.get("state") != "needs_validation":
+        raise ExtractionStatusError("job receipt has an invalid state")
+    _validate_response_reference(
+        receipt,
+        output_root=output_root,
+        expected_directory=f"responses/{_sha256_token(_required_string(job, 'job_id'))}",
+    )
 
 
 def _validate_validator_receipt(
     receipt: JsonObject,
     *,
     bundle_id: str,
+    bundle_sha256: str,
     pass_a_sha256: str,
     pass_b_sha256: str,
     output_root: Path,
@@ -212,6 +226,7 @@ def _validate_validator_receipt(
 ) -> None:
     expected = {
         "bundle_id": bundle_id,
+        "bundle_sha256": bundle_sha256,
         "pass_a_response_sha256": pass_a_sha256,
         "pass_b_response_sha256": pass_b_sha256,
     }
@@ -226,18 +241,47 @@ def _validate_validator_receipt(
             raise ExtractionStatusError(f"validator receipt differs at {field}: {value}")
     if receipt.get("state") not in {"accepted_candidate", "needs_review"}:
         raise ExtractionStatusError(f"validator receipt has invalid state: {bundle_id}")
-    _validate_response_reference(receipt, output_root=output_root)
+    validation_id = _required_string(receipt, "validation_id")
+    validation_identity = {
+        "bundle_sha256": bundle_sha256,
+        "pass_a_sha256": pass_a_sha256,
+        "pass_b_sha256": pass_b_sha256,
+    }
+    expected_validation_id = f"sha256:{sha256_json(validation_identity)}"
+    if validation_id != expected_validation_id:
+        raise ExtractionStatusError("validator receipt identity differs")
+    _validate_response_reference(
+        receipt,
+        output_root=output_root,
+        expected_directory=f"validator-responses/{_sha256_token(validation_id)}",
+    )
 
 
-def _validate_response_reference(receipt: JsonObject, *, output_root: Path) -> None:
+def _validate_response_reference(
+    receipt: JsonObject,
+    *,
+    output_root: Path,
+    expected_directory: str | None = None,
+) -> None:
     response = receipt.get("response")
     if not isinstance(response, dict):
         raise ExtractionStatusError("receipt has no response reference")
     reference = cast(JsonObject, response)
+    path_value = _required_string(reference, "path")
+    response_sha256 = _required_sha256(reference, "sha256")
+    if expected_directory is not None:
+        path = Path(path_value)
+        if (
+            path.parent.as_posix() != expected_directory
+            or path.name != f"{response_sha256}.json"
+        ):
+            raise ExtractionStatusError(
+                "receipt response path is not bound to its identity"
+            )
     try:
         read_attested_bytes(
-            safe_path(output_root, _required_string(reference, "path")),
-            expected_sha256=_required_string(reference, "sha256"),
+            safe_path(output_root, path_value),
+            expected_sha256=response_sha256,
             expected_bytes=_required_int(reference, "bytes"),
         )
     except StorageError as exc:
@@ -248,7 +292,7 @@ def _receipt_response_sha256(receipt: JsonObject) -> str:
     response = receipt.get("response")
     if not isinstance(response, dict):
         raise ExtractionStatusError("receipt has no response reference")
-    return _required_string(cast(JsonObject, response), "sha256")
+    return _required_sha256(cast(JsonObject, response), "sha256")
 
 
 def _sha256_token(value: str) -> str:
@@ -271,4 +315,13 @@ def _required_int(value: JsonObject, field: str) -> int:
     result = value.get(field)
     if not isinstance(result, int) or result < 0:
         raise ExtractionStatusError(f"invalid or missing {field}")
+    return result
+
+
+def _required_sha256(value: JsonObject, field: str) -> str:
+    result = _required_string(value, field)
+    if len(result) != 64 or any(
+        character not in "0123456789abcdef" for character in result
+    ):
+        raise ExtractionStatusError(f"invalid SHA-256 at {field}")
     return result

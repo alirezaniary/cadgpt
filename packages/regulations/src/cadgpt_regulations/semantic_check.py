@@ -122,6 +122,7 @@ def check_semantic_artifact(
                 ("formula_ids", "formula_ids"),
                 ("table_ids", "table_ids"),
                 ("unit_ids", "unit_ids"),
+                ("abbreviation_ids", "abbreviation_ids"),
             ):
                 values = candidate.get(field, [])
                 if not isinstance(values, list) or not all(
@@ -148,7 +149,12 @@ def check_semantic_artifact(
                     structure_records["node_ids"][item]
                     for item in cast(list[str], source_node_ids)
                 ]
-                for field in ("formula_ids", "table_ids", "unit_ids"):
+                for field in (
+                    "formula_ids",
+                    "table_ids",
+                    "unit_ids",
+                    "abbreviation_ids",
+                ):
                     referenced.extend(
                         structure_records[field][item]
                         for item in cast(list[str], candidate.get(field, []))
@@ -267,7 +273,7 @@ def _structural_bundle_evidence(
             ):
                 raise SemanticCheckError(f"structural page {page_number} artifact differs")
             files_checked += 1
-    for field in ("formulas", "tables", "units"):
+    for field in ("formulas", "tables", "units", "abbreviations"):
         for item in cast(list[JsonObject], job.get(field, [])):
             spans = item.get("source_span_ids")
             if isinstance(spans, list):
@@ -294,6 +300,12 @@ def _job_structure_ids(job: JsonObject) -> dict[str, set[str]] | None:
         ):
             raise SemanticCheckError(f"semantic job structure {field} is invalid")
         result[field] = set(cast(list[str], values))
+    # Abbreviations were added after the initial structural binding contract.
+    # Treat the field as optional for old jobs while validating it when present.
+    values = raw.get("abbreviation_ids", [])
+    if not isinstance(values, list) or not all(isinstance(item, str) for item in values):
+        raise SemanticCheckError("semantic job structure abbreviation_ids is invalid")
+    result["abbreviation_ids"] = set(cast(list[str], values))
     return result
 
 
@@ -317,6 +329,10 @@ def _structural_records(
         "unit_ids": (
             "unit_id",
             [item for item in cast(list[JsonObject], bundle["units"])],
+        ),
+        "abbreviation_ids": (
+            "abbreviation_id",
+            [item for item in cast(list[JsonObject], bundle.get("abbreviations", []))],
         ),
     }
     blocks = [

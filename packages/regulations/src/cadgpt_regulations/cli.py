@@ -213,18 +213,20 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _resolve_root_arguments(args: argparse.Namespace) -> None:
-    """Resolve every "*root" path argument to absolute, in place.
+    """Make every "*root" path argument absolute, in place.
 
     `tempfile.mkdtemp()` always returns an absolute path even when given a relative
     `dir=`. Every "*root" argument is later combined with that absolute temporary
     directory and compared for sibling identity (see storage.install_terminal_directory),
     so a relative root fails that comparison even when the paths are really siblings.
-    Resolving every root-style path here, once, at the CLI boundary avoids that class
+    Normalizing every root-style path here, once, at the CLI boundary avoids that class
     of bug for every subcommand rather than patching each comparison site.
     """
     for name, value in vars(args).items():
         if "root" in name and isinstance(value, Path):
-            setattr(args, name, value.resolve())
+            # Make sibling comparisons absolute without following symlinks;
+            # storage's no-symlink attestation must still see the original path.
+            setattr(args, name, value.absolute())
 
 
 def main(
@@ -376,7 +378,8 @@ def main(
             print(
                 f"accounted {summary['documents']} documents and {summary['pages']} pages; "
                 f"{summary['nodes']} nodes, {summary['tables']} tables, "
-                f"{summary['formulas']} formulas, {summary['units']} units; "
+                f"{summary['formulas']} formulas, {summary['units']} units, "
+                f"{summary['abbreviations']} abbreviations; "
                 f"graphs {structure_run.graphs_created} created, "
                 f"{structure_run.graphs_reused} reused"
             )
@@ -394,6 +397,7 @@ def main(
             print(
                 f"valid structure: {summary['documents']} documents, "
                 f"{summary['pages']} pages, {summary['formulas']} formula candidates, "
+                f"{summary['abbreviations']} abbreviations, "
                 f"{summary['needs_review']} deferred review flags"
             )
             return 0

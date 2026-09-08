@@ -92,7 +92,8 @@ then died on an inventory mismatch listing empty package directories — a diagn
 nowhere near the cause. The same command with `$PWD/...` succeeded 40/40.
 
 `docs/inbr-operations.md` happens to use `$PWD`, which is the only reason this was not hit
-earlier. Normalise the root with `Path.resolve()` at the CLI boundary (or compare resolved
+earlier. Normalise the root to an absolute path at the CLI boundary (without following
+symlinks, so storage attestation remains effective; or compare resolved
 parents in `install_terminal_directory`).
 
 **Fixed:** added `_resolve_root_arguments` in `cli.py:215`, called from `main()` right after
@@ -101,7 +102,7 @@ parents in `install_terminal_directory`).
 `--extraction-root`, across every subcommand: `page-probe`, `transcribe`,
 `transcription-check`, `structure`, `structure-check`, `extract-jobs`, `extract-ingest`,
 `validator-ingest`, `extraction-status`, `semantic-publish`, `semantic-publish-check`,
-`workspace`) and resolves it to absolute — this is the CLI-boundary fix the finding
+`workspace`) and makes it absolute without resolving symlinks — this is the CLI-boundary fix the finding
 recommends, applied once so the whole class of bug can't recur command-by-command.
 File-path arguments (`manifest`, `--transcription`, `--jobs`, ...) are deliberately left
 alone, since resolving them could silently follow a symlink past `_load_receipt`'s own
@@ -152,6 +153,11 @@ stack mid-document. The 2,773 `paragraph` nodes hang off a hierarchy that does n
 to the document. Every downstream rule cites `source_node_id`, so this poisons the semantic
 layer at its anchor.
 
+**Fixed:** clause matching now runs against normalized whitespace, preserves every numeric
+group, and derives depth from the complete label. The graph builder retains source ordering and
+parent links for labels such as `2-5-1-1`, `6-1-1`, and `1-6-1-1`. Regression coverage exercises
+spaced separators and the label-heading heuristics.
+
 ### F4 — running headers, ISBN, and the cover price become headings
 
 `_LABEL_PATTERN` matches any line starting with a dash-separated numeric run, with no test for
@@ -164,6 +170,11 @@ whether the line is a heading (short line, distinct bbox, page position). Actual
   21, 23, 25, …
 
 Each of these resets the parent stack.
+
+**Fixed:** label extraction rejects ISBN prefixes and cover-price decimals, ignores labels in
+page margins, and suppresses numeric labels repeated at the same position across pages (the
+running-header pattern). Focused tests cover each artifact class and the repeated-header
+heuristic.
 
 ### F5 — `transcription-check` reports "0 blockers" when 100% of pages failed (fail-open gate)
 
@@ -187,13 +198,10 @@ The doc's advice to read the printed counts is correct but is the only defence. 
 **Fixed, two parts.** (1) `transcription_check.py:127` adds `_failed_pages_blocker`, called
 from `check_transcription` right after the page list is built; it appends a `PAGES_FAILED`
 blocker whenever any page's state is `"failed"`, so `valid` can no longer be `true` (and the
-CLI exit code no longer `0`) while pages failed. (2) `transcription.py:1032` (`_build_bundles`)
-now skips writing a bundle for any page chunk whose total `input_bytes` is `0` — that is
-exactly the "every page in this chunk failed" case, since a failed page always contributes
-`0` bytes — instead of installing a hollow, content-addressed bundle for it.
-`_validate_document_bundles` (`transcription.py:1338`) was loosened to match: a gap between
-bundle ranges is only accepted when every page number it skips over is itself in state
-`"failed"`; any other gap still raises.
+CLI exit code no longer `0`) while pages failed. (2) `transcription.py:1002` (`_build_bundles`)
+now splits bundles around failed pages and omits all-failed chunks instead of emitting hollow
+bundles with null evidence paths. `_validate_document_bundles` accepts only gaps occupied by
+failed pages; every non-failed page must still be covered and unrelated gaps are rejected.
 
 Covered by `test_build_bundles_skips_a_chunk_where_every_page_failed` and
 `test_validate_document_bundles_tolerates_a_gap_over_failed_pages_only` in
@@ -220,20 +228,20 @@ following `docs/inbr-operations.md` would have read `pages_failed: 41` next to `
 exactly as the finding describes. `uv run pytest packages/regulations/tests/test_transcription.py packages/regulations/tests/test_transcription_check.py -v`
 — 7 passed. `uv run mypy packages/regulations/src` — no issues.
 
-### F6 — the corpus cannot be transcribed in this environment
+### F6 — representative OCR/transcription smoke test
 
-- `tesseract` is **not installed**. `page_tools.py:25` pins exactly `tesseract 5.3.4`, and
-  `_PINNED_TESSDATA_BEST` pins the `fas`/`eng`/`osd` `tessdata_best` model hashes. Ubuntu
-  24.04 ships `5.3.4-1build5`, so the pin is satisfiable, but the models must be fetched
-  separately.
-- **17 of the 43 PDFs have no embedded text at all** in their first 20 pages, so they route to
-  `ocr`. Volume 13 is `suspect_native` on 41/41 sampled pages → `native_plus_ocr`. Roughly
-  half the corpus is OCR-dependent.
-
-Operational trap: `toolchain_sha256` is a path component of every page package and currently
-hashes `"tesseract": null`. Installing Tesseract later changes that hash and orphans every
-package already written. **Install Tesseract and the pinned `tessdata_best` models before the
-first `page-probe`,** not between stages.
+- The pinned OCR toolchain is available: `/usr/bin/tesseract` reports `5.3.4`, with the
+  `fas`, `eng`, and `osd` `tessdata_best` models present under
+  `.cadgpt/inbr/toolchain/tessdata-best/`. A direct Persian OCR smoke test succeeds.
+- A six-page sample was run through the real CLI at 400 DPI: native text (volume 1/page 1),
+  blank/none (volume 1/page 6), mixed native+OCR (volume 3/page 2), image-scan OCR
+  (volume 4/page 1), suspect-native/native+OCR (volume 2/page 19), and degraded-photo OCR
+  (volume 19 appendix 4/page 1).
+- All six transcriptions completed with `pages_failed: 0`; OCR pages contain their OCR input
+  and result artifacts, mixed pages retain native evidence alongside OCR, and the blank page
+  routes to `none` without OCR output. Each sample `transcription-check` reports zero blockers.
+- The full 43-document/5,892-page transcription was intentionally not run for this validation;
+  the sample is representative only and does not claim full-corpus completion.
 
 ### F7 — `native_plus_ocr` now discards the native text layer (unexercised, from `dc435cd`)
 
@@ -247,6 +255,10 @@ those pages the accurate native text is dropped in favour of OCR of a render.
 Not exercised: the sampled documents produced 0 `mixed` pages. Flagging on inspection only.
 Note that Volume 17's local name is `mabhas17-watermark-...`; a full-page watermark bitmap
 would push otherwise-clean text pages into `mixed`.
+
+**Fixed:** `mixed` pages now keep native lines and append only non-duplicate OCR lines, while
+`suspect_native` pages continue to use OCR as their canonical stream. Source-anchor validation
+accepts both evidence layers where applicable.
 
 ### F8 — `method_abbreviation` candidates are silently dropped; `figure` is a schema kind nothing produces
 
@@ -270,10 +282,9 @@ canonical-mapping concept), appended to a new `abbreviations` list on the graph 
 `abbreviation_ids` list on its page — threaded through every place `units` already was
 (`_build_document_graph`, `_install_structural_bundles`, `_validate_graph`,
 `_validate_structural_bundle_contents`, `_validate_semantic_record`,
-`_validate_page_record_lists`, `_graph_counts`, `_manifest_summary`). Confirmed no other code
-(`semantic_check.py`, `semantic_publish.py`, `extraction_jobs.py`) needed to change: neither
-does exhaustive/strict validation of the graph object, both only read the specific
-collections they already know about. `source-graph.schema.json` and
+`_validate_page_record_lists`, `_graph_counts`, `_manifest_summary`). The downstream
+`extraction_jobs.py`, `semantic_check.py`, and `semantic_publish.py` paths now carry, validate,
+and publish those records as well. `source-graph.schema.json` and
 `structural-bundle.schema.json` gained an `abbreviation` `$def` and the new
 `abbreviations`/`abbreviation_ids` fields (required, matching `units`/`unit_ids`);
 `structure.schema.json`'s `counts`/`graphCounts` gained `abbreviations`.
@@ -310,18 +321,14 @@ alignment). None call `build_structure()` or `_build_document_graph()` — the l
 heuristic that produces F3 and F4 is exercised by zero tests. Same failure shape as F1: the
 function that breaks on real input is never invoked by the suite that passed.
 
-## Suggested order
+## Resolution status
 
-1. F1 — add `"units": graph.get("units", [])` to `_structure_binding`, and a test that runs
-   `extract-jobs` against a real structure manifest.
-2. F2 — resolve roots at the CLI boundary.
-3. F5 — make `pages_failed > 0` a blocker; stop emitting empty bundles.
-4. F3 / F4 — the real design work. Label extraction needs whitespace-tolerant matching against
-   normalized text plus a positional/typographic heading test. Worth its own task file.
-5. F6 — provision Tesseract 5.3.4 + `tessdata_best` before any further probing.
-6. F7 — decide whether `mixed` keeps both layers.
-7. F8 — route `method_abbreviation` candidates somewhere real or drop the kind explicitly; add a
-   `figure` producer or remove it from the schema until one exists.
+F1, F2, F3, F4, F5, F7, and F8 are fixed in the working tree with focused regression tests.
+F6 is satisfied in the current workspace: `/usr/bin/tesseract` is version 5.3.4 and the
+pinned `fas`, `eng`, and `osd` `tessdata_best` models are present under
+`.cadgpt/inbr/toolchain/tessdata-best/`. A clean environment still needs those same pinned
+assets before OCR-dependent probing. The existing `figure` schema kind was removed until a
+producer exists.
 
 ## Artifacts on disk
 

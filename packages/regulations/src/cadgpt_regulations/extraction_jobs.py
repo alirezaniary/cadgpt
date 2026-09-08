@@ -24,7 +24,7 @@ RESPONSE_SCHEMA_SHA256 = hashlib.sha256(
     b"subject,predicate,modality,comparator,value,printed_unit,conditions,"
     b"exceptions,references,formula_or_table_notes,english_gloss,"
     b"uncertainty_codes,source_node_ids,formula_ids,table_ids,source_span_ids,"
-    b"qualifier_span_ids,input_structural_bundle_sha256,unit_ids"
+    b"qualifier_span_ids,input_structural_bundle_sha256,unit_ids,abbreviation_ids"
 ).hexdigest()
 
 
@@ -276,6 +276,18 @@ def validate_extraction_jobs(manifest: JsonObject) -> None:
     bundle_ids: set[str] = set()
     bound_structure_hashes: set[str] = set()
     for job in jobs:
+        if job.get("state") != "pending":
+            raise ExtractionJobError("extraction job has an invalid state")
+        for field in (
+            "model",
+            "prompt_version",
+            "prompt_sha256",
+            "response_schema_sha256",
+        ):
+            if job.get(field) != manifest.get(field):
+                raise ExtractionJobError(
+                    f"extraction job {field} differs from queue identity"
+                )
         bundle_id = _required_string(job, "bundle_id")
         pass_label = _required_string(job, "pass")
         if pass_label not in BLIND_PASSES:
@@ -396,6 +408,7 @@ def _structure_binding(
         "formulas": graph.get("formulas", []),
         "tables": graph.get("tables", []),
         "units": graph.get("units", []),
+        "abbreviations": graph.get("abbreviations", []),
         "bundles": reference.get("bundles", []),
     }
 
@@ -431,6 +444,11 @@ def _bundle_structure_binding(
         for item in cast(list[JsonObject], value["units"])
         if _required_int(item, "pdf_page") in page_numbers
     ]
+    abbreviations = [
+        item
+        for item in cast(list[JsonObject], value["abbreviations"])
+        if _required_int(item, "pdf_page") in page_numbers
+    ]
     if not pages or sorted(page_numbers) != list(range(start_pdf_page, end_pdf_page + 1)):
         raise ExtractionJobError("structure does not cover every bundle page")
     structural_bundles = [
@@ -453,6 +471,9 @@ def _bundle_structure_binding(
         "formula_ids": [_required_string(item, "formula_id") for item in formulas],
         "table_ids": [_required_string(item, "table_id") for item in tables],
         "unit_ids": [_required_string(item, "unit_id") for item in units],
+        "abbreviation_ids": [
+            _required_string(item, "abbreviation_id") for item in abbreviations
+        ],
         "structural_bundle_path": _required_string(structural_bundle, "path"),
         "structural_bundle_sha256": _required_sha256(structural_bundle, "sha256"),
     }
@@ -482,11 +503,23 @@ def _validate_bundle_reference(
     edges = bundle.get("continuation_edges")
     if not isinstance(pages, list) or not isinstance(edges, list):
         raise ExtractionJobError("bundle pages or continuation edges are invalid")
+    start = _required_int(reference, "start_pdf_page")
+    end = _required_int(reference, "end_pdf_page")
+    page_count = _required_int(reference, "page_count")
+    if start < 1 or end < start or page_count != len(pages):
+        raise ExtractionJobError("bundle page range or count is false")
+    page_numbers: list[int] = []
     for page in pages:
         if not isinstance(page, dict) or not isinstance(page.get("span_ids"), list):
             raise ExtractionJobError("bundle page span IDs are invalid")
         if not all(isinstance(value, str) for value in page["span_ids"]):
             raise ExtractionJobError("bundle page contains a non-string span ID")
+        page_number = page.get("pdf_page")
+        if not isinstance(page_number, int) or page_number < 1:
+            raise ExtractionJobError("bundle page has an invalid PDF page")
+        page_numbers.append(page_number)
+    if page_numbers != list(range(start, end + 1)):
+        raise ExtractionJobError("bundle pages are not ordered and contiguous")
 
 
 def _required_string(value: JsonObject, field: str) -> str:

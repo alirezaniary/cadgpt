@@ -107,7 +107,15 @@ def test_validate_extraction_jobs_rejects_job_identity_drift(tmp_path: Path) -> 
     manifest = build_extraction_jobs(_fixture(tmp_path), root=tmp_path)
     manifest["jobs"][0]["model"] = "different-model"
 
-    with pytest.raises(ExtractionJobError, match="identity drift"):
+    with pytest.raises(ExtractionJobError, match=r"identity drift|differs"):
+        validate_extraction_jobs(manifest)
+
+
+def test_validate_extraction_jobs_rejects_non_pending_queue_state(tmp_path: Path) -> None:
+    manifest = build_extraction_jobs(_fixture(tmp_path), root=tmp_path)
+    manifest["jobs"][0]["state"] = "accepted_candidate"
+
+    with pytest.raises(ExtractionJobError, match="invalid state"):
         validate_extraction_jobs(manifest)
 
 
@@ -198,6 +206,15 @@ def _real_transcription_with_unit(root: Path) -> dict[str, object]:
         "bbox": [0, 0, 10, 10],
         "crop_file": None,
     }
+    abbreviation_candidate = {
+        "candidate_id": f"{page_id}:abbreviation:0001",
+        "kind": "method_abbreviation",
+        "source_kind": "native",
+        "span_id": span_id,
+        "raw_text": "LRFD",
+        "bbox": [0, 0, 10, 10],
+        "crop_file": None,
+    }
     evidence = {
         "schema_version": "1.0.0",
         "page_id": page_id,
@@ -228,7 +245,10 @@ def _real_transcription_with_unit(root: Path) -> dict[str, object]:
             "digit_view": "persian_and_arabic_indic_to_ascii",
         },
         "ocr": None,
-        "semantic_evidence": {"symbols": [unit_candidate], "tables": []},
+        "semantic_evidence": {
+            "symbols": [unit_candidate, abbreviation_candidate],
+            "tables": [],
+        },
         "artifacts": [
             {
                 "role": "raw_native_text",
@@ -397,6 +417,7 @@ def test_build_structured_extraction_jobs_binds_real_structure_units(
         transcription, transcription_root=transcription_root, output_root=structure_root
     )
     assert structure_run.manifest["summary"]["units"] == 1
+    assert structure_run.manifest["summary"]["abbreviations"] == 1
 
     queue = build_structured_extraction_jobs(
         transcription,
@@ -408,3 +429,4 @@ def test_build_structured_extraction_jobs_binds_real_structure_units(
     assert len(queue["jobs"]) == 2
     for job in queue["jobs"]:
         assert job["structure"]["unit_ids"] != []
+        assert job["structure"]["abbreviation_ids"] != []

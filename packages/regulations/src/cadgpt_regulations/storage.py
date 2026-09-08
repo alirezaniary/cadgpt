@@ -605,6 +605,20 @@ def _reuse_terminal_directory(
     expected: DirectorySnapshot,
     existing: DirectorySnapshot,
 ) -> DirectoryInstallResult:
+    # Re-attest the destination after the initial lookup. A concurrent removal
+    # or replacement must not be reported as a successful reuse after the
+    # temporary package has been discarded.
+    try:
+        current = snapshot_directory(destination)
+    except StorageError as exc:
+        raise StorageError(
+            f"existing terminal package changed before reuse: {destination}"
+        ) from exc
+    if current.sha256 != existing.sha256 or (current.device, current.inode) != (
+        existing.device,
+        existing.inode,
+    ):
+        raise StorageError(f"existing terminal package changed before reuse: {destination}")
     if existing.sha256 != expected.sha256:
         raise StorageError(
             f"existing terminal package differs and was not overwritten: {destination}"

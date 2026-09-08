@@ -167,6 +167,33 @@ def test_build_bundles_skips_a_chunk_where_every_page_failed(tmp_path: Path) -> 
     assert reused == 0
 
 
+def test_build_bundles_never_mixes_failed_pages_into_multi_page_bundle(
+    tmp_path: Path,
+) -> None:
+    """Failed pages must not produce bundles with unreadable null evidence paths."""
+    document = {
+        "catalog_key": "volume-01",
+        "source_sha256": "a" * 64,
+        "pages": [_ready_page(tmp_path, 1), _failed_page(2), _ready_page(tmp_path, 3)],
+    }
+
+    records, created, reused = _build_bundles(
+        document,
+        root=tmp_path,
+        configuration={"sha256": "b" * 64},
+        max_pages=10,
+        max_bytes=8 * 1024 * 1024,
+    )
+
+    assert [record["sequence"] for record in records] == [1, 2]
+    assert [(record["start_pdf_page"], record["end_pdf_page"]) for record in records] == [
+        (1, 1),
+        (3, 3),
+    ]
+    assert created == 2
+    assert reused == 0
+
+
 def test_validate_document_bundles_tolerates_a_gap_over_failed_pages_only(
     tmp_path: Path,
 ) -> None:
@@ -184,6 +211,16 @@ def test_validate_document_bundles_tolerates_a_gap_over_failed_pages_only(
     not_actually_failed = [dict(pages[0]), {**pages[1], "state": "ready"}, dict(pages[2])]
     with pytest.raises(TranscriptionError, match="gap"):
         _validate_document_bundles({"pages": not_actually_failed, "bundles": records})
+
+
+def test_validate_document_bundles_rejects_uncovered_ready_page_without_probe() -> None:
+    """Bundle coverage must be checked even when no page-probe is available."""
+    pages = [
+        _failed_page(1),
+        {**_failed_page(2), "state": "ready", "package_path": "evidence/2"},
+    ]
+    with pytest.raises(TranscriptionError, match="cover every document page"):
+        _validate_document_bundles({"pages": pages, "bundles": []})
 
 
 def _native_pdf(text: bytes) -> bytes:

@@ -1002,9 +1002,20 @@ def _build_bundles(
     chunks: list[list[JsonObject]] = []
     index = 0
     while index < len(pages):
+        # Failed pages have no evidence paths and cannot be included in a model
+        # bundle. Leave them uncovered so validation can report the failure while
+        # keeping every emitted bundle fully readable by semantic checks.
+        while index < len(pages) and pages[index]["package_path"] is None:
+            index += 1
+        if index >= len(pages):
+            break
         chunk: list[JsonObject] = []
         byte_size = 0
-        if index > 0 and cast(int, pages[index]["pdf_page"]) in continued_to:
+        if (
+            index > 0
+            and pages[index - 1]["package_path"] is not None
+            and cast(int, pages[index]["pdf_page"]) in continued_to
+        ):
             previous = pages[index - 1]
             overlap_bytes = cast(int, previous["model_input_bytes"])
             next_bytes = cast(int, pages[index]["model_input_bytes"])
@@ -1013,6 +1024,9 @@ def _build_bundles(
                 byte_size = overlap_bytes
         while index < len(pages) and len(chunk) < max_pages:
             candidate = pages[index]
+            if candidate["package_path"] is None:
+                index += 1
+                break
             candidate_bytes = cast(int, candidate["model_input_bytes"])
             if chunk and byte_size + candidate_bytes > max_bytes:
                 break
@@ -1253,18 +1267,37 @@ def validate_transcription(
             ]
             if actual != expected:
                 raise TranscriptionError("transcription page coverage differs from probe")
-            _validate_document_bundles(document)
+    for document in documents:
+        # Bundle ranges and page coverage are intrinsic to the transcription
+        # manifest; validate them even when no page-probe manifest is supplied.
+        _validate_document_bundles(document)
     if root is not None:
         for page in pages:
             if page["package_path"] is not None:
                 _validate_transcription_package(page, root=root)
-        for bundle in bundles:
-            path = safe_path(root, cast(str, bundle["path"]))
-            payload, _ = read_attested_bytes(
-                path, expected_sha256=cast(str, bundle["sha256"])
-            )
-            bundle_record = loads_object(payload.decode("utf-8"), description="bundle")
-            _validate_bundle(bundle_record)
+        for document in documents:
+            catalog_key = cast(str, document["catalog_key"])
+            for bundle in cast(list[JsonObject], document["bundles"]):
+                path = safe_path(root, cast(str, bundle["path"]))
+                payload, _ = read_attested_bytes(
+                    path, expected_sha256=cast(str, bundle["sha256"])
+                )
+                bundle_record = loads_object(payload.decode("utf-8"), description="bundle")
+                _validate_bundle(bundle_record)
+                if bundle_record.get("catalog_key") != catalog_key:
+                    raise TranscriptionError("bundle reference differs at catalog_key")
+                if bundle_record.get("source_sha256") != document["source_sha256"]:
+                    raise TranscriptionError("bundle reference differs at source_sha256")
+                for field in (
+                    "bundle_id",
+                    "sequence",
+                    "start_pdf_page",
+                    "end_pdf_page",
+                    "page_count",
+                    "input_bytes",
+                ):
+                    if bundle_record.get(field) != bundle.get(field):
+                        raise TranscriptionError(f"bundle reference differs at {field}")
 
 
 def _validate_transcription_package(page: JsonObject, *, root: Path) -> None:

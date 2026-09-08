@@ -27,11 +27,16 @@ from cadgpt_regulations.storage import (
     safe_path,
     validate_output_root,
 )
-from cadgpt_regulations.transcription import normalize_search_text, validate_transcription
+from cadgpt_regulations.transcription import (
+    ascii_digit_view,
+    normalize_search_text,
+    validate_transcription,
+)
 
 STRUCTURE_SCHEMA_VERSION = "1.0.0"
 _LABEL_PATTERN = re.compile(
-    r"^\s*([0-9\u06f0-\u06f9\u0660-\u0669]+(?:[-.][0-9\u06f0-\u06f9\u0660-\u0669]+){1,8})(?:\s+|$)"
+    r"^\s*([0-9\u06f0-\u06f9\u0660-\u0669]+"
+    r"(?:\s*[-.]\s*[0-9\u06f0-\u06f9\u0660-\u0669]+){1,8})(?:\s+|$)"
 )
 _UCUM = {
     "mm": "mm",
@@ -313,6 +318,7 @@ def _build_document_graph(document: JsonObject, *, root: Path) -> JsonObject:
     pages: list[JsonObject] = []
     parent_stack: dict[int, str] = {}
     source_order = 0
+    repeated_labels = _repeated_numeric_labels(document, root=root)
 
     for page in cast(list[JsonObject], document["pages"]):
         page_nodes: list[str] = []
@@ -332,8 +338,12 @@ def _build_document_graph(document: JsonObject, *, root: Path) -> JsonObject:
                 if not raw_text.strip():
                     continue
                 source_order += 1
-                label_match = _LABEL_PATTERN.match(raw_text)
-                label = label_match.group(1) if label_match else None
+                label = _printed_label(line)
+                if (
+                    label in repeated_labels
+                    and normalize_search_text(raw_text)[0].strip() == label
+                ):
+                    label = None
                 depth = len(re.split(r"[-.]", label)) if label else None
                 kind = _node_kind(depth)
                 parent_id = _node_parent(parent_stack, depth)
@@ -456,6 +466,35 @@ def _build_document_graph(document: JsonObject, *, root: Path) -> JsonObject:
     return graph
 
 
+def _repeated_numeric_labels(document: JsonObject, *, root: Path) -> set[str]:
+    """Identify numeric-only labels repeated at one page position like running headers."""
+    occurrences: dict[tuple[str, tuple[int, ...]], set[int]] = {}
+    for page in cast(list[JsonObject], document["pages"]):
+        if page.get("package_path") is None:
+            continue
+        package = Path(cast(str, page["package_path"]))
+        evidence = _load_json(root, package / "evidence.json", "page evidence")
+        for line in _page_lines(evidence, package=package, root=root):
+            label = _printed_label(line)
+            bbox = line.get("bbox")
+            if (
+                label is None
+                or normalize_search_text(cast(str, line["raw_text"]))[0].strip() != label
+            ):
+                continue
+            if (
+                not isinstance(bbox, list)
+                or len(bbox) != 4
+                or not all(isinstance(value, int) for value in bbox)
+            ):
+                continue
+            key = (label, tuple(cast(list[int], bbox)))
+            occurrences.setdefault(key, set()).add(cast(int, page["pdf_page"]))
+    return {
+        label for (label, _), page_numbers in occurrences.items() if len(page_numbers) >= 3
+    }
+
+
 def _install_structural_bundles(
     graph: JsonObject,
     *,
@@ -543,22 +582,69 @@ def _page_lines(evidence: JsonObject, *, package: Path, root: Path) -> list[Json
     probe = cast(JsonObject, evidence["probe"])
     probe_package = Path(cast(str, probe["package_path"]))
     native = _load_json(root, probe_package / "native.json", "native layout")
+    native_coordinate_space = native.get("coordinate_space")
+    native_height = (
+        native_coordinate_space.get("height")
+        if isinstance(native_coordinate_space, dict)
+        else None
+    )
+    native_origin = (
+        native_coordinate_space.get("origin")
+        if isinstance(native_coordinate_space, dict)
+        else None
+    )
     native_lines = [
-        {**line, "source_kind": "native"}
+        {
+            **line,
+            "source_kind": "native",
+            "_coordinate_height": native_height,
+            "_coordinate_origin": native_origin,
+        }
         for line in cast(list[JsonObject], native["lines"])
     ]
     route = cast(str, probe["route"])
     if route not in {"ocr", "native_plus_ocr"}:
         return native_lines
     ocr = _load_json(root, package / "ocr.json", "OCR layout")
+    ocr_coordinate_space = ocr.get("coordinate_space")
+    ocr_height = (
+        ocr_coordinate_space.get("height")
+        if isinstance(ocr_coordinate_space, dict)
+        else None
+    )
+    ocr_origin = (
+        ocr_coordinate_space.get("origin")
+        if isinstance(ocr_coordinate_space, dict)
+        else None
+    )
     ocr_lines = [
-        {**line, "source_kind": "ocr"} for line in cast(list[JsonObject], ocr["lines"])
+        {
+            **line,
+            "source_kind": "ocr",
+            "_coordinate_height": ocr_height,
+            "_coordinate_origin": ocr_origin,
+        }
+        for line in cast(list[JsonObject], ocr["lines"])
     ]
     if route == "ocr":
         return ocr_lines
-    # Native+OCR pages expose one canonical stream to downstream models. Native
-    # evidence remains persisted in the page package for audit, while OCR is
-    # selected here because the probe marked the native layer incomplete.
+    # A genuinely mixed page has useful native text alongside image content. Keep
+    # native lines and add only OCR lines that are not exact duplicates.
+    if cast(str, probe.get("classification")) == "mixed":
+        native_texts: dict[str, int] = {}
+        for line in native_lines:
+            key = normalize_search_text(cast(str, line["raw_text"]))[0]
+            native_texts[key] = native_texts.get(key, 0) + 1
+        merged = list(native_lines)
+        for line in ocr_lines:
+            key = normalize_search_text(cast(str, line["raw_text"]))[0]
+            if native_texts.get(key, 0):
+                native_texts[key] -= 1
+                continue
+            merged.append(line)
+        return merged
+    # Suspect-native pages use OCR as the canonical stream, while native evidence
+    # remains available as an alternate source for audit and alignment.
     return ocr_lines
 
 
@@ -568,6 +654,18 @@ def _all_page_lines(evidence: JsonObject, *, package: Path, root: Path) -> list[
     route = cast(str, cast(JsonObject, evidence["probe"])["route"])
     if route != "native_plus_ocr":
         return canonical
+    if cast(str, cast(JsonObject, evidence["probe"]).get("classification")) == "mixed":
+        probe_package = Path(cast(str, cast(JsonObject, evidence["probe"])["package_path"]))
+        native = _load_json(root, probe_package / "native.json", "native layout")
+        ocr = _load_json(root, package / "ocr.json", "OCR layout")
+        native_lines = [
+            {**line, "source_kind": "native"}
+            for line in cast(list[JsonObject], native["lines"])
+        ]
+        ocr_lines = [
+            {**line, "source_kind": "ocr"} for line in cast(list[JsonObject], ocr["lines"])
+        ]
+        return [*canonical, *native_lines, *ocr_lines]
     probe_package = Path(cast(str, cast(JsonObject, evidence["probe"])["package_path"]))
     native = _load_json(root, probe_package / "native.json", "native layout")
     native_lines = [
@@ -579,6 +677,8 @@ def _all_page_lines(evidence: JsonObject, *, package: Path, root: Path) -> list[
 
 def _alternate_page_lines(evidence: JsonObject, *, root: Path) -> list[JsonObject] | None:
     if cast(str, cast(JsonObject, evidence["probe"])["route"]) != "native_plus_ocr":
+        return None
+    if cast(str, cast(JsonObject, evidence["probe"]).get("classification")) == "mixed":
         return None
     probe_package = Path(cast(str, cast(JsonObject, evidence["probe"])["package_path"]))
     native = _load_json(root, probe_package / "native.json", "native layout")
@@ -611,6 +711,49 @@ def _align_alternate_lines(
         result.append(alternate_lines[match_index])
         cursor = match_index + 1
     return result
+
+
+def _printed_label(line: JsonObject) -> str | None:
+    """Extract a conservative clause label from a positioned source line."""
+    normalized = normalize_search_text(cast(str, line["raw_text"]))[0]
+    match = _LABEL_PATTERN.match(normalized)
+    if match is None:
+        return None
+    label = re.sub(r"\s*([-.])\s*", r"\1", match.group(1))
+    parts = re.split(r"[-.]", label)
+    ascii_parts = re.split(r"[-.]", ascii_digit_view(label))
+    if ascii_parts[0] in {"978", "979"}:
+        return None
+    if (
+        "." in label
+        and "-" not in label
+        and (len(parts) == 2 and (len(parts[0]) > 2 or len(parts[1]) > 2))
+    ):
+        return None
+    coordinate_height = line.get("_coordinate_height")
+    coordinate_origin = line.get("_coordinate_origin")
+    bbox = line.get("bbox")
+    if (
+        isinstance(coordinate_height, int)
+        and isinstance(bbox, list)
+        and len(bbox) == 4
+        and all(isinstance(value, int) for value in bbox)
+    ):
+        bottom = bbox[1]
+        top = bbox[3]
+        in_top_margin = (
+            top >= coordinate_height * 0.9
+            if coordinate_origin == "bottom_left"
+            else bottom <= coordinate_height * 0.1
+        )
+        in_bottom_margin = (
+            bottom <= coordinate_height * 0.08
+            if coordinate_origin == "bottom_left"
+            else top >= coordinate_height * 0.92
+        )
+        if in_top_margin or in_bottom_margin:
+            return None
+    return label
 
 
 def _page_artifact_refs(

@@ -49,8 +49,15 @@ def test_validate_and_publish_check_honor_custom_catalog(tmp_path: Path) -> None
     ("argv", "root_attrs"),
     [
         (
-            ["page-probe", "--acquisition", "acquisition.json", "--root", "acq-root",
-             "--output-root", "probe-root"],
+            [
+                "page-probe",
+                "--acquisition",
+                "acquisition.json",
+                "--root",
+                "acq-root",
+                "--output-root",
+                "probe-root",
+            ],
             ["root", "output_root"],
         ),
         (
@@ -58,14 +65,31 @@ def test_validate_and_publish_check_honor_custom_catalog(tmp_path: Path) -> None
             ["root"],
         ),
         (
-            ["structure", "--transcription", "transcription.json", "--root", "run-root",
-             "--output-root", "structure-root"],
+            [
+                "structure",
+                "--transcription",
+                "transcription.json",
+                "--root",
+                "run-root",
+                "--output-root",
+                "structure-root",
+            ],
             ["root", "output_root"],
         ),
         (
-            ["extract-jobs", "--transcription", "transcription.json", "--root", "run-root",
-             "--structure", "structure.json", "--structure-root", "structure-root",
-             "--output-root", "extraction-root"],
+            [
+                "extract-jobs",
+                "--transcription",
+                "transcription.json",
+                "--root",
+                "run-root",
+                "--structure",
+                "structure.json",
+                "--structure-root",
+                "structure-root",
+                "--output-root",
+                "extraction-root",
+            ],
             ["root", "structure_root", "output_root"],
         ),
     ],
@@ -105,3 +129,22 @@ def test_resolve_root_arguments_makes_every_root_path_absolute(
         "extract-jobs": "transcription",
     }[argv[0]]
     assert not cast(Path, getattr(args, file_attr)).is_absolute()
+
+
+def test_resolve_root_arguments_does_not_follow_symlinked_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    real = tmp_path / "real"
+    real.mkdir(mode=0o700)
+    link = tmp_path / "link"
+    link.symlink_to(real, target_is_directory=True)
+
+    args = _parser().parse_args(["workspace", "--root", "link"])
+    _resolve_root_arguments(args)
+
+    resolved = cast(Path, args.root)
+    assert resolved == tmp_path / "link"
+    assert resolved.is_symlink()
+
+    assert main(["workspace", "--root", "link"]) == 2

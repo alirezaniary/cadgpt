@@ -336,6 +336,31 @@ def test_terminal_directory_publish_never_replaces_a_raced_empty_directory(
     assert temporary.is_dir()
 
 
+def test_terminal_directory_reuse_does_not_report_removed_destination(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _private_directory(tmp_path / "root")
+    destination = root / "terminal"
+    first = _package(root, b"raw", b"render")
+    install_terminal_directory(first, destination)
+    temporary = _package(root, b"raw", b"render")
+    real_existing = storage_module._existing_directory
+
+    def remove_after_lookup(path: Path):  # type: ignore[no-untyped-def]
+        existing = real_existing(path)
+        if path == destination:
+            for child in path.iterdir():
+                child.unlink()
+            path.rmdir()
+        return existing
+
+    monkeypatch.setattr(storage_module, "_existing_directory", remove_after_lookup)
+    with pytest.raises(StorageError, match="changed before reuse"):
+        install_terminal_directory(temporary, destination)
+
+    assert temporary.is_dir()
+
+
 def test_reuse_cleanup_does_not_delete_a_same_uid_swapped_directory(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
