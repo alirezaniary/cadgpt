@@ -734,6 +734,39 @@ property instead of the UPDATE's `WHERE` clause. Reworded, along with `request_c
 docstring, to name both the reactive and proactive halves of the recovery; `make verify`
 re-run clean after.
 
+**T-0083 — the hardcoded-Persian product never activates Persian on the server. Done
+2026-09-09.** The frontend was settled single-language, hardcoded Persian since T-0072; the
+server never got the equivalent decision — `LANGUAGE_CODE = "en"`, and most affected text
+(report prose, `CheckRun.failure_detail`) is written by the Celery worker, which has no
+HTTP request and thus no `Accept-Language` for `LocaleMiddleware` to ever read. Closed with
+two layers: `LANGUAGE_CODE` flipped to `"fa"` (the fallback every unactivated thread and
+every real header-less request from `services/web` resolves against), and
+`cadgpt.apps.base.tasks.BaseTask.__call__` — the one method every Celery task runs through
+— now explicitly wraps every task body in `translation.override(settings.LANGUAGE_CODE)`,
+so the worker's language does not depend on `gettext`'s own fallback alone.
+
+Found and fixed two real pre-existing violations of CLAUDE.md's "every user-facing string
+goes through gettext" while auditing every `failure_detail` write site: `reap_stalled`
+(T-0084) wrote a bare Python string literal, translatable by nothing; four DRF permission
+classes in `tenancy/permissions.py` did the same (fixed with `gettext_lazy`, not eager
+`gettext` — they're class attributes evaluated at import time, before any language is
+known). Also closed a real, silent testing gap: the `.po` catalogue had never once been
+compiled to `.mo` in any test run, including CI, so 22 tests were asserting translated
+output against an accidental English fallback the whole time — `make verify`/CI now compile
+messages before `pytest` runs, and each affected test now either states an explicit English
+override (for tests whose real subject is structure, not wording) or asserts the real
+Persian a header-less request now genuinely returns.
+
+Not reviewer-gated; coordinator-audited instead — independently re-ran `make verify` (245
+passed, 5/5 contracts) and read every diff. No fix-now findings: the new regression tests go
+through the real Celery dispatch path, assert against catalogue-derived expected strings
+rather than hand-typed ones, and guard against silently matching two English fallbacks
+against each other. Two minor pre-existing items named in the evidence but left as notes
+rather than spawning further tasks: `make schema`'s output now mixes languages (affects
+nothing in `verify`/CI, nothing committed depends on it), and `report_generation.py`'s
+docstring describes a per-member language override that was never actually wired into any
+request path.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -813,11 +846,8 @@ Added 2026-09-08, from the T-0056 review:
   has landed" below.
 - ~~**T-0085** — T-0056's recovery is reactive-only.~~ **Done 2026-09-09.** See "What has
   landed" below.
-- **T-0083** — the product was decided single-language, hardcoded Persian (T-0072), but the
-  server never activates that language itself: `LANGUAGE_CODE="en"`, and `services/web` never
-  sends `Accept-Language`. Every server-generated user-facing string (report prose, failure
-  detail) renders in whatever the visiting browser's own locale is — for the Celery worker,
-  which has no request at all, there is currently no language decision being made at all.
+- ~~**T-0083** — the server never activates the Persian the product is hardcoded to.~~
+  **Done 2026-09-09.** See "What has landed" below.
 
 - **T-0062** — an ordinary deploy burns a run's claims, and there are only three. **The important
   one of this group:** refusing a healthy check is worse than the failure the bound prevents.

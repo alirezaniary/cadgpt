@@ -34,6 +34,17 @@ jobs:
       - name: Import contracts
         run: uv run lint-imports --no-cache
 
+      # T-0083: the suite now asserts real Persian output (not just that a `gettext`
+      # call happened), which needs the .po catalogue actually compiled -- the same
+      # `gettext` package the production image already installs for this
+      # (deploy/docker/api.Dockerfile), just not preinstalled on this runner.
+      - name: Install gettext
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y gettext
+
+      - name: Compile message catalogues
+        working-directory: services/api
+        run: uv run --project .. python manage.py compilemessages
+
       - name: Tests
         run: uv run pytest
 

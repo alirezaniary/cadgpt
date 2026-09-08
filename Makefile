@@ -32,10 +32,10 @@ types:  ## mypy --strict over the engine and the service
 contracts:  ## The import contracts: I1, engine independence, app layering
 	$(UV) lint-imports --no-cache
 
-test:  ## The whole suite, engine and service
+test: compile-messages  ## The whole suite, engine and service
 	$(UV) pytest
 
-test-fast:  ## Skip the tests that parse real IFC files
+test-fast: compile-messages  ## Skip the tests that parse real IFC files
 	$(UV) pytest -m "not integration"
 
 web-verify:  ## Frontend type check, lint and production build
@@ -66,6 +66,9 @@ shell:  ## Django shell
 messages:  ## Extract translatable strings into the .po catalogues (needs gettext)
 	cd $(API) && $(UV) --project .. python manage.py makemessages -a --ignore=node_modules
 
+# `test` depends on this (needs gettext's `msgfmt` on PATH): T-0083's regression tests
+# assert the actual translated output a stored field ends up with, not merely that some
+# `gettext` call was made, so the catalogue has to be real for the suite to mean anything.
 compile-messages:  ## Compile the .po catalogues to .mo (needs gettext)
 	cd $(API) && $(UV) --project .. python manage.py compilemessages
 

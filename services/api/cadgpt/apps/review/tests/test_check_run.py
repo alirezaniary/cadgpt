@@ -20,6 +20,11 @@ from cadgpt.apps.review.choices import CheckRunFailure, CheckRunStatus
 from cadgpt.apps.review.models import CheckRun, Review
 from cadgpt.apps.review.services import ReviewService
 from cadgpt.apps.review.services.execution import CheckRunExecutor
+from cadgpt.apps.review.tasks import (
+    execute_check_run,
+    reap_lost_dispatch_runs,
+    reap_stalled_runs,
+)
 from cadgpt.apps.tenancy.models import Tenant
 
 pytestmark = [pytest.mark.django_db, pytest.mark.integration]
@@ -57,7 +62,12 @@ def test_a_check_separates_a_violation_from_missing_data(
         "the I7 disclosure must name the model that was actually checked, from the "
         "payload, not a hardcoded example filename"
     )
-    assert "drawing set" in report["disclosure_text"]
+    # T-0083: this API request carries no `Accept-Language`, exactly like every real
+    # request `services/web` ever sends (T-0072) -- the disclosure is genuinely rendered
+    # in the product's one language, Persian, not the English source string.
+    assert "مجموعه نقشه" in report["disclosure_text"], (
+        "'drawing set', translated -- see cadgpt/locale/fa/LC_MESSAGES/django.po"
+    )
     entities = [
         entity
         for spec in report["specifications"]
@@ -471,3 +481,126 @@ def test_the_periodic_sweep_reaps_lost_dispatches_across_every_tenant(
     assert first.failure_reason == CheckRunFailure.DISPATCH_LOST
     assert second.status == CheckRunStatus.FAILED
     assert second.failure_reason == CheckRunFailure.DISPATCH_LOST
+
+
+def _persian(msgid: str) -> str:
+    """What `msgid` actually translates to in the `fa` catalogue, computed with an
+    explicit, local `translation.override` -- used only to build the *expected* side of
+    an assertion below, never anywhere near the code under test. Building this from the
+    real compiled catalogue (rather than retyping the Persian by hand) is what makes the
+    assertion resilient to the wording changing in `cadgpt/locale/fa/LC_MESSAGES/django.po`
+    without silently starting to compare two different strings.
+    """
+    from django.utils import translation
+    from django.utils.translation import gettext
+
+    with translation.override("fa"):
+        return str(gettext(msgid))
+
+
+def _is_persian(text: str) -> bool:
+    """True only if `text` actually contains Persian/Arabic-block script.
+
+    `_persian(msgid)` alone is not enough of a check: if the catalogue were never
+    compiled, `gettext` would silently fall back to returning `msgid` unchanged (plain
+    English), and comparing the worker's stored value against that same fallback would
+    pass without proving anything about the language actually used. This closes that gap
+    by refusing to accept a value that is not, in fact, written in Persian script.
+    """
+    return any("؀" <= character <= "ۿ" for character in text)
+
+
+def test_the_real_lost_dispatch_task_stores_persian_with_no_accept_language_anywhere(
+    tenant: Tenant, review: Review, owner: Any, settings: Any
+) -> None:
+    """T-0083: the exact shape of every real worker invocation -- no HTTP request, no
+    `Accept-Language` header, nothing for `LocaleMiddleware` to ever see or act on, because
+    `LocaleMiddleware` never runs for a Celery task at all. This calls
+    `review.tasks.reap_lost_dispatch_runs` itself -- the real, registered task Beat's
+    periodic tick dispatches (`CELERY_BEAT_SCHEDULE` in `cadgpt/config/settings/base.py`)
+    -- rather than the service method directly, and nothing in this test calls
+    `translation.activate` or `override` before it runs: whatever language the stored
+    `failure_detail` ends up in is entirely down to what the task itself, and the settings
+    it runs under, decide on their own.
+    """
+    settings.CHECK_RUN_STALL_SECONDS = 60
+    stuck = ReviewService(tenant=tenant).request_check(review=review, requested_by=owner)
+    assert stuck.task_id == "", "the on_commit dispatch must not have run in this test"
+    CheckRun.objects.filter(pk=stuck.pk).update(
+        created_at=timezone.now() - timedelta(seconds=120)
+    )
+    assert tenant.language == "en", (
+        "this tenant never chose 'fa' -- the Persian result below must come from the "
+        "worker's own language activation, not from a tenant-language override"
+    )
+
+    reap_lost_dispatch_runs.delay()
+
+    stuck.refresh_from_db()
+    assert stuck.status == CheckRunStatus.FAILED
+    assert stuck.failure_reason == CheckRunFailure.DISPATCH_LOST
+    expected = _persian(
+        "This check was requested but its dispatch never reached a worker, so it "
+        "was ended. Request the check again."
+    )
+    assert _is_persian(expected), (
+        "the catalogue must actually be compiled for this to mean anything"
+    )
+    assert stuck.failure_detail == expected
+
+
+def test_the_real_stalled_sweep_task_stores_persian_with_no_accept_language_anywhere(
+    tenant: Tenant, review: Review, owner: Any, settings: Any
+) -> None:
+    """The RUNNING-side sibling of the test above, over `review.tasks.reap_stalled_runs`.
+
+    `reap_stalled`'s `failure_detail` was, until T-0083, a bare Python string literal --
+    never passed through `gettext` at all, so no language activation anywhere could ever
+    have made it Persian. This asserts the fixed version: the stored value is not just
+    non-English, it is the real compiled Persian translation of the now-wrapped string.
+    """
+    settings.CHECK_RUN_STALL_SECONDS = 60
+    run = CheckRun.objects.create_run(review=review, requested_by=owner)
+    CheckRun.objects.filter(pk=run.pk).update(
+        status=CheckRunStatus.RUNNING,
+        started_at=timezone.now() - timedelta(hours=2),
+    )
+
+    reap_stalled_runs.delay()
+
+    run.refresh_from_db()
+    assert run.status == CheckRunStatus.FAILED
+    assert run.failure_reason == CheckRunFailure.STALLED
+    expected = _persian("The worker running this check stopped responding.")
+    assert _is_persian(expected), (
+        "the catalogue must actually be compiled for this to mean anything"
+    )
+    assert run.failure_detail == expected
+
+
+def test_the_real_execute_check_run_task_stores_persian_for_a_claim_limit_failure(
+    tenant: Tenant, review: Review, owner: Any, settings: Any
+) -> None:
+    """`execute_check_run` itself, the task every real dispatch actually queues, driven
+    into its `RESOURCE_EXHAUSTED` failure branch (`CheckRunExecutor._claim`) -- the
+    synchronous counterpart to the two periodic sweeps above, going through
+    `BaseTask.__call__`'s language activation exactly the way a real redelivered,
+    already-poisoned message would.
+    """
+    settings.CHECK_RUN_MAX_CLAIMS = 3
+    run = CheckRun.objects.create_run(review=review, requested_by=owner)
+    CheckRun.objects.filter(pk=run.pk).update(status=CheckRunStatus.RUNNING, claim_count=3)
+
+    execute_check_run.delay(str(run.uuid))
+
+    run.refresh_from_db()
+    assert run.status == CheckRunStatus.FAILED
+    assert run.failure_reason == CheckRunFailure.RESOURCE_EXHAUSTED
+    expected = _persian(
+        "This run was claimed %(count)s times without finishing and has "
+        "been stopped rather than tried again."
+    ) % {"count": 3}
+    assert _is_persian(expected), (
+        "the catalogue must actually be compiled for this to mean anything"
+    )
+    assert run.failure_detail == expected

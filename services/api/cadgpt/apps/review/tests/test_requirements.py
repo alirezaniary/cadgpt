@@ -1,22 +1,35 @@
 """requirement_text: the sentence built from a requirement's structured `basis`.
 
 Translated wording is proven against the real running API in two languages
-(`docs/tasks/T-0027-requirement-as-structured-citation.md`'s evidence) rather than here --
-this process's `.po` catalogue is not compiled to `.mo` outside the container build
-(`deploy/docker/api.Dockerfile`), so `gettext` here returns the English source string
-verbatim, same as `reasons.py`'s own tests already rely on for `REASON_LABELS`. What this
-file proves is the branching: a bound renders a comparison, no bound states only that the
-attribute must be provided, cardinality picks "shall" / "shall not" / "may", an
+(`docs/tasks/T-0027-requirement-as-structured-citation.md`'s evidence) rather than here.
+What this file proves is the branching: a bound renders a comparison, no bound states only
+that the attribute must be provided, cardinality picks "shall" / "shall not" / "may", an
 `enumeration` joins as a disjunction ("or") while every other multi-part bound joins as a
 conjunction ("and"), and anything this table does not recognise -- an unsupported facet
 type, no `basis` at all, or a comparison operator not in `_COMPARISON_TEMPLATES` -- falls
 back to `description` rather than to a blank line or, worse, a confident sentence for the
-wrong rule.
+wrong rule. That is a property of the branching, not of any one language's wording, so
+`english` below activates English deliberately (T-0083 made `fa` the process-wide default,
+including for a bare pytest run with no request in sight -- see `cadgpt.apps.base.tasks.
+BaseTask` and `LANGUAGE_CODE` in `cadgpt/config/settings/base.py`) rather than asserting
+against Persian sentences re-encoded by hand here, which would test this file's own
+transcription as much as `requirement_text`.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
+import pytest
+from django.utils import translation
+
 from cadgpt.apps.review.requirements import requirement_text
+
+
+@pytest.fixture(autouse=True)
+def english() -> Iterator[None]:
+    with translation.override("en"):
+        yield
 
 
 def test_a_bounded_required_attribute_becomes_a_sentence_not_the_stored_description() -> (

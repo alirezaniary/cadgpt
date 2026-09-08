@@ -119,9 +119,21 @@ AUTH_PASSWORD_VALIDATORS = [
 #
 # The product is jurisdiction-agnostic and its tenants are not (PRD I4). Every
 # user-facing string goes through gettext; none is written in English at the call site.
+#
+# The product itself was settled single-language, hardcoded Persian, not user-switchable
+# (T-0072, the frontend) -- `services/web` never sends `Accept-Language` on any request.
+# `LANGUAGE_CODE` is this default's server-side half: it is what `LocaleMiddleware` falls
+# back to for a request that carries no `Accept-Language` header at all (i.e. every real
+# request this product's own frontend ever sends), and it is also what an unactivated
+# Celery worker thread's `gettext()` resolves against on its own (Django's `_default`
+# translation is lazily built from `LANGUAGE_CODE`, not from any request). Defense in
+# depth only -- the Celery task entrypoints (`cadgpt.apps.base.tasks.BaseTask.__call__`)
+# activate this explicitly rather than relying on that fallback, so the worker's language
+# does not depend on nobody else ever calling `translation.activate()` first in the same
+# process. See `docs/tasks/T-0083-the-hardcoded-persian-product-is-not-hardcoded.md`.
 # --------------------------------------------------------------------------------------
 
-LANGUAGE_CODE = "en"
+LANGUAGE_CODE = "fa"
 LANGUAGES = [
     ("en", _("English")),
     ("fa", _("Persian")),

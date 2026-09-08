@@ -1,6 +1,6 @@
 """The base every Celery task inherits.
 
-Three things it supplies, so no task has to remember them.
+Four things it supplies, so no task has to remember them.
 
 **A retry policy that is explicit.** `autoretry_for` names which exceptions are worth
 retrying; anything else fails immediately and loudly rather than being attempted twenty
@@ -14,6 +14,21 @@ dies mid-task and is delivered again. Every task must therefore be idempotent --
 it twice must produce the same end state as running it once. That is a property of the
 task body, which this class cannot enforce; what it can do is make the requirement
 unavoidable to read.
+
+**The active language.** A Celery task has no HTTP request and therefore no
+`Accept-Language` header -- `LocaleMiddleware` never runs for it, so any `gettext` call a
+task body makes (directly, or through a service it calls) would otherwise translate
+against whatever the current thread happens to have active, which for a fresh worker
+thread that never called `translation.activate()` falls back to `settings.LANGUAGE_CODE`
+by accident of Django's own fallback rather than by anything this product decided on
+purpose. `__call__` activates `settings.LANGUAGE_CODE` explicitly around every task body,
+for every task that inherits this class, so that stays true by construction instead of by
+nobody else in the process ever calling `activate()` first. `translation.override` is a
+context manager: a task body that needs a different language for part of its own work
+(`ReportGenerationService.generate` overrides to the tenant's own `language`, so a
+tenant that chose "en" still gets an English report) nests cleanly inside it and restores
+this default on exit. See `docs/tasks/
+T-0083-the-hardcoded-persian-product-is-not-hardcoded.md`.
 """
 
 from __future__ import annotations
@@ -22,12 +37,15 @@ from typing import Any
 
 import structlog
 from celery import Task
+from django.conf import settings
+from django.utils import translation
 
 log = structlog.get_logger(__name__)
 
 
 class BaseTask(Task):
-    """Shared retry and logging behaviour. Subclasses must be idempotent."""
+    """Shared retry, logging and language-activation behaviour. Subclasses must be
+    idempotent."""
 
     autoretry_for: tuple[type[Exception], ...] = (ConnectionError, TimeoutError)
     max_retries = 5
@@ -41,7 +59,8 @@ class BaseTask(Task):
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         bound = log.bind(task=self.name, task_id=getattr(self.request, "id", None))
         bound.info("task_started")
-        result = super().__call__(*args, **kwargs)
+        with translation.override(settings.LANGUAGE_CODE):
+            result = super().__call__(*args, **kwargs)
         bound.info("task_finished")
         return result
 

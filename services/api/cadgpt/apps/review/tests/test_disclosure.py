@@ -2,17 +2,29 @@
 
 Translated wording is proven against the real running API in two languages
 (`docs/tasks/T-0029-say-what-was-checked.md`'s evidence), the same way
-`test_requirements.py` defers `requirement_text`'s bilingual proof -- this process's `.po`
-catalogue is not compiled to `.mo` outside the container build
-(`deploy/docker/api.Dockerfile`), so `gettext` here returns the English source string
-verbatim. What this file proves is the interpolation and the wording contract: the
-filename is taken from the argument, never hardcoded, and the text never uses the word
-"clean" to describe a result that could be FAIL or INDETERMINATE.
+`test_requirements.py` defers `requirement_text`'s bilingual proof. What this file proves
+is the interpolation and the wording contract: the filename is taken from the argument,
+never hardcoded, and the text never uses the word "clean" to describe a result that could
+be FAIL or INDETERMINATE -- a property of the English source string's wording, not of any
+one language, so `english` below activates English deliberately (T-0083 made `fa` the
+process-wide default) rather than re-encoding these same checks against the Persian
+translation by hand.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
+import pytest
+from django.utils import translation
+
 from cadgpt.apps.review.disclosure import disclosure_text, disclosure_title
+
+
+@pytest.fixture(autouse=True)
+def english() -> Iterator[None]:
+    with translation.override("en"):
+        yield
 
 
 def test_the_title_is_nonempty() -> None:

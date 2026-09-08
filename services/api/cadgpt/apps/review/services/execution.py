@@ -301,7 +301,12 @@ class CheckRunExecutor(BaseService):
             status=CheckRunStatus.FAILED,
             finished_at=timezone.now(),
             failure_reason=CheckRunFailure.STALLED,
-            failure_detail="The worker running this check stopped responding.",
+            # T-0083: this was a bare Python literal, not a `gettext` call -- CLAUDE.md's
+            # "every user-facing string goes through gettext" invariant, missed here.
+            # Activating the right language (T-0083's own fix) would have done nothing
+            # for this specific string, because there was no translation call for it to
+            # affect -- found while auditing every `failure_detail` write site for T-0083.
+            failure_detail=str(_("The worker running this check stopped responding.")),
             updated_at=timezone.now(),
         )
         if count:

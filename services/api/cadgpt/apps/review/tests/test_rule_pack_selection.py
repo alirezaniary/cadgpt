@@ -177,7 +177,9 @@ def test_the_same_pack_selected_twice_is_refused_as_ambiguous(
             format="json",
         )
     assert response.status_code == 400
-    assert "ambiguous" in str(response.data["detail"])
+    # T-0083: no `Accept-Language` anywhere in this request either -- the product's one
+    # language, Persian, not the English source string ("ambiguous", translated).
+    assert "مبهم" in str(response.data["detail"])
     assert not CheckRun.objects.for_tenant(catalogue_review.tenant).exists()
 
 

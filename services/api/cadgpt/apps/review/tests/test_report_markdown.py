@@ -3,15 +3,30 @@
 Coverage before findings, FAIL -> INDETERMINATE -> PASS ordering, a coverage numerator
 that is a real measurement and never `N of N`, all three counts always -- the same
 properties `test_presentation.py` and `ReportView.tsx` hold for the JSON and the screen,
-proven here for the file `ReportView.tsx` is the specification for.
+proven here for the file `ReportView.tsx` is the specification for. These are properties of
+*structure* (ordering, presence, injection-safety), not of any one language's wording, so
+`english` below activates English deliberately (T-0083 made `fa` the process-wide default,
+including for a bare pytest run with no request in sight) rather than re-encoding every
+assertion below against the Persian translation by hand.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import Any
+
+import pytest
+from django.utils import translation
 
 from cadgpt.apps.review.services.presentation import localize_report
 from cadgpt.apps.review.services.report_markdown import render_markdown_report
+
+
+@pytest.fixture(autouse=True)
+def english() -> Iterator[None]:
+    with translation.override("en"):
+        yield
+
 
 _REPORT: dict[str, Any] = {
     "schema_version": 2,

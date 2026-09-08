@@ -295,6 +295,11 @@ msgid ""
 "rather than tried again."
 msgstr "این اجرا %(count)s بار درخواست شد و بدون تکمیل، به‌جای تلاش دوباره متوقف شد."
 
+#: cadgpt/apps/review/services/execution.py (reap_stalled: the failure_detail for a run
+#: whose worker died mid-check -- T-0083, wrapped in gettext where it had not been before)
+msgid "The worker running this check stopped responding."
+msgstr "کارگری که این بررسی را اجرا می‌کرد، از پاسخ‌گویی بازایستاد."
+
 msgid "English"
 msgstr "انگلیسی"
 
@@ -489,3 +494,16 @@ msgstr "برای این اجرا هنوز گزارشی تولید نشده اس�
 #: cadgpt/apps/review/api/v1/views.py (CheckRunViewSet.generate_report_file, not succeeded)
 msgid "A report can only be generated for a succeeded check run."
 msgstr "گزارش فقط برای اجرایی که با موفقیت به پایان رسیده باشد قابل تولید است."
+
+#: cadgpt/apps/tenancy/permissions.py (IsTenantMember -- T-0083, wrapped in gettext
+#: where it had not been before)
+msgid "Select a workspace before making this request."
+msgstr "پیش از ارسال این درخواست، یک فضای کاری انتخاب کنید."
+
+#: cadgpt/apps/tenancy/permissions.py (IsTenantViewer, IsTenantMemberOrAbove -- T-0083)
+msgid "Your role in this workspace does not allow this action."
+msgstr "نقش شما در این فضای کاری اجازهٔ این کار را نمی‌دهد."
+
+#: cadgpt/apps/tenancy/permissions.py (IsTenantAdmin -- T-0083)
+msgid "Only a workspace administrator may perform this action."
+msgstr "فقط مدیر فضای کاری می‌تواند این کار را انجام دهد."

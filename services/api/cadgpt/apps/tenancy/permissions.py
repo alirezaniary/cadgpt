@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from django.utils.translation import gettext_lazy as _
 from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
 
@@ -23,7 +24,13 @@ class IsTenantMember(BasePermission):
     reviews" when the truth is "you did not say whose reviews".
     """
 
-    message = "Select a workspace before making this request."
+    # `gettext_lazy`, not `gettext`: this is a class attribute, evaluated once when the
+    # module is imported (long before any request's language is known), so an eager
+    # `gettext()` call here would freeze in whatever language happened to be active at
+    # import time -- T-0083, found while proving the real path: this was a bare Python
+    # literal, never translated at all, unlike every other user-facing string in this
+    # product (CLAUDE.md).
+    message = _("Select a workspace before making this request.")
 
     def has_permission(self, request: Request, view: Any) -> bool:  # noqa: ARG002
         return resolve_membership(request) is not None
@@ -40,17 +47,17 @@ class _MinimumRole(BasePermission):
 class IsTenantViewer(_MinimumRole):
     """May read the tenant's work but change nothing."""
 
-    message = "Your role in this workspace does not allow this action."
+    message = _("Your role in this workspace does not allow this action.")
     required_role = MembershipRole.VIEWER
 
 
 class IsTenantMemberOrAbove(_MinimumRole):
     """May create work: upload models, define rule sets, start checks."""
 
-    message = "Your role in this workspace does not allow this action."
+    message = _("Your role in this workspace does not allow this action.")
     required_role = MembershipRole.MEMBER
 
 
 class IsTenantAdmin(_MinimumRole):
-    message = "Only a workspace administrator may perform this action."
+    message = _("Only a workspace administrator may perform this action.")
     required_role = MembershipRole.ADMIN
