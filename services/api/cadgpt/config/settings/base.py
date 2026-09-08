@@ -269,6 +269,18 @@ CELERY_TASK_ROUTES = {"review.tasks.*": {"queue": "checks"}}
 # rather than left to look like work still in progress.
 CHECK_RUN_STALL_SECONDS = env.int("CHECK_RUN_STALL_SECONDS", default=CELERY_TASK_TIME_LIMIT)
 
+# `review.tasks.reap_stalled_runs` finds and fails those runs, but only if something calls
+# it. Beat is that something. The tick runs at a quarter of `CHECK_RUN_STALL_SECONDS`
+# rather than a number invented separately, so a run is caught within a quarter of its own
+# stall window of stalling rather than up to a whole extra window late. See
+# docs/tasks/T-0084-the-stalled-run-sweep-has-never-run-in-production.md.
+CELERY_BEAT_SCHEDULE = {
+    "reap-stalled-check-runs": {
+        "task": "review.tasks.reap_stalled_runs",
+        "schedule": CHECK_RUN_STALL_SECONDS / 4,
+    },
+}
+
 # How many times `CheckRunExecutor._claim` will re-claim the same run after a worker died
 # holding it, before ending it as `CheckRunFailure.RESOURCE_EXHAUSTED` instead of trying
 # again. T-0033: `acks_late` + a re-claimable `RUNNING` run is correct for a worker killed

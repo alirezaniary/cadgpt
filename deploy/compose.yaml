@@ -97,6 +97,22 @@ services:
       retries: 3
       start_period: 30s
 
+  beat:
+    # The process that actually calls `review.tasks.reap_stalled_runs` on a schedule
+    # (`CELERY_BEAT_SCHEDULE`, services/api/cadgpt/config/settings/base.py). Without this
+    # service the task is defined but never invoked -- T-0084.
+    image: cadgpt-api:latest
+    build: *api_build
+    environment: *api_env
+    command: celery -A cadgpt.config.celery beat --loglevel info
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    # The image's own HEALTHCHECK curls the gunicorn port `api` and `worker` run; `beat`
+    # runs neither and would read as permanently unhealthy otherwise.
+    healthcheck:
+      disable: true
+
   web:
     build:
       context: ..

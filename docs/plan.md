@@ -683,6 +683,32 @@ never activates the Persian the product was decided to be hardcoded to, so this 
 new failure text renders in English absent an explicit `Accept-Language: fa` — is real,
 verified pre-existing, and out of scope; queued as **T-0083**.
 
+**T-0084 — `reap_stalled_runs` is registered nowhere and has never run in production. Done
+2026-09-08.** The RUNNING-side sibling of T-0056's fix: `CheckRunExecutor.reap_stalled()` was
+correct but had no caller anywhere — no `CELERY_BEAT_SCHEDULE`, no `beat` service, no
+management command — so a `CheckRun` whose worker died mid-evaluation sat `RUNNING` forever
+and, under `MAX_IN_FLIGHT_RUNS = 1`, blocked its review permanently, in every deployment,
+since the task was written. Closed with a `CELERY_BEAT_SCHEDULE` entry ticking at
+`CHECK_RUN_STALL_SECONDS / 4` and a `beat` service in `deploy/compose.yaml`, both logged in
+`docs/decisions.md` alongside the scheduler choice (Celery's built-in file-backed
+`PersistentScheduler`, sufficient because `reap_stalled`'s `status=RUNNING` filter is already
+idempotent under at-least-once ticking — proven live, not assumed).
+
+**Reviewer-gated, and the review re-derived the real path independently rather than trusting
+the builder's paste.** It reproduced the DB rows and worker logs from the running stack down
+to the microsecond, disproved two hazards it went looking for on its own (queue routing
+sending the reap task behind CPU-bound checks; `acks_late` redelivery resurrecting an
+already-reaped row), and caught one gap the builder's own evidence hadn't closed — a live tick
+at the real, unoverridden 1800s default, not just the accelerated 60s override used for
+observability. One finding fixed rather than queued: nothing in `make verify` tied
+`CELERY_BEAT_SCHEDULE`'s task-name string to the registered task, so a rename or typo on
+either side would silently reopen the exact "review stuck forever" failure this task closed,
+with a green suite. Closed with `services/api/cadgpt/tests/test_celery_beat_schedule.py`,
+mutation-verified against a deliberately broken task name; the first version of that test was
+itself order-dependent on Celery's lazy task discovery and was corrected to call
+`app.loader.import_default_modules()`, the same call a real worker's bootstep makes, before
+being trusted.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -756,14 +782,10 @@ the first of them:
 - **T-0060** — queuing work needs a role floor; a viewer can flood the check queue.
 - **T-0061** — four loose ends in the report-generation failure record.
 
-Added 2026-09-08, from the T-0056 review — **T-0084 is now the highest-severity open item in
-the whole queue**:
+Added 2026-09-08, from the T-0056 review:
 
-- **T-0084** — `reap_stalled_runs` (the RUNNING-side sibling of T-0056's PENDING fix) is
-  registered nowhere: no Celery beat schedule exists anywhere in this repository. It has
-  never run in any deployment. The same "a review can be permanently stuck forever" failure
-  T-0056 just closed for `PENDING` is still fully open for `RUNNING`, in production, today.
-  Reviewer-gated.
+- ~~**T-0084** — `reap_stalled_runs` is registered nowhere.~~ **Done 2026-09-08.** See "What
+  has landed" below.
 - **T-0085** — T-0056's recovery is reactive-only (fires only from inside a refused
   `request_check`), so a lost-dispatch run is indistinguishable from a healthy queued one for
   up to 30 minutes, and any retry inside that window sees the same false "already running"

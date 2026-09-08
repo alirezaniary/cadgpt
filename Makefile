@@ -76,7 +76,7 @@ schema:  ## Regenerate the OpenAPI schema and the frontend's types from it
 
 ## ---------------------------------------------------------------- containers
 
-up:  ## Start Postgres, Redis, the API, a worker and the frontend
+up:  ## Start Postgres, Redis, the API, a worker, beat and the frontend
 	$(COMPOSE) up --build -d
 
 down:  ## Stop everything

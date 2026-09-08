@@ -913,3 +913,39 @@ what an agent takes to convince itself something rendered, not what it hands ove
 **Reopens if:** the mock handlers start needing knowledge no server response carries, which
 would mean a component is reading something that is not in the API and the seam has moved into
 the wrong place.
+
+---
+
+## 2026-09-08 — `reap_stalled_runs` gets a Celery beat schedule, on Celery's built-in scheduler
+
+**Problem.** `reap_stalled_runs` (the RUNNING-side sweep that fails a `CheckRun` whose worker
+died) had been defined since it was written but called by nothing -- no `CELERY_BEAT_SCHEDULE`,
+no `beat` service, no management command. Because `MAX_IN_FLIGHT_RUNS = 1`, a stalled `RUNNING`
+row blocked its review from ever being checked again, in every deployment, with no way back.
+`docs/tasks/T-0084-*.md` closes it.
+
+**Decision, interval.** The beat tick runs at `CHECK_RUN_STALL_SECONDS / 4`, not a number
+invented separately -- a stalled run is caught within a quarter of its own stall window rather
+than up to a whole extra window late, and a deployment that widens its stall tolerance widens
+the sweep's cadence with it instead of the two drifting apart.
+
+**Decision, scheduler.** Celery's default file-backed `celery.beat.PersistentScheduler`, not
+`django-celery-beat`'s database-backed one. `reap_stalled_runs` is already idempotent --
+`CheckRunExecutor.reap_stalled()`'s `status=RUNNING` filter excludes a row a previous tick
+already failed, proven live in T-0084's evidence -- and that idempotency is what makes the
+simpler scheduler sufficient: `PersistentScheduler` keeps its due-time bookkeeping in a file
+inside the `beat` container, so a restart can re-send an already-due tick a few seconds early,
+and two `beat` replicas would double every tick. Both are harmless only because a redundant
+tick's `.update()` against `status=RUNNING` matches nothing. `django-celery-beat` was not
+introduced because nothing in this task needs cross-restart schedule persistence beyond what
+that idempotency already covers.
+
+**Assumption this carries.** `deploy/compose.yaml`'s `beat` service is single-instance. Scaling
+it (`--scale beat=2`) would not corrupt anything -- the redundant tick is a no-op, not a race --
+but it is worth naming as the reason scaling `beat` is not a lever to reach for if the sweep
+ever needs to run faster; lower `CHECK_RUN_STALL_SECONDS` instead.
+
+**Reopens if:** a periodic task is ever added that is not naturally idempotent, at which point
+`PersistentScheduler`'s at-least-once, restart-can-duplicate behaviour stops being free and
+`django-celery-beat` (or an external scheduler with real exactly-once delivery) needs a real
+comparison instead of inheriting this one's reasoning by default.
