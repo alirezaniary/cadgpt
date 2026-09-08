@@ -25,3 +25,20 @@ def test_every_beat_scheduled_task_is_registered() -> None:
     scheduled = {entry["task"] for entry in settings.CELERY_BEAT_SCHEDULE.values()}
     assert scheduled, "CELERY_BEAT_SCHEDULE is empty -- nothing to check, update this test"
     assert scheduled <= app.tasks.keys()
+
+
+def test_both_check_run_reaper_sweeps_are_scheduled() -> None:
+    """The set-membership check above is one-directional: it fails a *renamed* entry, not
+    a *deleted* one -- `scheduled <= app.tasks.keys()` holds just as well for one entry as
+    for two. A review getting permanently stuck is exactly the failure both `beat` sweeps
+    exist to prevent (`review.tasks.reap_stalled_runs` for RUNNING, T-0084;
+    `review.tasks.reap_lost_dispatch_runs` for PENDING, T-0085) -- if either entry is ever
+    dropped from `CELERY_BEAT_SCHEDULE`, that guarantee silently regresses with a green
+    `make verify` unless something names both by identity, not just validates whatever
+    remains. See docs/tasks/T-0084-*.md and docs/tasks/T-0085-*.md.
+    """
+    scheduled = {entry["task"] for entry in settings.CELERY_BEAT_SCHEDULE.values()}
+    assert scheduled >= {
+        "review.tasks.reap_stalled_runs",
+        "review.tasks.reap_lost_dispatch_runs",
+    }

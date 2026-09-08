@@ -767,6 +767,24 @@ nothing in `verify`/CI, nothing committed depends on it), and `report_generation
 docstring describes a per-member language override that was never actually wired into any
 request path.
 
+**Milestone review, 2026-09-09 — T-0056+T-0084+T-0085+T-0083 as a combined diff.** All four
+are done; together they close "a review can be permanently stuck forever" for both PENDING
+and RUNNING, and the server-side language gap. `/adversarial-review`'d as one unit, since
+individual per-task review each looked at one commit at a time. One real finding, reproduced
+before being trusted: `test_celery_beat_schedule.py` (T-0084) only caught a *renamed* task
+string in a surviving `CELERY_BEAT_SCHEDULE` entry, never a *deleted* entry — `scheduled <=
+app.tasks.keys()` holds identically whether one sweep or two is scheduled. Reproduced by
+deleting T-0085's entire `reap-lost-dispatch-check-runs` entry: `245 passed`, `make verify`
+green, no signal that the exact regression this batch of work exists to prevent had just
+happened. Fixed directly (small and load-bearing enough not to queue): a second test
+asserting both `review.tasks.reap_stalled_runs` and `review.tasks.reap_lost_dispatch_runs`
+are present by name, not just that whatever remains is valid — mutation-verified against the
+same deletion, restored, `make verify` re-run clean (246 passed). Everything else checked
+clean: `_claim`'s terminal-row guard generalizes to both sweeps' FAILED rows identically (no
+resurrection risk from adding the second periodic sweep), task queue routing is unaffected,
+the cross-tenant sweep pattern leaks nothing, and the pre-existing `.gitignore` stray change
+was confirmed to predate and stay outside all four commits.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
