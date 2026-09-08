@@ -84,3 +84,31 @@ class CheckRunQuerySet(TenantScopedQuerySet["CheckRun"]):
         """
         cutoff = timezone.now() - timedelta(seconds=older_than_seconds)
         return self.filter(status=CheckRunStatus.RUNNING, started_at__lt=cutoff)
+
+    def dispatch_lost(self, older_than_seconds: int) -> Self:
+        """`PENDING` with no `task_id`, past the point a lost `on_commit` callback explains.
+
+        `ReviewService.request_check`'s `_dispatch` writes `task_id` synchronously, in the
+        same process, immediately after `task.delay()` returns -- there is no queue wait
+        between a successful dispatch and that write landing. A `PENDING` run that still
+        carries no `task_id` after `older_than_seconds` was therefore never delivered at
+        all: the process died between `COMMIT` and the `on_commit` callback firing, or the
+        callback fired and `.delay()` itself raised because the broker was unreachable. A
+        run that *was* dispatched and is simply waiting its turn behind a busy queue
+        already carries a `task_id` (set the moment `.delay()` returned, long before a
+        worker picks it up) and is excluded here regardless of age -- queue depth is not a
+        fault, exactly the distinction `stalled`'s own docstring draws for `RUNNING`.
+
+        `older_than_seconds` is meant to be called with `settings.CHECK_RUN_STALL_SECONDS`
+        -- the same constant `stalled` uses, not a number invented for this method. That
+        setting already answers "how long is too long for a check run to sit in a
+        non-terminal state before the process responsible for moving it forward is
+        presumed dead"; a lost dispatch is that same presumption applied one step earlier
+        in a run's life than `stalled` applies it -- the callback that should have fired
+        did not, in place of the worker that should have finished did not. Reusing it
+        means a deployment that widens its tolerance for one widens it for both, rather
+        than drifting apart from a constant nobody remembers to keep in sync. See
+        `docs/tasks/T-0056-a-lost-check-dispatch-kills-the-review.md`.
+        """
+        cutoff = timezone.now() - timedelta(seconds=older_than_seconds)
+        return self.filter(status=CheckRunStatus.PENDING, task_id="", created_at__lt=cutoff)

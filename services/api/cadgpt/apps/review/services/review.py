@@ -5,7 +5,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
+from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from cadgpt.apps.account.models import User
@@ -14,7 +16,9 @@ from cadgpt.apps.base.services import BaseTenantAwareService
 from cadgpt.apps.media.choices import MediaKind
 from cadgpt.apps.media.models import Media
 from cadgpt.apps.project.models import Project
+from cadgpt.apps.review.choices import CheckRunFailure, CheckRunStatus
 from cadgpt.apps.review.models import CheckRun, Review
+from cadgpt.apps.review.repositories.querysets import CheckRunQuerySet
 from cadgpt.apps.rulepack.models import RulePack, RuleSet
 from cadgpt.apps.rulepack.services import RulePackService
 
@@ -80,14 +84,27 @@ class ReviewService(BaseTenantAwareService):
         the message up before the row it names is visible to any other connection, and the
         task then fails to find a run that certainly exists. This is the classic
         dual-write race, and the ordering here is the whole fix.
+
+        The same race has a worse failure mode one step earlier: if the process dies
+        between `COMMIT` and the `on_commit` callback firing -- or the callback fires and
+        `.delay()` itself raises because the broker is unreachable -- `_dispatch` never
+        runs at all, and the run it would have queued sits `PENDING` forever with no
+        `task_id`. Because `MAX_IN_FLIGHT_RUNS` counts that row, it then blocks every
+        future call here too. `_reap_lost_dispatch` is the self-heal: it runs only when
+        this method is about to refuse, looks for exactly that shape of row, and fails it
+        so the request below can proceed -- the user's way out is asking again, not a
+        separate recovery action. See `docs/tasks/
+        T-0056-a-lost-check-dispatch-kills-the-review.md`.
         """
         from cadgpt.apps.review.tasks import execute_check_run
 
-        in_flight = (
-            CheckRun.objects.for_tenant(self.tenant).for_review(review.pk).in_flight()
+        review_runs: CheckRunQuerySet = CheckRun.objects.for_tenant(self.tenant).for_review(
+            review.pk
         )
-        if in_flight.count() >= self.MAX_IN_FLIGHT_RUNS:
-            raise ConflictError(_("A check is already running for this review."))
+        if review_runs.in_flight().count() >= self.MAX_IN_FLIGHT_RUNS:
+            self._reap_lost_dispatch(review_runs)
+            if review_runs.in_flight().count() >= self.MAX_IN_FLIGHT_RUNS:
+                raise ConflictError(_("A check is already running for this review."))
 
         selection = self._resolve_selection(review=review, rule_pack_uuids=rule_pack_uuids)
 
@@ -161,9 +178,55 @@ class ReviewService(BaseTenantAwareService):
         pack_service = RulePackService()
         return [pack_service.snapshot(packs[uuid]) for uuid in requested]
 
-    def _dispatch(self, run: CheckRun, task: object) -> None:
-        from django.utils import timezone
+    def _reap_lost_dispatch(self, runs: CheckRunQuerySet) -> int:
+        """Fail a `PENDING` run in `runs` whose dispatch was lost, so it stops blocking.
 
+        Called only from `request_check`, only at the moment it is about to refuse a new
+        check -- never speculatively, and never as a periodic sweep. That restraint is
+        what keeps this safe: `CheckRunQuerySet.dispatch_lost` already limits its match to
+        a run old enough that a live dispatch would certainly have set `task_id` by now
+        (`settings.CHECK_RUN_STALL_SECONDS`), so nothing here fails a run that is merely
+        waiting behind a busy queue.
+
+        Re-dispatching instead of failing was considered and rejected. `CheckRunExecutor.
+        execute` is documented idempotent for a *redelivered* Celery message, but that
+        relies on Celery's own guarantee that a message is never live on two workers at
+        once (`execution.py`'s docstring on `_claim`). A *second, independently issued*
+        `task.delay()` call for the same run carries no such guarantee: if the original
+        dispatch actually reached the broker and only the follow-up write of `task_id` was
+        lost -- a narrower race than the one this method exists for, but a real one --
+        `_claim`'s row lock would serialize the two attempts rather than reject the second,
+        and both would go on to evaluate the same model concurrently. Failing the row
+        instead costs the one result that attempt would have produced; the caller asks
+        again, at the price of one more request, rather than this method risking a model
+        checked twice at once.
+
+        A single filtered `UPDATE`, not select-then-save: `runs.dispatch_lost(...)` is
+        re-evaluated by Postgres against the current row at the moment of the write, the
+        same pattern `reap_stalled` already uses (`execution.py`). A `SELECT` into Python
+        objects followed by per-row `.save()` would reopen exactly the race this method
+        exists to close -- a worker claiming the row (`_claim` flips it to `RUNNING`)
+        between the read and the write would have its `RUNNING` row overwritten back to
+        `FAILED` out from under it, and the caller below would then dispatch a second,
+        genuinely concurrent evaluation of the same review.
+        """
+        count = runs.dispatch_lost(settings.CHECK_RUN_STALL_SECONDS).update(
+            status=CheckRunStatus.FAILED,
+            finished_at=timezone.now(),
+            failure_reason=CheckRunFailure.DISPATCH_LOST,
+            failure_detail=str(
+                _(
+                    "This check was requested but its dispatch never reached a worker, "
+                    "so it was ended. Request the check again."
+                )
+            ),
+            updated_at=timezone.now(),
+        )
+        if count:
+            self.log.warning("check_run_dispatch_lost_reaped", count=count)
+        return count
+
+    def _dispatch(self, run: CheckRun, task: object) -> None:
         async_result = task.delay(str(run.uuid))  # type: ignore[attr-defined]
         CheckRun.objects.filter(pk=run.pk).update(
             task_id=async_result.id, queued_at=timezone.now()

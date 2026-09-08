@@ -52,6 +52,16 @@ class CheckRunFailure(models.TextChoices):
         "resource_exhausted",
         _("The check repeatedly failed to complete and was stopped rather than retried"),
     )
+    #: A `PENDING` run whose `on_commit` dispatch never reached a worker at all --
+    #: `ReviewService.request_check`'s callback never fired (the process died between
+    #: `COMMIT` and the callback), or it fired and `.delay()` itself raised. Distinct from
+    #: `STALLED`: a stalled run was claimed by a worker and then went silent; this run was
+    #: never claimed by anyone. See `docs/tasks/
+    #: T-0056-a-lost-check-dispatch-kills-the-review.md`.
+    DISPATCH_LOST = (
+        "dispatch_lost",
+        _("The check could never be started and was ended so a new one can be requested"),
+    )
 
 
 class ReportGenerationFailure(models.TextChoices):

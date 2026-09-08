@@ -7,11 +7,14 @@ rule" and "lacks the data the rule needs" are different answers.
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 
 import pytest
+from django.utils import timezone
 from rest_framework.test import APIClient
 
+from cadgpt.apps.base.exceptions import ConflictError
 from cadgpt.apps.review.choices import CheckRunFailure, CheckRunStatus
 from cadgpt.apps.review.models import CheckRun, Review
 from cadgpt.apps.review.services import ReviewService
@@ -136,6 +139,94 @@ def test_a_second_check_while_one_is_in_flight_is_refused(
     second = api.post(f"/api/v1/reviews/{review.uuid}/check/")
     assert second.status_code == 409
     assert second.json()["code"] == "conflict"
+
+
+def test_a_run_whose_dispatch_was_lost_can_be_recovered(
+    tenant: Tenant, review: Review, owner: Any, settings: Any
+) -> None:
+    """T-0056: a `PENDING` run whose `on_commit` callback never fired stops blocking.
+
+    Calling `request_check` outside the `commit()` fixture -- exactly like
+    `test_a_second_check_while_one_is_in_flight_is_refused` above -- leaves the
+    transaction's `on_commit` callback registered but never run, which is precisely what a
+    worker dying between `COMMIT` and that callback firing looks like: a `PENDING` row with
+    no `task_id`. Backdating it past `CHECK_RUN_STALL_SECONDS` is what a live dispatch
+    could never produce (`_dispatch` writes `task_id` synchronously, long before that).
+    """
+    settings.CHECK_RUN_STALL_SECONDS = 60
+    stuck = ReviewService(tenant=tenant).request_check(review=review, requested_by=owner)
+    assert stuck.task_id == "", "the on_commit dispatch must not have run in this test"
+    CheckRun.objects.filter(pk=stuck.pk).update(
+        created_at=timezone.now() - timedelta(seconds=120)
+    )
+
+    # The hole, reproduced: the existing RUNNING-only sweep does not see it, and it is
+    # still exactly the row it was.
+    assert CheckRunExecutor().reap_stalled() == 0
+    stuck.refresh_from_db()
+    assert stuck.status == CheckRunStatus.PENDING
+
+    # The recovery: asking for a new check reaps the stuck one first and succeeds.
+    recovered = ReviewService(tenant=tenant).request_check(
+        review=review, requested_by=owner
+    )
+
+    stuck.refresh_from_db()
+    assert stuck.status == CheckRunStatus.FAILED
+    assert stuck.failure_reason == CheckRunFailure.DISPATCH_LOST
+    assert stuck.failure_detail
+    assert recovered.uuid != stuck.uuid
+    assert recovered.status == CheckRunStatus.PENDING
+
+
+def test_a_genuinely_queued_run_is_not_swept_as_lost(
+    tenant: Tenant, review: Review, owner: Any, settings: Any
+) -> None:
+    """The false-positive direction: age alone must never be the signal.
+
+    This run carries a `task_id` -- it really was dispatched and is only old because the
+    queue is busy. Sweeping it just for its age would silently throw away a review's only
+    working check underneath it.
+    """
+    settings.CHECK_RUN_STALL_SECONDS = 60
+    run = CheckRun.objects.create_run(review=review, requested_by=owner)
+    CheckRun.objects.filter(pk=run.pk).update(
+        task_id="celery-task-id-still-queued",
+        queued_at=timezone.now() - timedelta(seconds=120),
+        created_at=timezone.now() - timedelta(seconds=120),
+    )
+
+    with pytest.raises(ConflictError):
+        ReviewService(tenant=tenant).request_check(review=review, requested_by=owner)
+
+    run.refresh_from_db()
+    assert run.status == CheckRunStatus.PENDING, (
+        "a run that was actually dispatched must never be reaped just for being old"
+    )
+
+
+def test_a_young_pending_run_with_no_task_id_is_not_swept_either(
+    tenant: Tenant, review: Review, owner: Any, settings: Any
+) -> None:
+    """The age threshold is load-bearing, not decorative.
+
+    A `PENDING` run with no `task_id` and no age past `CHECK_RUN_STALL_SECONDS` is the
+    normal window between `COMMIT` and `_dispatch`'s synchronous `task_id` write in an
+    ordinary, healthy request -- not evidence of a lost dispatch. Reaping it here would
+    make every busy moment look like a failure.
+    """
+    settings.CHECK_RUN_STALL_SECONDS = 120
+    young = ReviewService(tenant=tenant).request_check(review=review, requested_by=owner)
+    assert young.task_id == "", "the on_commit dispatch must not have run in this test"
+
+    with pytest.raises(ConflictError):
+        ReviewService(tenant=tenant).request_check(review=review, requested_by=owner)
+
+    young.refresh_from_db()
+    assert young.status == CheckRunStatus.PENDING, (
+        "a run well within the stall window must never be reaped just for lacking a "
+        "task_id yet -- that is every healthy run's normal first moment"
+    )
 
 
 def test_an_unreadable_model_fails_the_run_with_a_stated_reason(

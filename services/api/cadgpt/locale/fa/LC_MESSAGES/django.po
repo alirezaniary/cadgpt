@@ -270,6 +270,22 @@ msgstr "بسته مقرراتی استنادشده دیگر با بایت‌ها
 msgid "The check repeatedly failed to complete and was stopped rather than retried"
 msgstr "بررسی بارها بدون تکمیل‌شدن شکست خورد و به‌جای تلاش دوباره متوقف شد"
 
+#: cadgpt/apps/review/choices.py (CheckRunFailure.DISPATCH_LOST -- T-0056, a PENDING run
+#: whose on_commit dispatch never reached a worker)
+msgid "The check could never be started and was ended so a new one can be requested"
+msgstr ""
+"این بررسی هرگز آغاز نشد و به‌جای ماندن در انتظار، پایان یافت تا بتوان "
+"بررسی تازه‌ای درخواست کرد."
+
+#: cadgpt/apps/review/services/review.py (_reap_lost_dispatch: the sentence actually
+#: shown to the user for a recovered run -- T-0056)
+msgid ""
+"This check was requested but its dispatch never reached a worker, so it "
+"was ended. Request the check again."
+msgstr ""
+"این بررسی درخواست شد، اما هرگز به کارگری نرسید و از این رو پایان یافت. "
+"بررسی را دوباره درخواست کنید."
+
 #: cadgpt/apps/review/services/execution.py (_claim: CHECK_RUN_MAX_CLAIMS reached --
 #: T-0033 review F4, this is what ReviewsPage.tsx actually renders to the user, so it
 #: must be translated like MediaService._validate's message, not left as a raw f-string)

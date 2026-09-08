@@ -645,6 +645,44 @@ actually current. One item flagged NOT DONE rather than fixed unilaterally: the
 upload is gone from the UI and no catalogue-seeded pack reproduces it — queued as
 **T-0078** (a backend seed-manifest change, outside this frontend-only task's scope).
 
+**T-0056 — a lost check dispatch kills the review, not just the file. Done 2026-09-08.**
+The MVP's highest-severity standing gap: `ReviewService.request_check` refused every future
+check permanently — `MAX_IN_FLIGHT_RUNS = 1` counting a dead row forever — if a `PENDING`
+run's `on_commit` dispatch was ever lost (process killed between `COMMIT` and the callback,
+or `.delay()` itself raising). `_reap_lost_dispatch` closes it: called only from inside
+`request_check`, only at the instant it is about to refuse, it fails a `PENDING` run with no
+`task_id` older than `CHECK_RUN_STALL_SECONDS` (reusing `stalled()`'s existing constant, not
+inventing one) so the request below can proceed. Re-dispatch instead of failing was
+considered and rejected: a second, independently-issued `.delay()` for a run whose original
+dispatch actually reached the broker would race a genuine claim, risking a model evaluated
+twice at once.
+
+**Reviewer-gated, and the review earned its dispatch twice over.** First finding: the
+initial implementation selected the lost rows into Python objects and wrote each back with a
+per-row `.save()` — exactly the TOCTOU race the design rationale rejects re-dispatch to
+avoid, reopened by the implementation. A worker's `_claim` flipping a row to `RUNNING`
+between the read and the write would have that row overwritten back to `FAILED`
+mid-evaluation. Fixed by collapsing selection and write into one filtered `UPDATE`
+(`runs.dispatch_lost(...).update(...)`), mirroring `reap_stalled`'s own pattern — Postgres
+re-evaluates the `WHERE` clause against the row's current state at the moment of the write.
+Second finding: the evidence's live-stack paste for the recovery step named a run the
+reviewer found had **zero rows in Postgres** and a `NotFoundError` in the worker log — the
+first pass's cleanup script had deleted it before independently confirming it existed, and
+guessed at an explanation instead of checking. Re-run cleanly, with an explicit post-hoc
+existence check, before this entry was written. A third finding — the age threshold itself
+was unpinned by any test, and removing it left the whole suite green — closed with a new
+test, mutation-verified by hand against the reverted clause.
+
+Two findings queued rather than fixed here, one of them now the single most urgent item in
+the backlog: **T-0084** (`reap_stalled_runs`, the RUNNING-side sibling of this fix, is wired
+into no Celery beat schedule anywhere and has never executed in any deployment — the same "a
+review can be stuck forever" failure this task closed for PENDING is still fully open for
+RUNNING) and **T-0085** (the reactive-only trigger leaves a lost-dispatch run
+indistinguishable from a healthy one for up to 30 minutes). A fourth finding — the server
+never activates the Persian the product was decided to be hardcoded to, so this task's own
+new failure text renders in English absent an explicit `Accept-Language: fa` — is real,
+verified pre-existing, and out of scope; queued as **T-0083**.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -710,12 +748,32 @@ the first of them:
 - **T-0054** — four loose ends in the generation path.
 - **T-0055** — the report file must stand on its own once it leaves the building.
 
-- **T-0056** — a lost check dispatch kills the review, not just the file. **Highest of the queue.**
+- ~~**T-0056** — a lost check dispatch kills the review, not just the file.~~ **Done
+  2026-09-08.** See "What has landed" below.
 - **T-0057** — the backfill must survive one bad run, and count what it did.
 - **T-0058** — the terminal-failure state offers a button that cannot change anything.
 - **T-0059** — a run stranded by the size cap has no way back once the cap is raised.
 - **T-0060** — queuing work needs a role floor; a viewer can flood the check queue.
 - **T-0061** — four loose ends in the report-generation failure record.
+
+Added 2026-09-08, from the T-0056 review — **T-0084 is now the highest-severity open item in
+the whole queue**:
+
+- **T-0084** — `reap_stalled_runs` (the RUNNING-side sibling of T-0056's PENDING fix) is
+  registered nowhere: no Celery beat schedule exists anywhere in this repository. It has
+  never run in any deployment. The same "a review can be permanently stuck forever" failure
+  T-0056 just closed for `PENDING` is still fully open for `RUNNING`, in production, today.
+  Reviewer-gated.
+- **T-0085** — T-0056's recovery is reactive-only (fires only from inside a refused
+  `request_check`), so a lost-dispatch run is indistinguishable from a healthy queued one for
+  up to 30 minutes, and any retry inside that window sees the same false "already running"
+  refusal. Likely resolved as a side effect once T-0084 wires up a periodic tick — check
+  T-0084's status before scoping this independently.
+- **T-0083** — the product was decided single-language, hardcoded Persian (T-0072), but the
+  server never activates that language itself: `LANGUAGE_CODE="en"`, and `services/web` never
+  sends `Accept-Language`. Every server-generated user-facing string (report prose, failure
+  detail) renders in whatever the visiting browser's own locale is — for the Celery worker,
+  which has no request at all, there is currently no language decision being made at all.
 
 - **T-0062** — an ordinary deploy burns a run's claims, and there are only three. **The important
   one of this group:** refusing a healthy check is worse than the failure the bound prevents.

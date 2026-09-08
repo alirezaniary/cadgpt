@@ -222,7 +222,14 @@ export function ReviewDetailPage() {
                   className={candidate.uuid === openRun ? "active" : ""}
                   onClick={() => setOpenRun(candidate.uuid)}
                 >
-                  <td>{t(`status.${candidate.status}`)}</td>
+                  <td>
+                    {t(`status.${candidate.status}`)}
+                    {candidate.status === "failed" && candidate.failure_detail && (
+                      <p className="muted" data-testid="run-failure-detail">
+                        {candidate.failure_detail}
+                      </p>
+                    )}
+                  </td>
                   <td>{candidate.outcome ? <StatusPill status={candidate.outcome} /> : null}</td>
                   <td className="muted">{formatDate(candidate.created_at)}</td>
                 </tr>
