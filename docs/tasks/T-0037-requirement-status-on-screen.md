@@ -655,6 +655,18 @@ confirmed the file matched the pre-mutation diff), the `web` image rebuilt, and 
 Nothing from F1 is unfinished. F2-F6 from the same review were explicitly out of scope
 for this round per the dispatching agent's instruction and are left for the judge.
 
+**Post-commit correction, 2026-09-11.** The coordinator's first commit of this round
+(`a95fa6c`) shipped `ReportView.tsx` with `{false && requirement.applicability_caveat_label
+&& (...)}` still in place — the mutation-test's own kill step, never restored, because two
+duplicate builder dispatches raced on the same mutation test and only one of the two
+restorations landed before the commit was made. Caught by a late, stale task-completion
+notification for the other duplicate dispatch prompting a direct `git diff` against `HEAD`
+rather than trusting the already-accepted evidence. Fixed in `adb8f35`: rebuilt the `web`
+image from the corrected source, ran `e2e/report.spec.ts -g "carries a caveat"` live against
+the rebuilt stack (pass), and confirmed no other file this task touched carried the same
+leftover pattern (`git grep` for `false &&` / `if False` / `and False` across every file in
+both this commit and T-0038's). This is now the authoritative, verified-live state.
+
 ## Review
 
 **Coordinator note, 2026-09-10:** the builder's self-authored account below (originally headed
