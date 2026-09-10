@@ -264,7 +264,7 @@ export function ReportView({
                       reason_label notice above by construction on the server
                       (cadgpt_engine.check._specification): at most one of the two is
                       ever set on the same requirement. */}
-                  {false && requirement.applicability_caveat_label && (
+                  {requirement.applicability_caveat_label && (
                     <p className="notice" data-testid="requirement-applicability-caveat">
                       {requirement.applicability_caveat_label}
                     </p>
