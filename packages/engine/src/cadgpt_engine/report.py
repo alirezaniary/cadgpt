@@ -27,7 +27,24 @@ from cadgpt_engine.status import Applicability, ReasonCode, Status
 #: citation and becomes its fallback -- the field's role changes even though its own text
 #: does not -- so a document written before this version has no `basis` at all and must be
 #: read through that fallback rather than assumed to carry one.
-REPORT_SCHEMA_VERSION = 2
+#:
+#: Bumped to 3 for `RequirementOutcome.reason_code` *and* `RequirementOutcome.
+#: applicability_caveat` (T-0037, folded into the same bump across two review rounds --
+#: nothing consumed version 3 before the second field was added, so this is one shipped
+#: change, not two): a requirement that evaluated no entities -- a prohibited
+#: specification matching nothing, an unmatched applicability, a schema mismatch -- now
+#: carries the reason one level up (`judge()`'s own `ReasonCode`) rather than leaving the
+#: reader to infer it from a bare `INDETERMINATE` beside a non-contradictory but
+#: unexplained verdict (`docs/decisions.md`, "A requirement that evaluated nothing is
+#: explained, never suppressed"); and a requirement that *did* evaluate real entities but
+#: whose specification's own applicability was never established (`Applicability.
+#: UNDETERMINED`, e.g. a schema mismatch) now carries that caveat too, so a genuine `PASS`
+#: reached under an unresolved applicability is never rendered as an unqualified one
+#: (`CLAUDE.md`, "Never assert compliance we did not establish"). A document written
+#: before this version has neither key at all, distinct from a requirement that has both
+#: keys present and set to `null` because it genuinely evaluated entities under an
+#: established applicability.
+REPORT_SCHEMA_VERSION = 3
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,6 +126,35 @@ class RequirementOutcome:
     and the fallback a service renders when `basis` cannot be turned into a sentence in the
     reader's language. `basis` is the primary citation: the service supplies the wording,
     the same shape `reason_code` / `reason_label` already established for a finding's cause.
+
+    `reason_code` is why *this requirement* evaluated no entities: `None` when it genuinely
+    evaluated entities (`passed`, `failed` and `indeterminate` are not all zero), otherwise
+    the same `ReasonCode` `judge()` (`check.py`) already decided one level up, for the
+    specification, from the same subject count and cardinality this requirement shares --
+    never a new code invented at this level. A prohibited specification matching nothing is
+    legitimately `PASS` while every requirement beneath it reads `INDETERMINATE` with
+    `passed == failed == indeterminate == 0`; without this field that row is a bare
+    `INDETERMINATE` under a green verdict, which reads as a contradiction it is not (T-0037,
+    `docs/decisions.md`: "A requirement that evaluated nothing is explained, never
+    suppressed").
+
+    `applicability_caveat` is a *different* question, added in T-0037's review round 2
+    (finding F1): whether the *specification this requirement belongs to* ever established
+    that it applies at all. `judge()` can return `Applicability.UNDETERMINED` (today, only
+    for `ReasonCode.SCHEMA_MISMATCH` -- an IDS written for a different `ifcVersion` than the
+    model's own schema) while `ifctester` still matches real entities and genuinely
+    evaluates a requirement's facet against them, producing a real, unqualified `PASS` (or
+    `FAIL`) with non-zero counts. `reason_code` stays `None` in that case -- this
+    requirement truly did evaluate entities, so it would be dishonest to reuse the
+    "evaluated nothing" field for it -- but rendering that `PASS` with no caveat at all
+    asserts a compliance this run never established was even applicable, which is
+    exactly what `CLAUDE.md`'s "Never assert compliance we did not establish" forbids.
+    So this is a second, distinctly-named
+    field rather than an overload of `reason_code`: `None` ordinarily, and the parent
+    specification's own `reason_code` when that specification's `applicability` is
+    `Applicability.UNDETERMINED` *and* `reason_code` above is `None` (a requirement already
+    carrying `reason_code` -- because it also matched nothing -- would otherwise show the
+    identical sentence twice; `reason_code` alone already explains that row).
     """
 
     description: str
@@ -119,6 +165,8 @@ class RequirementOutcome:
     indeterminate: int
     entities: tuple[EntityOutcome, ...]
     entities_omitted: int
+    reason_code: ReasonCode | None
+    applicability_caveat: ReasonCode | None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -130,6 +178,10 @@ class RequirementOutcome:
             "indeterminate": self.indeterminate,
             "entities": [e.to_dict() for e in self.entities],
             "entities_omitted": self.entities_omitted,
+            "reason_code": self.reason_code.value if self.reason_code else None,
+            "applicability_caveat": (
+                self.applicability_caveat.value if self.applicability_caveat else None
+            ),
         }
 
 

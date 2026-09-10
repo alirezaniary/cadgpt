@@ -188,3 +188,181 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
   });
   await expect(runHistory.locator("tbody tr")).toHaveCount(1);
 });
+
+test("a requirement that evaluated nothing explains why, in words, beside its status", async ({
+  page,
+  account,
+}) => {
+  // T-0037: the case the T-0028 review reproduced. `window_prohibited.ids` ("No windows
+  // permitted", seeded by `manage.py seed_rule_packs`) prohibits IfcWindow
+  // (minOccurs=maxOccurs=0), and IFC_FILE (three_doors.ifc) contains no IfcWindow at all
+  // -- the applicability itself matches zero subjects. The specification legitimately
+  // reaches PASS (NO_SUBJECTS_AND_PROHIBITED: none present, which is what a prohibition
+  // asks for), while its lone requirement evaluated no entities and reads INDETERMINATE,
+  // passed == failed == indeterminate == 0. Before this task, the requirement row carried
+  // only its bare description with no status and no explanation, so a PASS specification
+  // sitting over a bare "shall not be provided" line read as an unexplained, possibly
+  // contradictory report. This test is the real assertion the task's Scope calls for --
+  // not a trivial always-true check -- and it fails for the right reason if the StatusPill
+  // or the reason paragraph is removed (see the task's Evidence for the mutation proof).
+  await page.goto("/");
+
+  await page.getByLabel("رایانامه").fill(account.email);
+  await page.getByLabel("گذرواژه").fill(account.password);
+  await page.getByRole("button", { name: "ورود" }).click();
+
+  await expect(page.locator(".avatar-trigger")).toBeVisible({ timeout: 15_000 });
+  await page.locator(".avatar-trigger").click();
+  await expect(page.locator(".user-menu-header strong")).toHaveText(account.tenantName);
+  await page.keyboard.press("Escape");
+
+  await expect(page.getByRole("heading", { name: "پروژه‌ها" })).toBeVisible();
+
+  const projectName = `window-prohibited-project-${Date.now()}`;
+  await page.getByRole("link", { name: "افزودن پروژه" }).click();
+  await page.getByLabel("نام").fill(projectName);
+  await page.getByRole("button", { name: "ایجاد پروژه" }).click();
+  await expect(page.getByRole("heading", { name: projectName })).toBeVisible({ timeout: 10_000 });
+
+  const reviewName = `window-prohibited-${Date.now()}`;
+  await page.getByRole("link", { name: "افزودن بررسی" }).click();
+  await expect(page.getByRole("heading", { name: "افزودن بررسی" })).toBeVisible();
+  await page.getByLabel("نام").fill(reviewName);
+  await page.locator('input[type="file"]').setInputFiles(IFC_FILE);
+  await page.getByRole("button", { name: "ایجاد بررسی" }).click();
+  await expect(page.getByRole("heading", { name: reviewName })).toBeVisible({ timeout: 10_000 });
+
+  const picker = page.getByTestId("catalogue-picker");
+  await expect(picker).toBeVisible();
+  const windowProhibitedPack = picker
+    .locator("li", { hasText: "No windows permitted" })
+    .filter({ hasText: "v0.1" });
+  await expect(windowProhibitedPack).toBeVisible({ timeout: 10_000 });
+  await windowProhibitedPack.getByRole("checkbox").check();
+  await picker.getByRole("button", { name: "اجرای بررسی با بسته‌های انتخاب‌شده" }).click();
+
+  const report = page.locator("section.report");
+  await expect(report).toBeVisible({ timeout: 30_000 });
+
+  // The specification genuinely, legitimately reaches PASS: nothing prohibited is present.
+  const spec = report.locator("li.spec").first();
+  await expect(spec.locator(".spec__head .pill")).toHaveText("قبول"); // status.PASS
+
+  // The requirement row beneath it, the actual subject of this task: a StatusPill
+  // showing INDETERMINATE sits beside the requirement's own description -- rendered,
+  // not merely present in the API JSON -- and the reason is the human sentence from the
+  // server's gettext catalogue, never the bare reason code.
+  const requirement = report.locator(".requirement").first();
+  await expect(requirement.locator('[data-testid="requirement-text"]')).toHaveText(
+    "The Name shall not be provided.",
+  );
+  const requirementPill = requirement.locator(".requirement__head .pill");
+  await expect(requirementPill).toHaveText("نامشخص"); // status.INDETERMINATE, Persian UI chrome
+  await expect(requirementPill).toHaveClass(/pill--indeterminate/);
+
+  const requirementReason = requirement.locator('[data-testid="requirement-reason"]');
+  await expect(requirementReason).toBeVisible();
+  await expect(requirementReason).toHaveText(
+    "This rule prohibits such elements and the model contains none.",
+  );
+  // The reason must never be the bare machine code -- that is the exact failure this
+  // task exists to close (a bare INDETERMINATE with nothing beside it to explain it).
+  await expect(requirementReason).not.toContainText("NO_SUBJECTS_AND_PROHIBITED");
+
+  // No entities are itemised: the requirement matched nothing, so there is nothing to
+  // list, and the table must not render for this row.
+  await expect(requirement.locator("table.entities")).toHaveCount(0);
+
+  await page.screenshot({
+    path: path.resolve(__dirname, "screenshots/requirement-reason.png"),
+    fullPage: true,
+  });
+});
+
+test("a requirement that genuinely evaluated real entities still carries a caveat when its own specification's applicability was never established", async ({
+  page,
+  account,
+}) => {
+  // T-0037 review round 2, finding F1. `door_schema_mismatch.ids` ("Door name recorded
+  // (wrong schema)", seeded by `manage.py seed_rule_packs`) names Name recorded on
+  // IFCDOOR -- identical to door_name_recorded.ids -- except it declares
+  // ifcVersion="IFC2X3" only. IFC_FILE (three_doors.ifc) is IFC4, so the specification's
+  // own applicability could not be established (SCHEMA_MISMATCH,
+  // UNDETERMINED_APPLICABILITY), and the specification itself reads INDETERMINATE.
+  // ifctester still genuinely matches and evaluates all three real doors against the
+  // Name facet, so the requirement beneath it is a real PASS with real non-zero counts
+  // -- not the "evaluated nothing" case the test above covers. Before this fix, that PASS
+  // rendered with no caveat at all, directly beneath a specification pill saying
+  // applicability could not be established: an unqualified compliance claim this run
+  // never established (CLAUDE.md, "Never assert compliance we did not establish"). This
+  // test is the real assertion for that fix -- not a trivial always-true check -- and it
+  // fails for the right reason if the caveat paragraph is removed (see the task's
+  // Evidence, Round 2, for the mutation proof).
+  await page.goto("/");
+
+  await page.getByLabel("رایانامه").fill(account.email);
+  await page.getByLabel("گذرواژه").fill(account.password);
+  await page.getByRole("button", { name: "ورود" }).click();
+
+  await expect(page.locator(".avatar-trigger")).toBeVisible({ timeout: 15_000 });
+  await page.locator(".avatar-trigger").click();
+  await expect(page.locator(".user-menu-header strong")).toHaveText(account.tenantName);
+  await page.keyboard.press("Escape");
+
+  await expect(page.getByRole("heading", { name: "پروژه‌ها" })).toBeVisible();
+
+  const projectName = `schema-mismatch-project-${Date.now()}`;
+  await page.getByRole("link", { name: "افزودن پروژه" }).click();
+  await page.getByLabel("نام").fill(projectName);
+  await page.getByRole("button", { name: "ایجاد پروژه" }).click();
+  await expect(page.getByRole("heading", { name: projectName })).toBeVisible({ timeout: 10_000 });
+
+  const reviewName = `schema-mismatch-${Date.now()}`;
+  await page.getByRole("link", { name: "افزودن بررسی" }).click();
+  await expect(page.getByRole("heading", { name: "افزودن بررسی" })).toBeVisible();
+  await page.getByLabel("نام").fill(reviewName);
+  await page.locator('input[type="file"]').setInputFiles(IFC_FILE);
+  await page.getByRole("button", { name: "ایجاد بررسی" }).click();
+  await expect(page.getByRole("heading", { name: reviewName })).toBeVisible({ timeout: 10_000 });
+
+  const picker = page.getByTestId("catalogue-picker");
+  await expect(picker).toBeVisible();
+  const schemaMismatchPack = picker
+    .locator("li", { hasText: "Door name recorded (wrong schema)" })
+    .filter({ hasText: "v0.1" });
+  await expect(schemaMismatchPack).toBeVisible({ timeout: 10_000 });
+  await schemaMismatchPack.getByRole("checkbox").check();
+  await picker.getByRole("button", { name: "اجرای بررسی با بسته‌های انتخاب‌شده" }).click();
+
+  const report = page.locator("section.report");
+  await expect(report).toBeVisible({ timeout: 30_000 });
+
+  // The specification itself reads INDETERMINATE: its own applicability was never
+  // established, a genuinely different question from whether its requirement passed.
+  const spec = report.locator("li.spec").first();
+  await expect(spec.locator(".spec__head .pill")).toHaveText("نامشخص"); // status.INDETERMINATE
+
+  // The requirement row: a real PASS, rendered as PASS -- the measured evidence (three
+  // real doors, each genuinely carrying a Name) is not suppressed or altered -- but with
+  // a caveat beside it, not a bare, unqualified green pill.
+  const requirement = report.locator(".requirement").first();
+  const requirementPill = requirement.locator(".requirement__head .pill");
+  await expect(requirementPill).toHaveText("قبول"); // status.PASS, Persian UI chrome
+  await expect(requirementPill).toHaveClass(/pill--pass/);
+
+  // No "evaluated nothing" reason: this requirement evaluated real entities.
+  await expect(requirement.locator('[data-testid="requirement-reason"]')).toHaveCount(0);
+
+  const caveat = requirement.locator('[data-testid="requirement-applicability-caveat"]');
+  await expect(caveat).toBeVisible();
+  await expect(caveat).toHaveText(
+    "This rule is written for a different IFC schema than the model uses, so whether it applies could not be established.",
+  );
+  // Never the bare machine code.
+  await expect(caveat).not.toContainText("SCHEMA_MISMATCH");
+
+  await page.screenshot({
+    path: path.resolve(__dirname, "screenshots/requirement-applicability-caveat.png"),
+    fullPage: true,
+  });
+});

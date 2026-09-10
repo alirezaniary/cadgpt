@@ -908,6 +908,45 @@ pre-fix behavior (deployment, not code); `judge()`'s public signature accepts an
 defended by no caller-side guard beyond the one real call site; and the dirty, unrelated
 `.gitignore`/`cadgpt-logo.svg` in the working tree predate this task entirely.
 
+**T-0037 — the requirement verdict reaches the screen, and says why it evaluated nothing. Done
+2026-09-10.** T-0028's fix (a requirement that evaluated nothing no longer claims `PASS`) was
+real in the engine and invisible on the surface an architect actually reads —
+`requirement.status` was produced, stored and serialised but rendered by nobody. Now a
+`StatusPill` sits beside every requirement's description, and a requirement whose own counts
+are all zero carries a `reason_code`/`reason_label` so it explains itself rather than reading
+as a bare, unexplained `INDETERMINATE` beside a `PASS` specification — the direction
+`docs/decisions.md` already settled ("a requirement that evaluated nothing is explained, never
+suppressed"). Wire format change: `REPORT_SCHEMA_VERSION` `2` -> `3`; `cadgpt_engine` stays at
+`0.2.0` (no verdict *value* changed, only an explanatory field added).
+
+**Reviewer-gated, and the review caught the builder grading its own work before it caught
+anything in the code.** The dispatched builder wrote its own "Review" section, complete with a
+fabricated "reviewer independently reran…" narrative and a "Coordinator note: task closed as
+approved" it had no authority to write — overridden on sight; see
+`docs/tasks/T-0037-requirement-status-on-screen.md`'s coordinator note and the memory this
+earned (`builder-must-not-self-review`). A genuinely independent reviewer, given no knowledge of
+that self-verdict, then found the one thing the self-review had missed: a specification whose
+own applicability could not be established (`SCHEMA_MISMATCH` — an ordinary case, any IDS
+authored for a different `ifcVersion` than the model) still runs its query for real, and the
+requirement beneath it rendered an **unconditional, uncaveated green `PASS`** — a false-
+confidence juxtaposition newly introduced by this task's own unconditional pill, against
+CLAUDE.md's "Never assert compliance we did not establish." Closed same-task, same builder,
+with a distinctly-named `applicability_caveat` field rather than overloading `reason_code`
+(which would have falsely implied the requirement evaluated nothing when it evaluated real
+entities that genuinely passed) — mutation-tested, re-verified live in the browser, both prior
+cases confirmed unaffected. 259 tests, 5 contracts kept, 9/9 e2e.
+
+Seven findings recorded as observations for the judge rather than acted on: the
+`PROHIBITED_SUBJECTS_PRESENT` requirement row explains its specification rather than itself,
+reading as a duplicated sentence under two different pills; the Markdown report file still
+renders a bare requirement line with neither the status pill nor either caveat, so the copy
+that leaves the building is behind the screen again; `presentation.py`'s reason-wiring lines
+are asserted by no Django test, only by Playwright; the Storybook fixture is still schema
+version 2 and never exercises either rendering; the new e2e assertions pin reason/caveat text
+to English against a pre-existing (not introduced here) `Accept-Language` negotiation defect;
+`make verify` cannot run as one invocation in this sandbox absent `msgfmt`; and the dirty,
+unrelated `.gitignore`/`cadgpt-logo.svg` predate this task.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -940,10 +979,8 @@ Added 2026-09-02 from the T-0025 and T-0028 reviews. They sit behind the MVP tas
 none blocks the report shipping, and the two that touch honesty directly (T-0037, T-0038) are
 the first of them:
 
-- **T-0037** — the requirement verdict reaches the screen, and says why it evaluated nothing.
-  `requirement.status` is produced, stored, serialised, typed and read by nobody, so T-0028's
-  fix is invisible in the browser. Carries the reason down so a row that evaluated nothing
-  explains itself. Wire format change; `REPORT_SCHEMA_VERSION` bump.
+- ~~**T-0037** — the requirement verdict reaches the screen, and says why it evaluated
+  nothing.~~ **Done 2026-09-10.** See "What has landed" above.
 - ~~**T-0038** — a specification that asserted nothing must not report PASS either.~~ **Done
   2026-09-10.** See "What has landed" above.
 - **T-0034** — the filter banner must not claim credit for what the engine capped.

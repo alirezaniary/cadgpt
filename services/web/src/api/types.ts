@@ -138,6 +138,30 @@ export interface RequirementOutcome {
    * could not be. Always present: this is the primary line to render, the way
    * `reason_label` is for a finding's cause. */
   requirement_text: string;
+  /** Why *this requirement* evaluated no entities -- `null` when it genuinely evaluated
+   * entities (`passed`/`failed`/`indeterminate` are not all zero), reusing the same
+   * specification-level reason `judge()` decided one level up (`reason_code` on
+   * `SpecificationOutcome`, T-0037). Optional because a report stored before
+   * `REPORT_SCHEMA_VERSION` 3 has no `reason_code` key on a requirement at all. */
+  reason_code?: string | null;
+  /** `reason_code` rendered into the reader's language by the service, the same way
+   * `SpecificationOutcome.reason_label` and `EntityOutcome.reason_label` already are.
+   * `null` for both "no reason" and "report predates this field" -- see `reason_code`. */
+  reason_label?: string | null;
+  /** T-0037 review round 2 (F1): why the *specification this requirement belongs to*
+   * never established that it applies at all (today, only a schema mismatch), even
+   * though this requirement genuinely evaluated real entities and reached a real
+   * `status` on them. Distinct from `reason_code` on purpose -- reusing `reason_code`
+   * here would claim this requirement evaluated nothing, which would be false: `passed`
+   * / `failed` / `indeterminate` are real counts from a real evaluation. `null` when the
+   * specification's own applicability was established, or when `reason_code` above is
+   * already set (that case already explains the row; see the engine's own comment on
+   * this field, `cadgpt_engine.report.RequirementOutcome.applicability_caveat`).
+   * Optional because a report stored before this field existed has no key at all. */
+  applicability_caveat?: string | null;
+  /** `applicability_caveat` rendered into the reader's language, the same way
+   * `reason_label` is for `reason_code`. */
+  applicability_caveat_label?: string | null;
   status: Status;
   passed: number;
   failed: number;

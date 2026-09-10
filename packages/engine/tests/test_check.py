@@ -144,6 +144,11 @@ def test_a_prohibited_specifications_requirement_line_never_contradicts_its_verd
     # leak into the structured citation: the specification's prohibition overrides it, the
     # same substitution `description` above just made, or the two would disagree.
     assert requirement.basis.cardinality == "prohibited"
+    # T-0037: this requirement evaluated real subjects were prohibited and present, which
+    # `judge()` already named `PROHIBITED_SUBJECTS_PRESENT` one level up -- the requirement
+    # never independently ran against those three doors (see the test below), so it
+    # carries that same reason rather than inventing one of its own.
+    assert requirement.reason_code is ReasonCode.PROHIBITED_SUBJECTS_PRESENT
 
 
 def test_indeterminate_is_never_counted_as_a_pass(
@@ -256,6 +261,76 @@ def test_a_requirement_that_genuinely_evaluated_entities_and_all_passed_stays_pa
     assert (requirement.passed, requirement.failed, requirement.indeterminate) == (3, 0, 0)
     assert requirement.status is Status.PASS
     assert report.status is Status.PASS
+    # T-0037: real evidence was evaluated, so there is nothing to explain.
+    assert requirement.reason_code is None
+    # T-0037 review round 2 (F1): nor is there an unresolved applicability to caveat --
+    # this is the "ordinary PASS, no caveat at all" control case for that fix.
+    assert requirement.applicability_caveat is None
+
+
+def test_a_prohibited_specification_matching_nothing_explains_its_own_requirement_row(
+    three_doors_ifc: Path, window_prohibited_ids: Path
+) -> None:
+    """T-0037, the case the T-0028 review reproduced: `window_prohibited.ids` prohibits
+    `IfcWindow`, and `three_doors_ifc` contains none at all -- the applicability itself
+    matches zero subjects, so the specification legitimately reaches PASS
+    (`NO_SUBJECTS_AND_PROHIBITED`) while its lone requirement evaluated nothing and reads
+    `INDETERMINATE`, `passed == failed == indeterminate == 0`, exactly like
+    `door_prohibited.ids`'s case above. Both statements are true and are not a
+    contradiction (`docs/decisions.md`, "A requirement that evaluated nothing is
+    explained, never suppressed") -- what changes here is that the requirement row now
+    carries *why*, reusing `judge()`'s own reason rather than leaving a bare
+    `INDETERMINATE` under a green verdict for the reader to puzzle out.
+    """
+    report = run_check(three_doors_ifc, window_prohibited_ids)
+    spec = report.specifications[0]
+
+    assert spec.applicability is Applicability.APPLIES
+    assert spec.matched == 0
+    assert spec.status is Status.PASS
+    assert spec.reason_code is ReasonCode.NO_SUBJECTS_AND_PROHIBITED
+
+    requirement = spec.requirements[0]
+    assert (requirement.passed, requirement.failed, requirement.indeterminate) == (0, 0, 0)
+    assert requirement.status is Status.INDETERMINATE
+    assert requirement.reason_code is ReasonCode.NO_SUBJECTS_AND_PROHIBITED
+    assert requirement.to_dict()["reason_code"] == "NO_SUBJECTS_AND_PROHIBITED"
+    # T-0037 review round 2 (F1): this row already explains itself via `reason_code`
+    # (it matched nothing), so `applicability_caveat` must stay `None` rather than
+    # repeating the identical sentence under a second field.
+    assert requirement.applicability_caveat is None
+
+
+def test_real_evidence_under_an_unresolved_applicability_carries_a_caveat_not_a_bare_pass(
+    three_doors_ifc: Path, door_schema_mismatch_ids: Path
+) -> None:
+    """T-0037 review round 2, finding F1 -- the hole the zero-count backfill above does
+    not close: `door_schema_mismatch_ids` declares `ifcVersion="IFC2X3"` only, and
+    `three_doors_ifc` is `IFC4`, so the specification's own applicability is never
+    established (`SCHEMA_MISMATCH`, `UNDETERMINED_APPLICABILITY`). `ifctester` still
+    matches all three real doors and genuinely evaluates the requirement against them --
+    a real `PASS`, real non-zero counts -- so `reason_code` correctly stays `None` (this
+    requirement did not evaluate nothing). Rendering that `PASS` with no caveat at all
+    would assert a compliance this run never established was even applicable
+    (`CLAUDE.md`, "Never assert compliance we did not establish"), so
+    `applicability_caveat` carries the specification's own reason down instead.
+    """
+    report = run_check(three_doors_ifc, door_schema_mismatch_ids)
+    spec = report.specifications[0]
+
+    assert spec.applicability is Applicability.UNDETERMINED
+    assert spec.status is Status.INDETERMINATE
+    assert spec.reason_code is ReasonCode.SCHEMA_MISMATCH
+    assert spec.matched == 3
+
+    requirement = spec.requirements[0]
+    assert (requirement.passed, requirement.failed, requirement.indeterminate) == (3, 0, 0)
+    assert requirement.status is Status.PASS, "real evidence, all of it a pass, is PASS"
+    assert requirement.reason_code is None, (
+        "this requirement did not evaluate nothing -- it must not claim to"
+    )
+    assert requirement.applicability_caveat is ReasonCode.SCHEMA_MISMATCH
+    assert requirement.to_dict()["applicability_caveat"] == "SCHEMA_MISMATCH"
 
 
 def test_an_optional_specification_with_no_requirements_is_indeterminate_not_pass(

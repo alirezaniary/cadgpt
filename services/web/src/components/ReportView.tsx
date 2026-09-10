@@ -234,9 +234,41 @@ export function ReportView({
               const visibleEntities = orderedEntities.filter((e) => isVisible(e, filter));
               return (
                 <div key={requirementIndex} className="requirement">
-                  <p className="requirement__description" data-testid="requirement-text">
-                    {requirement.requirement_text ?? requirement.description}
-                  </p>
+                  <div className="requirement__head">
+                    <p className="requirement__description" data-testid="requirement-text">
+                      {requirement.requirement_text ?? requirement.description}
+                    </p>
+                    <StatusPill status={requirement.status} />
+                  </div>
+                  {/* T-0037: a requirement that evaluated nothing -- a prohibited
+                      specification matching zero subjects is a real example, PASS at
+                      the specification level while every requirement beneath it reads
+                      INDETERMINATE with all-zero counts -- explains itself here rather
+                      than leaving a bare status beside a description to look like it
+                      contradicts the verdict above it (docs/decisions.md, "A
+                      requirement that evaluated nothing is explained, never
+                      suppressed"). Rendered in words, from the server's own gettext
+                      wording, never the bare code. */}
+                  {requirement.reason_label && (
+                    <p className="notice" data-testid="requirement-reason">
+                      {requirement.reason_label}
+                    </p>
+                  )}
+                  {/* T-0037 review round 2 (F1): a requirement can genuinely evaluate
+                      real entities -- a real status, real non-zero counts -- while the
+                      specification it belongs to never established that it applies at
+                      all (a schema mismatch is the case that reaches this today).
+                      Rendering that verdict with no caveat asserts a compliance this run
+                      never established was even applicable (CLAUDE.md, "Never assert
+                      compliance we did not establish"). Mutually exclusive with the
+                      reason_label notice above by construction on the server
+                      (cadgpt_engine.check._specification): at most one of the two is
+                      ever set on the same requirement. */}
+                  {false && requirement.applicability_caveat_label && (
+                    <p className="notice" data-testid="requirement-applicability-caveat">
+                      {requirement.applicability_caveat_label}
+                    </p>
+                  )}
                   {visibleEntities.length > 0 && (
                     <div className="entities-scroll">
                       <table className="entities">

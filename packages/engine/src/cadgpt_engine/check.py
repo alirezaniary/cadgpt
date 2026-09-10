@@ -18,6 +18,7 @@ import contract in the repository root, checked by `make verify`, not a conventi
 
 from __future__ import annotations
 
+import dataclasses
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, Final
@@ -157,6 +158,12 @@ def _requirement(facet: Any, specification: Any, entity_limit: int) -> Requireme
         indeterminate=indeterminate,
         entities=outcomes[:entity_limit],
         entities_omitted=max(0, len(outcomes) - entity_limit),
+        # Neither is known yet: both are the specification's own `judge()` verdict,
+        # decided below from counts summed across every requirement here.
+        # `_specification` backfills both fields once that verdict exists; see the
+        # comments there.
+        reason_code=None,
+        applicability_caveat=None,
     )
 
 
@@ -250,6 +257,42 @@ def _specification(spec: Any, entity_limit: int) -> SpecificationOutcome:
     applicability, status, reason_code = judge(
         cardinality, matched, schema_matches, failed, indeterminate, bool(spec.requirements)
     )
+
+    # T-0037: a requirement whose own `passed`/`failed`/`indeterminate` are all zero
+    # evaluated no entities -- the exact condition `_aggregate` already reads as
+    # INDETERMINATE for it (see its docstring). The reason is not this requirement's
+    # own to invent: it is the specification-level reason `judge` just decided, one
+    # level up, from the same subject count and cardinality every requirement here
+    # shares -- reused verbatim, never a new code. A requirement that genuinely
+    # evaluated entities is left untouched and keeps `reason_code=None`.
+    requirements = tuple(
+        dataclasses.replace(requirement, reason_code=reason_code)
+        if requirement.passed == 0
+        and requirement.failed == 0
+        and requirement.indeterminate == 0
+        else requirement
+        for requirement in requirements
+    )
+
+    # T-0037 review round 2 (F1): a *different* hole the zero-count backfill above does
+    # not cover. `judge` can return `Applicability.UNDETERMINED` (today, only paired
+    # with `ReasonCode.SCHEMA_MISMATCH`) while `matched` is still positive and `ifctester`
+    # genuinely evaluated a requirement's facet against those real entities -- a real,
+    # non-zero `passed`/`failed`/`indeterminate`, so the backfill above correctly leaves
+    # `reason_code=None` on it (it did not evaluate nothing). But rendering that verdict
+    # with no caveat at all asserts a compliance this run never established even applies,
+    # which is what `CLAUDE.md`'s "Never assert compliance we did not establish"
+    # forbids. `applicability_caveat` carries the same reason down for exactly that case
+    # -- only when `reason_code` is still `None` above, so a requirement that also
+    # matched nothing (and already carries `reason_code` from the backfill above) is not
+    # given the identical sentence twice.
+    if applicability is Applicability.UNDETERMINED:
+        requirements = tuple(
+            dataclasses.replace(requirement, applicability_caveat=reason_code)
+            if requirement.reason_code is None
+            else requirement
+            for requirement in requirements
+        )
 
     return SpecificationOutcome(
         name=spec.name or "",

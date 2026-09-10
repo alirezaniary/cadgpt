@@ -572,6 +572,7 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 .spec__head strong { font-size: var(--text-md); }
 
 .requirement { margin-block-start: var(--space-3); }
+.requirement__head { display: flex; justify-content: space-between; gap: var(--space-4); align-items: baseline; }
 .requirement__description { margin: 0 0 var(--space-2); font-size: var(--text-base); }
 
 /* `table-layout: fixed` plus an explicit width per column (T-0074) is what makes the

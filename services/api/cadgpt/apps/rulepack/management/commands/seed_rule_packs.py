@@ -58,7 +58,21 @@ SEED_MANIFEST: tuple[SeedEntry, ...] = tuple(
         version="0.1",
         source_citation=_fixture_citation(filename),
     )
-    for filename in ("door_width.ids", "door_name_recorded.ids", "door_prohibited.ids")
+    for filename in (
+        "door_width.ids",
+        "door_name_recorded.ids",
+        "door_prohibited.ids",
+        # T-0037: the zero-subject prohibited case -- unlike door_prohibited.ids (three
+        # real doors are matched and prohibited), this specification's applicability
+        # matches nothing at all in three_doors.ifc, which is the case that reads as a
+        # PASS/INDETERMINATE contradiction unless the requirement row explains itself.
+        "window_prohibited.ids",
+        # T-0037 review round 2 (F1): a specification whose own applicability is never
+        # established (declares ifcVersion="IFC2X3", three_doors.ifc is IFC4) while
+        # ifctester still evaluates its requirement against three real, matched doors --
+        # a genuine PASS that needs a caveat rather than reading as unqualified.
+        "door_schema_mismatch.ids",
+    )
 )
 
 
