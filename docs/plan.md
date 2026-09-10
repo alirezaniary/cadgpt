@@ -859,6 +859,24 @@ jurisdiction field its label text is still present in the picker's `innerText` a
 accessible-name association still resolves, where before the fix the placeholder text would
 have disappeared from both the moment a character was typed.
 
+**T-0077 — a review that doesn't say whose project it is. Done 2026-09-10.** `Review.project`
+has been required since T-0073, but `ReviewSerializer` never gained a `project` field — the
+only way to learn a review's project was to already know it, by having filtered
+`?project=<uuid>` to find it. `project = ProjectSerializer(read_only=True)`, matching the
+shape `rule_set` already uses (a full nested object, not a bare uuid), with `"project"`
+added to `ReviewQuerySet.with_inputs()`'s `select_related` so the field costs no query per
+row. Not reviewer-gated (no invariant, two-file diff, fully read). Verified live against the
+compose stack: `GET /api/v1/reviews/<uuid>/` now returns the nested project, and the uuid
+read off that response round-trips through `?project=<uuid>` to the same review.
+
+**Observation for the judge, from the builder's own evidence, not fixed here:** the nested
+`ProjectSerializer.review_count` falls back to a live per-instance `COUNT` query when the
+`Project` isn't annotated the way `ProjectViewSet.get_queryset` does it — true for every
+review this change nests a project into, so a *list* of many reviews now costs one extra
+query per row for that one field. Harmless for the single-object real path proven above; not
+fixed here because the fix is either a subquery annotation or a different (narrower) project
+shape for this one caller, both wider than "add a project field."
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -965,7 +983,8 @@ none blocking T-0074:
   never be deleted once any review has ever existed under it.
 - **T-0076** — the `project` app has no test package; the structural isolation test only
   checks the class hierarchy, not that tenant scoping actually held.
-- **T-0077** — a review never states which project it belongs to in its own API response.
+- ~~**T-0077** — a review never states which project it belongs to.~~ **Done 2026-09-10.**
+  See "What has landed" above.
 
 Added 2026-09-06, from the T-0079 workbench's first run — all three are current against the
 live UI, unlike the pre-redesign group above:

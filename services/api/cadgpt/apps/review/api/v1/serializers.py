@@ -9,6 +9,7 @@ from rest_framework import serializers
 from cadgpt.apps.base.exceptions import NotFoundError
 from cadgpt.apps.media.api.v1.serializers import MediaSerializer
 from cadgpt.apps.media.models import Media
+from cadgpt.apps.project.api.v1.serializers import ProjectSerializer
 from cadgpt.apps.project.models import Project
 from cadgpt.apps.review.models import CheckRun, Review
 from cadgpt.apps.review.services import ReviewService, localize_report
@@ -95,7 +96,18 @@ class CheckRunDetailSerializer(CheckRunSummarySerializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer[Review]):
+    """`project` is required on every review (`docs/tasks/
+    T-0073-a-project-to-hold-reviews.md`), so it is nested here the same way `model_file`
+    and `rule_set` already are -- the full related object, not a bare uuid or a method
+    field -- rather than inventing a fourth shape for one field
+    (`docs/tasks/T-0077-a-review-that-does-not-say-whose-project-it-is.md`).
+    `ReviewFilterSet.project` filters on `project__uuid`, so a client reads the `uuid` off
+    this nested object to round-trip `?project=<uuid>`, exactly as it already must for
+    `rule_set`.
+    """
+
     model_file = MediaSerializer(read_only=True)
+    project = ProjectSerializer(read_only=True)
     rule_set = RuleSetSerializer(read_only=True)
     latest_run = serializers.SerializerMethodField()
 
@@ -104,6 +116,7 @@ class ReviewSerializer(serializers.ModelSerializer[Review]):
         fields = (
             "uuid",
             "name",
+            "project",
             "model_file",
             "rule_set",
             "latest_run",

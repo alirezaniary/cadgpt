@@ -21,7 +21,7 @@ class ReviewQuerySet(TenantScopedQuerySet["Review"]):
 
     def with_inputs(self) -> Self:
         return self.select_related(
-            "model_file", "rule_set", "rule_set__source_file", "created_by"
+            "model_file", "project", "rule_set", "rule_set__source_file", "created_by"
         )
 
     def with_latest_run(self) -> Self:
