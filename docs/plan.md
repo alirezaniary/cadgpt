@@ -785,6 +785,30 @@ resurrection risk from adding the second periodic sweep), task queue routing is 
 the cross-tenant sweep pattern leaks nothing, and the pre-existing `.gitignore` stray change
 was confirmed to predate and stay outside all four commits.
 
+**T-0079 — a workbench in place of a screenshot. Done 2026-09-06.** Every piece of visual
+evidence in this repository had been a single PNG at one viewport, in one state, chosen by
+whoever wrote the spec — nobody could resize it, open an error state, or compare it against
+last week. Storybook 10 now runs over the real component tree with MSW mocked at the network
+seam (`src/api/client.ts` untouched), a memory router and a fresh `QueryClient` per story, 31
+stories across 9 files, exported as a static site and wired into `pnpm run verify` /
+`make verify` so it cannot rot uncompiled. Alongside it: `docs/product/user-stories/`,
+`docs/ux/flows/`, `docs/ux/page-graph.md`, and `docs/design/DESIGN.md` (tokens read out of
+`styles.css` with measured contrast). No component, page, hook or stylesheet changed — the
+mock sits at the network so the preview proves the app's data path, not just that a component
+renders with fixture props.
+
+Not reviewer-gated (touches no invariant, one exported `routeTree` binding is the only
+production line). Verified on the real static export, served over HTTP and driven with
+Chromium: all 31 stories render, a check started in the workbench advances
+`Queued → Running → report rendered inline` through the app's own polling, and three
+viewports were measured. Found three real defects on its first run, none fixed here —
+**T-0080** (the report overflows horizontally below ~640px, `.entities`' fixed column widths
+with no `@media` query anywhere in `styles.css`), **T-0081** (`failure_reason`/`failure_detail`
+are on the wire and server-localized but rendered by nothing in `services/web/src` — a run
+killed by T-0033's `RESOURCE_EXHAUSTED` reaches the architect as one word) and **T-0082** (the
+catalogue picker's three inputs are placeholder-only, no `<label>`, against the app's own
+pattern and `docs/design/DESIGN.md`'s component table).
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -841,9 +865,8 @@ the first of them:
 - **T-0049** — every finding carries the pack identity and version that produced it.
 - **T-0050** — the suite cannot catch the class of defect that only Postgres enforces.
 
-- **T-0051** — a report that was never generated must be recoverable. **The highest of the queue:**
-  a run can succeed and never produce its file, permanently, and every run predating T-0032 is in
-  that state.
+- ~~**T-0051** — a report that was never generated must be recoverable.~~ **Done 2026-09-03.**
+  See "What has landed" above.
 - **T-0052** — the coverage predicate exists three times; the engine should own it once. One
   divergence is already live.
 - **T-0053** — the download button has never executed, and two defects are visible in it.
@@ -888,6 +911,16 @@ none blocking T-0074:
 - **T-0076** — the `project` app has no test package; the structural isolation test only
   checks the class hierarchy, not that tenant scoping actually held.
 - **T-0077** — a review never states which project it belongs to in its own API response.
+
+Added 2026-09-06, from the T-0079 workbench's first run — all three are current against the
+live UI, unlike the pre-redesign group above:
+
+- **T-0080** — the report overflows horizontally below ~640px; `styles.css` has no `@media`
+  query at all.
+- **T-0081** — a failed run never says why. `failure_reason`/`failure_detail` are real,
+  server-localized, and rendered by nothing.
+- **T-0082** — the catalogue picker's jurisdiction/region/version inputs are
+  placeholder-only, with no `<label>`.
 
 ## Phase 4 — Toward the PRD
 
