@@ -989,3 +989,31 @@ tolerance for an unexplained wait is ever found to be shorter than a quarter of 
 silent "pending" reads as a false signal in practice rather than an ordinary queueing delay --
 at which point the deferred rendered-label option from T-0085's scope is the next lever, not a
 shorter sweep interval, which is already tied to the RUNNING-side sweep's own cadence.
+
+---
+
+## 2026-09-10 — the coordinator does not self-approve its own findings into the task queue; a judge does
+
+**Problem.** The coordinator role, as `docs/agents.md` defined it, both notices problems (while
+reading a diff, auditing a review's findings, or reading the plan) and decides which of those
+problems become a task and where they sit in the queue. That is one actor grading its own
+homework: nothing stopped the coordinator from writing up something it happened to notice as a
+task file, ahead of items a product owner had already prioritized, with no independent check on
+whether the observation was even valid.
+
+**Decision.** The coordinator no longer writes a task file for a problem it discovers itself.
+It observes and reports -- writes down what the problem is, where, and why it might matter --
+and stops there. A new role, the **judge** (Opus 5, sitting above the loop rather than inside
+it), reads the accumulated observations -- the coordinator's own, a reviewer's queued
+(not fix-now) findings, a concern the user raised -- and decides, per observation, whether it
+is actually valid and how important it is relative to everything else waiting. Only a
+judge-approved observation becomes `docs/tasks/T-NNNN-*.md` and enters the queue.
+`docs/agents.md` is updated: "The shape" names the judge and narrows the coordinator's task-
+writing to judge-approved work only, the review-triage section's second pile is now "an
+observation for the judge" rather than an immediately-written task, and "What the coordinator
+never does" names this explicitly.
+
+**Reopens if:** the judge step becomes a bottleneck that stalls the loop waiting on a decision
+nothing else needs -- at which point a lightweight default (e.g. auto-approve below some
+severity, judge only reviews above it) is worth designing, rather than reverting to
+self-approval.

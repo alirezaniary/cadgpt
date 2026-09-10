@@ -7,16 +7,31 @@ the next except what is written to disk, so the pattern is only as good as what 
 ## The shape
 
 **Coordinator — Opus, the session you are sitting in.** Owns `docs/plan.md` and the task
-queue. Chooses what happens next, writes the task file, dispatches, judges the result,
-records it, commits. It writes no production code, ever. The moment the coordinator starts
-editing `services/api` itself, its context fills with implementation detail and it stops
-being able to see the route.
+queue. Chooses what happens next among *already-approved* tasks, dispatches, judges the
+builder's evidence, records it, commits. It writes no production code, ever. The moment the
+coordinator starts editing `services/api` itself, its context fills with implementation
+detail and it stops being able to see the route.
+
+The coordinator does **not** create a task off its own observation. When it notices a
+problem outside a dispatched review — a defect stumbled on while reading a diff, a
+discrepancy between the plan and the repository, a concern raised in conversation — it
+writes the observation down and reports it. It does not decide the observation is real or
+worth a queue slot; see "The judge" below.
 
 **Builder — Sonnet.** Takes exactly one task file, implements it, runs the gates, executes
 the real path, and writes the evidence back into the task file. Returns two or three lines.
 
 **Reviewer — Opus.** Gated, not per-task. Findings only; it never edits. It has no write
 tools, so that constraint is structural rather than remembered.
+
+**Judge — Opus 5.** Sits above the loop, not inside it. Reads the accumulated observations —
+from the coordinator noticing something, from a reviewer's queued (not fix-now) findings,
+from the user flagging a concern — and decides two things per observation: is it actually
+valid (reproduced or clearly reasoned, not assumed), and how important is it relative to
+everything else waiting. Only an observation the judge has approved gets written up as
+`docs/tasks/T-NNNN-*.md` and placed in the queue. This is a deliberate separation: the
+coordinator that found the problem is not the one weighing whether it deserves to jump the
+queue ahead of what a product owner already prioritized.
 
 ## Why the models split this way
 
@@ -88,19 +103,23 @@ Findings come back in exactly two piles, and the coordinator does the sorting:
 
 1. **Fix now** — an invariant is violated, or the evidence block is false. Same task, same
    builder, no new review afterwards.
-2. **A task in the queue** — everything else, written as a real task file with its own number.
+2. **An observation for the judge** — everything else. The coordinator does not write this up
+   as a task file itself; it records what the finding is, where, and why it might matter, and
+   reports it. The judge weighs it against every other pending observation and decides whether
+   and when it becomes `docs/tasks/T-NNNN-*.md`.
 
 There is no third pile. One review round per task, maximum. A review of a fix is never
-dispatched; if the fix is wrong, that surfaces as its own task the next time something touches
-that code. Throughput is the point — a build that stops to re-review its own remediation never
-reaches the next phase.
+dispatched; if the fix is wrong, that surfaces as its own observation the next time something
+touches that code. Throughput is the point — a build that stops to re-review its own
+remediation never reaches the next phase.
 
 ## The loop
 
-1. Read `docs/plan.md`. Pick the next task from the current phase.
-2. Write `docs/tasks/T-NNNN-<slug>.md`. If the task cannot be specified without a decision the
-   plan does not contain, that decision is the task — ask, then write it to `docs/decisions.md`
-   or `prd.md` §12 before continuing.
+1. Read `docs/plan.md`. Pick the next task from the current phase — one the judge has already
+   approved into the queue.
+2. Write `docs/tasks/T-NNNN-<slug>.md` for the judge-approved task. If the task cannot be
+   specified without a decision the plan does not contain, that decision is the task — ask,
+   then write it to `docs/decisions.md` or `prd.md` §12 before continuing.
 3. Dispatch the builder with the task file path. One builder at a time unless two tasks touch
    disjoint files.
 4. On return, read the evidence block. Missing or unconvincing sends it straight back — that is
@@ -130,4 +149,6 @@ a transcript is already lost.
 Write production code. Mark anything done without an evidence block. Dispatch a reviewer on a
 fix. Re-read the repository to re-derive context a task file should have carried. Run two
 builders over overlapping files. Narrow a task's scope to make it finishable and report it as
-complete — a blocked part is finished around and named as blocked.
+complete — a blocked part is finished around and named as blocked. Write a task file for a
+problem it noticed itself, without the judge's sign-off — it observes and reports, it does not
+self-approve its own findings into the queue.
