@@ -1,6 +1,28 @@
 # T-0046 — The catalogue picker has never been rendered by any test, and two defects are waiting in it
 
-**Phase:** 3   **Status:** open
+**Phase:** 3   **Status:** obsolete — superseded, closed without building 2026-09-10
+
+**Coordinator note, 2026-09-10.** Re-read before dispatch and found stale against the
+current repository, not built:
+
+- The scope's primary deliverable — a component test runner wired into `make verify` — was
+  delivered as a superset by **T-0079** (Storybook 10 + MSW workbench, `build-workbench` in
+  `pnpm run verify`/`make verify`).
+- The first named defect, "`catalogueFilter` is one piece of state shared by every
+  catalogue review's picker on the page," is now structurally impossible: `ReviewsPage.tsx`
+  (the multi-review list page this described) no longer exists — **T-0074** replaced it with
+  one review per page (`ReviewDetailPage.tsx`), and its `catalogueFilter` is local
+  `useState` scoped to that single page's one picker.
+- The second named defect — the picker shows "No packs match this filter" while
+  `useRulePacks` is still loading, before any filter was typed — **is still real**, just
+  relocated: `ReviewDetailPage.tsx:93-101`'s `filteredPacks` derives from
+  `rulePacks.data?.results ?? []`, so it is `[]` (and `filteredPacks.length === 0` renders
+  the empty-filter message) during the initial fetch. Not fixed here — this task's own spec
+  no longer matches where the bug now lives, and per the current workflow
+  (`docs/decisions.md`, 2026-09-10) the coordinator observes and reports rather than writing
+  a new task for its own finding. **Observation for the judge:** the catalogue empty-state
+  message should distinguish "still loading" from "loaded, zero packs match."
+
 **Touches invariants:** none.
 
 ## Why

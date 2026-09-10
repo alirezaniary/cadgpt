@@ -909,7 +909,12 @@ the first of them:
 - **T-0044** — seeding real packs: a manifest, and knowing when the catalogue diverges from disk.
 
 - **T-0045** — the catalogue picker must show every pack, and filter on the server.
-- **T-0046** — the picker has never been rendered; `services/web` needs a component test runner.
+- ~~**T-0046** — the picker has never been rendered.~~ **Obsolete, closed 2026-09-10.** Its
+  test-runner ask was superseded by T-0079's workbench and its first defect (shared filter
+  state) is gone with `ReviewsPage.tsx`, which T-0074 removed. Its second defect (the
+  catalogue's empty-state message during loading) is still real, relocated to
+  `ReviewDetailPage.tsx`, and is left as an observation rather than rebuilt as a task — see
+  the task file.
 - **T-0047** — a typed boundary for the shared file helper.
 - **T-0048** — a failed run must say what it was for, and speak the application's error language.
 - **T-0049** — every finding carries the pack identity and version that produced it.
