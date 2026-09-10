@@ -154,23 +154,41 @@ export function ReviewDetailPage() {
           <div className="review__catalogue" data-testid="catalogue-picker">
             <p className="muted">{t("review.catalogue.title")}</p>
             <div className="row">
-              <input
-                placeholder={t("review.catalogue.jurisdiction")}
-                value={catalogueFilter.jurisdiction}
-                onChange={(e) =>
-                  setCatalogueFilter((f) => ({ ...f, jurisdiction: e.target.value }))
-                }
-              />
-              <input
-                placeholder={t("review.catalogue.region")}
-                value={catalogueFilter.region}
-                onChange={(e) => setCatalogueFilter((f) => ({ ...f, region: e.target.value }))}
-              />
-              <input
-                placeholder={t("review.catalogue.version")}
-                value={catalogueFilter.version}
-                onChange={(e) => setCatalogueFilter((f) => ({ ...f, version: e.target.value }))}
-              />
+              <div className="field">
+                <label className="sr-only" htmlFor="catalogue-jurisdiction">
+                  {t("review.catalogue.jurisdiction")}
+                </label>
+                <input
+                  id="catalogue-jurisdiction"
+                  placeholder={t("review.catalogue.jurisdiction")}
+                  value={catalogueFilter.jurisdiction}
+                  onChange={(e) =>
+                    setCatalogueFilter((f) => ({ ...f, jurisdiction: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="field">
+                <label className="sr-only" htmlFor="catalogue-region">
+                  {t("review.catalogue.region")}
+                </label>
+                <input
+                  id="catalogue-region"
+                  placeholder={t("review.catalogue.region")}
+                  value={catalogueFilter.region}
+                  onChange={(e) => setCatalogueFilter((f) => ({ ...f, region: e.target.value }))}
+                />
+              </div>
+              <div className="field">
+                <label className="sr-only" htmlFor="catalogue-version">
+                  {t("review.catalogue.version")}
+                </label>
+                <input
+                  id="catalogue-version"
+                  placeholder={t("review.catalogue.version")}
+                  value={catalogueFilter.version}
+                  onChange={(e) => setCatalogueFilter((f) => ({ ...f, version: e.target.value }))}
+                />
+              </div>
             </div>
             {filteredPacks.length === 0 && <p className="muted">{t("review.catalogue.empty")}</p>}
             <ul className="list">

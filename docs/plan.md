@@ -843,6 +843,22 @@ Chromium — `scrollWidth - clientWidth` is `0` at 390/768/1280px in both `dir=l
 `dir=rtl` (was `+318` at 390px before), all three count tiles present at every width, and
 the entities table scrolls internally only where it needs to (390px).
 
+**T-0082 — the catalogue filter has no labels. Done 2026-09-10.** The three inputs a person
+uses to choose which building regulations their model is judged against — jurisdiction,
+region, version — were placeholder-only, the one screen in the app not following
+`docs/design/DESIGN.md`'s established `.field` + real `<label htmlFor>` pattern. A
+placeholder vanishes the instant a character is typed, which is the actual defect: T-0079's
+own workbench check for "حوزهٔ قضایی" failed for exactly that reason. Each input now sits in
+a `.field` with a visually-hidden `<label htmlFor>` (`.sr-only`, already existed) tied by
+`id`, keeping the existing placeholder — the filter-row layout is unaffected.
+
+Not reviewer-gated (no invariant, single-file diff, fully read). Verified against the real
+workbench with the project's own `axe-core`: zero "label" rule violations on the three
+inputs, and — the part an automated a11y check alone would not catch — after typing into the
+jurisdiction field its label text is still present in the picker's `innerText` and its
+accessible-name association still resolves, where before the fix the placeholder text would
+have disappeared from both the moment a character was typed.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -953,8 +969,8 @@ live UI, unlike the pre-redesign group above:
   "What has landed" above.
 - ~~**T-0081** — a failed run never says why.~~ **Done 2026-09-10.** See "What has landed"
   above.
-- **T-0082** — the catalogue picker's jurisdiction/region/version inputs are
-  placeholder-only, with no `<label>`.
+- ~~**T-0082** — the catalogue filter has no labels.~~ **Done 2026-09-10.** See "What has
+  landed" above.
 
 ## Phase 4 — Toward the PRD
 
