@@ -67,12 +67,34 @@ export const Running: Story = {
 };
 
 /**
- * A run that failed. The history row says so, and the report is absent because there is
- * none -- the page never renders a partial report for a run that did not finish.
+ * A run that failed. The report is absent because there is none -- the page never renders
+ * a partial report for a run that did not finish -- and in its place is the reason the
+ * server gave: `RESOURCE_EXHAUSTED`'s Persian `failure_detail`, rendered as the server sent
+ * it (T-0081), not looked up from `failure_reason` in a frontend table.
  */
 export const RunFailed: Story = {
   parameters: { msw: [...session(), ...scenario()] },
   render: at(fx.failedReview.uuid),
+};
+
+/**
+ * A run that failed with a blank `failure_detail` -- `INTERNAL_ERROR` wrapping an
+ * exception with no message, still possible per `CheckRunExecutor.execute` even though
+ * `failure_reason` itself is guaranteed non-blank by the database constraint. The status
+ * word alone is never the whole story here either: a frontend-owned fallback sentence
+ * fills the region instead of an empty block (T-0081).
+ */
+export const RunFailedNoDetail: Story = {
+  parameters: {
+    msw: [
+      ...session(),
+      ...scenario({
+        reviews: { [fx.project.uuid]: [fx.failedReviewNoDetail] },
+        runs: { [fx.failedReviewNoDetail.uuid]: [fx.failedRunNoDetail] },
+      }),
+    ],
+  },
+  render: at(fx.failedReviewNoDetail.uuid),
 };
 
 /**

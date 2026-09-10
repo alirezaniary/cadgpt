@@ -64,6 +64,17 @@ export function ReviewDetailPage() {
   const reportGenerationError = run.data?.report_generation_error ?? "";
   const reportFileMissing =
     run.data?.status === "succeeded" && !reportFileUrl && !reportGenerationError;
+  // `failure_detail` is server-composed prose in the reader's language, exactly like
+  // `reason_label` and `disclosure_text` (docs/decisions.md, "Report prose belongs to the
+  // server, not to the frontend catalogue") -- rendered as given, never mapped from
+  // `failure_reason` through a frontend lookup table. `failure_reason` itself is only used
+  // below as a `data-` attribute, never as a translation key. `failure_detail` can be blank
+  // (e.g. `INTERNAL_ERROR` wrapping an exception with no message,
+  // `services/api/cadgpt/apps/review/services/execution.py`), so the blank case falls back
+  // to a frontend-owned sentence rather than an empty block.
+  const runFailed = run.data?.status === "failed";
+  const failureReason = run.data?.failure_reason ?? "";
+  const failureDetail = run.data?.failure_detail || t("run.failure.noDetail");
 
   const usesCatalogue = review.data ? review.data.rule_set === null : false;
   // The currently-open run's own status (`useCheckRun`, polled every 1.5s) is fresher
@@ -222,14 +233,7 @@ export function ReviewDetailPage() {
                   className={candidate.uuid === openRun ? "active" : ""}
                   onClick={() => setOpenRun(candidate.uuid)}
                 >
-                  <td>
-                    {t(`status.${candidate.status}`)}
-                    {candidate.status === "failed" && candidate.failure_detail && (
-                      <p className="muted" data-testid="run-failure-detail">
-                        {candidate.failure_detail}
-                      </p>
-                    )}
-                  </td>
+                  <td>{t(`status.${candidate.status}`)}</td>
                   <td>{candidate.outcome ? <StatusPill status={candidate.outcome} /> : null}</td>
                   <td className="muted">{formatDate(candidate.created_at)}</td>
                 </tr>
@@ -238,6 +242,13 @@ export function ReviewDetailPage() {
           </table>
         )}
       </section>
+
+      {runFailed && (
+        <section className="card" data-testid="run-failure" data-failure-reason={failureReason}>
+          <h2>{t("run.failure.heading")}</h2>
+          <p className="error">{failureDetail}</p>
+        </section>
+      )}
 
       {reportFileUrl && (
         <p>

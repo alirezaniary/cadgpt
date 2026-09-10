@@ -447,6 +447,24 @@ export const failedRun: CheckRunSummary = run({
   created_at: "2026-09-04T17:31:00Z",
 });
 
+/** A failure with no `failure_detail` -- `INTERNAL_ERROR` wraps whatever exception the
+ * evaluator raised, and an exception raised with no message stringifies to `""`
+ * (`services/api/cadgpt/apps/review/services/execution.py`, `CheckRunExecutor.execute`'s
+ * `except Exception` branch). `failure_reason` is still guaranteed non-blank -- the
+ * `failed_run_states_a_reason` constraint enforces that at the database -- so this is the
+ * one field genuinely optional on a failed run, per T-0081. */
+export const failedRunNoDetail: CheckRunSummary = run({
+  uuid: "dddd0005-0000-4000-8000-000000000005",
+  status: "failed",
+  failure_reason: "INTERNAL_ERROR",
+  failure_detail: "",
+  queued_at: "2026-09-07T10:11:00Z",
+  started_at: "2026-09-07T10:11:03Z",
+  finished_at: "2026-09-07T10:11:19Z",
+  duration_seconds: 16,
+  created_at: "2026-09-07T10:11:00Z",
+});
+
 /** The older run in the history table, so "open a run that is not the newest" is
  * something the workbench can actually be clicked through. */
 export const earlierRun: CheckRunSummary = run({
@@ -533,6 +551,15 @@ export const failedReview: Review = reviewOf(
   412_663_808,
   failedRun,
   "2026-09-04T17:30:00Z",
+);
+
+export const failedReviewNoDetail: Review = reviewOf(
+  "cccc0005-0000-4000-8000-000000000005",
+  "کنترل تاسیسات — بازبینی نهایی",
+  "niavaran-tower-mep.ifc",
+  9_664_512,
+  failedRunNoDetail,
+  "2026-09-07T10:10:00Z",
 );
 
 export const neverRunReview: Review = reviewOf(

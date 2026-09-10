@@ -809,6 +809,24 @@ killed by T-0033's `RESOURCE_EXHAUSTED` reaches the architect as one word) and *
 catalogue picker's three inputs are placeholder-only, no `<label>`, against the app's own
 pattern and `docs/design/DESIGN.md`'s component table).
 
+**T-0081 — a failed run never says why. Done 2026-09-10.** `failure_reason`/`failure_detail`
+were on the wire, server-composed and already localized, and rendered by nothing in
+`services/web/src` — a run killed by T-0033's `RESOURCE_EXHAUSTED` reached the architect as
+one word, `ناموفق`. `ReviewDetailPage` now shows a card below the run-history table with the
+server's real `failure_detail` prose, rendered as given (no frontend lookup table from
+`failure_reason`, per `docs/decisions.md`'s "report prose belongs to the server" rule);
+`failure_reason` is used only as a `data-` attribute. A blank `failure_detail` — possible via
+`INTERNAL_ERROR` wrapping a message-less exception — falls back to a new frontend-owned
+sentence rather than an empty block.
+
+Not reviewer-gated (no invariant directly touched, diff fully read by the coordinator: 263
+lines across 6 files, the code change itself 19/-8 in one component). Verified against the
+live stack rather than the workbench alone: a real 47MB IFC forced a genuine
+`RESOURCE_EXHAUSTED` (`WORKER_MEM_LIMIT=280m`, three real SIGKILLs, `claim_count` tripping at
+3), and the rendered screen's text matched the API's `failure_reason`/`failure_detail`
+byte-for-byte. Both the non-blank and blank-detail storybook states also rendered and were
+screenshotted. 246 tests, 5 contracts kept.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -917,8 +935,8 @@ live UI, unlike the pre-redesign group above:
 
 - **T-0080** — the report overflows horizontally below ~640px; `styles.css` has no `@media`
   query at all.
-- **T-0081** — a failed run never says why. `failure_reason`/`failure_detail` are real,
-  server-localized, and rendered by nothing.
+- ~~**T-0081** — a failed run never says why.~~ **Done 2026-09-10.** See "What has landed"
+  above.
 - **T-0082** — the catalogue picker's jurisdiction/region/version inputs are
   placeholder-only, with no `<label>`.
 

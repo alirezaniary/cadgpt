@@ -59,7 +59,11 @@
     "history": "Run history",
     "status": "Status",
     "outcome": "Outcome",
-    "date": "Date"
+    "date": "Date",
+    "failure": {
+      "heading": "Why this run failed",
+      "noDetail": "This run failed, and no further detail was recorded."
+    }
   },
   "status": {
     "PASS": "Pass",
