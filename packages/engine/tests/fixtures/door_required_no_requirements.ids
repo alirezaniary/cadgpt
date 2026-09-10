@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ids:ids xmlns:ids="http://standards.buildingsmart.org/IDS" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://standards.buildingsmart.org/IDS http://standards.buildingsmart.org/IDS/1.0/ids.xsd">
+	<ids:info>
+		<ids:title>Required door subject, no requirements</ids:title>
+		<ids:description>T-0038's control case: a required-cardinality specification that
+		names a subject (IFCDOOR) and states zero requirement facets. This is a legitimate
+		existence check -- "at least one of these must exist" -- and matching real elements
+		in three_doors.ifc genuinely establishes it. Must stay PASS; this is not the T-0038
+		defect.</ids:description>
+		<ids:date>2026-09-10</ids:date>
+	</ids:info>
+	<ids:specifications>
+		<ids:specification ifcVersion="IFC2X3 IFC4" name="Required door subject, no requirements">
+			<ids:applicability maxOccurs="unbounded">
+				<ids:entity>
+					<ids:name>
+						<ids:simpleValue>IFCDOOR</ids:simpleValue>
+					</ids:name>
+				</ids:entity>
+			</ids:applicability>
+			<ids:requirements/>
+		</ids:specification>
+	</ids:specifications>
+</ids:ids>

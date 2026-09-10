@@ -96,6 +96,10 @@ REASON_LABELS: dict[str, Any] = {
     ReasonCode.PROHIBITED_SUBJECTS_PRESENT: _(
         "This rule prohibits these elements and the model contains them."
     ),
+    ReasonCode.NO_REQUIREMENTS_NOTHING_ASSERTED: _(
+        "Elements matched this rule, but it states no requirements, so nothing was "
+        "checked about them."
+    ),
 }
 
 

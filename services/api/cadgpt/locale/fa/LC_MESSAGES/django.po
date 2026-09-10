@@ -129,6 +129,10 @@ msgstr "هیچ عضوی با این قاعده منطبق نشد، بنابرا�
 msgid "This rule prohibits these elements and the model contains them."
 msgstr "این قاعده این اعضا را منع می‌کند و مدل آنها را دارد."
 
+#: cadgpt/apps/review/reasons.py (NO_REQUIREMENTS_NOTHING_ASSERTED)
+msgid "Elements matched this rule, but it states no requirements, so nothing was checked about them."
+msgstr "اعضایی با این قاعده منطبق شدند، اما قاعده هیچ الزامی بیان نمی‌کند، بنابراین چیزی درباره آنها بررسی نشد."
+
 msgid "The request could not be completed."
 msgstr "درخواست کامل نشد."
 

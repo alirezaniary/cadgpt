@@ -57,9 +57,15 @@ from cadgpt.apps.review.choices import OutcomeStatus
 
 #: Reason codes `judge()` assigns only when a specification established no compliance at
 #: all -- mirrors `NOTHING_ESTABLISHED_REASONS` in `ReportView.tsx` exactly. See that
-#: constant's own comment for why these two and not `NO_SUBJECTS_BUT_REQUIRED` /
+#: constant's own comment for why these three and not `NO_SUBJECTS_BUT_REQUIRED` /
 #: `NO_SUBJECTS_AND_PROHIBITED`, which are real verdicts, not an absence of evidence.
-_NOTHING_ESTABLISHED_REASONS = frozenset({"SCHEMA_MISMATCH", "NO_SUBJECTS_NOTHING_CHECKED"})
+#: T-0038 review: this set is total over every `ReasonCode` `judge()` can pair with an
+#: INDETERMINATE it reached without evaluating anything -- `test_report_markdown.py`'s
+#: `test_every_established_nothing_reason_code_is_excluded_from_coverage` fails the build
+#: if a future spec-level "checked nothing" code is added upstream and not added here.
+_NOTHING_ESTABLISHED_REASONS = frozenset(
+    {"SCHEMA_MISMATCH", "NO_SUBJECTS_NOTHING_CHECKED", "NO_REQUIREMENTS_NOTHING_ASSERTED"}
+)
 
 #: FAIL first, then INDETERMINATE, then PASS -- `SEVERITY_RANK` in `ReportView.tsx`.
 _SEVERITY_RANK: dict[str, int] = {"FAIL": 0, "INDETERMINATE": 1, "PASS": 2}

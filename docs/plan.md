@@ -877,6 +877,37 @@ query per row for that one field. Harmless for the single-object real path prove
 fixed here because the fix is either a subquery annotation or a different (narrower) project
 shape for this one caller, both wider than "add a project field."
 
+**T-0038 — a specification that asserted nothing must not report PASS either. Done
+2026-09-10.** The other half of T-0028's fix, at the level up it was explicitly forbidden to
+touch: `judge()` reported `PASS` for an `optional`-cardinality specification with zero
+requirement facets — asserted nothing, checked nothing, reachable from real XSD-valid input.
+Now `INDETERMINATE` with a new `ReasonCode.NO_REQUIREMENTS_NOTHING_ASSERTED`, wired through
+both locales; the sibling `required`-with-zero-requirements case (a legitimate existence
+check) is untouched and still `PASS`. `cadgpt_engine` bumped `0.1.0` -> `0.2.0`, retrospective
+for T-0028 as well per `docs/decisions.md`'s verdict-bump rule — a stored `CheckRun` now
+genuinely records which engine judged it.
+
+**Reviewer-gated, and the review caught the first round repeating the exact class of defect
+the task existed to close, one layer further out.** The new INDETERMINATE reason code was
+missing from both renderers' "established nothing" coverage-exclusion sets
+(`report_markdown.py`, `ReportView.tsx`) — the delivered Markdown report read "1 of 1
+specifications were evaluated" directly above a specification whose own label said nothing
+was checked about it, and the web view dropped it from the disclosure list entirely. Fixed
+same-task, same builder, with a new structural test that sweeps all 96 reachable `judge()`
+combinations rather than hand-listing the three known codes — the same "total over what the
+engine can produce" shape as the existing label-coverage test, and the reason the label gap
+was caught before but this one wasn't. Mutation-verified against the reverted set; real
+Markdown and web output re-rendered showing the corrected "0 of 1 evaluated." 257 tests, 5
+contracts kept.
+
+Four findings recorded as observations for the judge rather than acted on: `CheckRun.
+engine_version` is asserted only as truthy, not pinned to `"0.2.0"`, so a silent revert of the
+bump leaves the suite green; the running compose stack's image is stale and still serves the
+pre-fix behavior (deployment, not code); `judge()`'s public signature accepts an unreachable
+`has_requirements=False` with a nonzero `failed` and returns `INDETERMINATE`, hiding a FAIL,
+defended by no caller-side guard beyond the one real call site; and the dirty, unrelated
+`.gitignore`/`cadgpt-logo.svg` in the working tree predate this task entirely.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -913,9 +944,8 @@ the first of them:
   `requirement.status` is produced, stored, serialised, typed and read by nobody, so T-0028's
   fix is invisible in the browser. Carries the reason down so a row that evaluated nothing
   explains itself. Wire format change; `REPORT_SCHEMA_VERSION` bump.
-- **T-0038** — a specification that asserted nothing must not report PASS either. `judge()`
-  passes an *optional* specification with zero requirement facets. Same I7 failure as T-0028,
-  one level up. First application of the engine-version bump decision.
+- ~~**T-0038** — a specification that asserted nothing must not report PASS either.~~ **Done
+  2026-09-10.** See "What has landed" above.
 - **T-0034** — the filter banner must not claim credit for what the engine capped.
 - **T-0035** — two latent report-view defects: an unsortable list and a colliding key.
 - **T-0036** — the Persian report: prove RTL, and stop rendering a raw payload value.

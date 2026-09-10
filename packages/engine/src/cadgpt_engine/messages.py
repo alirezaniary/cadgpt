@@ -82,6 +82,10 @@ _MESSAGES: dict[ReasonCode, str] = {
     ReasonCode.PROHIBITED_SUBJECTS_PRESENT: (
         "The rule prohibits these elements and the model contains them."
     ),
+    ReasonCode.NO_REQUIREMENTS_NOTHING_ASSERTED: (
+        "Elements matched this rule, but it states no requirements, so nothing was "
+        "checked about them."
+    ),
 }
 
 

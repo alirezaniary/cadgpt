@@ -29,3 +29,20 @@ def door_prohibited_ids() -> Path:
 def door_name_recorded_ids() -> Path:
     """An IDS every door in `three_doors_ifc` genuinely satisfies: each has a Name."""
     return FIXTURES / "door_name_recorded.ids"
+
+
+@pytest.fixture(scope="session")
+def door_optional_no_requirements_ids() -> Path:
+    """T-0038: an optional-cardinality IDS naming IFCDOOR with zero requirement facets.
+
+    Matches real doors in `three_doors_ifc` but asserts nothing about them.
+    """
+    return FIXTURES / "door_optional_no_requirements.ids"
+
+
+@pytest.fixture(scope="session")
+def door_required_no_requirements_ids() -> Path:
+    """T-0038's control case: `required` cardinality with zero requirement facets, a
+    legitimate existence check that must stay PASS.
+    """
+    return FIXTURES / "door_required_no_requirements.ids"

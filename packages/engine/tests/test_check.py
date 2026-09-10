@@ -258,6 +258,43 @@ def test_a_requirement_that_genuinely_evaluated_entities_and_all_passed_stays_pa
     assert report.status is Status.PASS
 
 
+def test_an_optional_specification_with_no_requirements_is_indeterminate_not_pass(
+    three_doors_ifc: Path, door_optional_no_requirements_ids: Path
+) -> None:
+    """T-0038: reproduces the defect end to end through the real path.
+
+    `door_optional_no_requirements.ids` is `optional` cardinality, matches all three real
+    doors, and states zero requirement facets. It checked nothing and established
+    nothing; before this fix, `judge()` read `matched > 0` alone as a pass.
+    """
+    report = run_check(three_doors_ifc, door_optional_no_requirements_ids)
+    spec = report.specifications[0]
+
+    assert spec.applicability is Applicability.APPLIES
+    assert spec.matched == 3
+    assert spec.requirements == ()
+    assert spec.status is Status.INDETERMINATE
+    assert spec.reason_code is ReasonCode.NO_REQUIREMENTS_NOTHING_ASSERTED
+    assert report.status is Status.INDETERMINATE
+
+
+def test_a_required_specification_with_no_requirements_still_passes(
+    three_doors_ifc: Path, door_required_no_requirements_ids: Path
+) -> None:
+    """T-0038's control case, run through the real path: `required` with zero
+    requirement facets is a legitimate existence check and must stay PASS.
+    """
+    report = run_check(three_doors_ifc, door_required_no_requirements_ids)
+    spec = report.specifications[0]
+
+    assert spec.applicability is Applicability.APPLIES
+    assert spec.matched == 3
+    assert spec.requirements == ()
+    assert spec.status is Status.PASS
+    assert spec.reason_code is None
+    assert report.status is Status.PASS
+
+
 def test_the_report_can_be_told_what_to_call_the_model(
     three_doors_ifc: Path, door_width_ids: Path
 ) -> None:

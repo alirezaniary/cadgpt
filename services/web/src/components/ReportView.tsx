@@ -44,9 +44,9 @@ function bySeverity<T extends { status: Status }>(items: readonly T[]): T[] {
 }
 
 /** Reason codes `judge()` (`packages/engine/src/cadgpt_engine/check.py`) assigns only when a
- * specification's own applicability meant it established no compliance at all — a schema
- * mismatch, or an optional-cardinality specification that matched zero subjects. These are the
- * only two reason codes `judge()` pairs with an applicability other than `APPLIES`.
+ * specification established no compliance at all — a schema mismatch, an applicability that
+ * matched zero subjects, or (T-0038) an optional-cardinality specification that matched real
+ * subjects but declared no requirement facets, so nothing was asserted about them.
  *
  * A `matched == 0` specification that came back FAIL (`NO_SUBJECTS_BUT_REQUIRED` — a required
  * element is absent) or PASS (`NO_SUBJECTS_AND_PROHIBITED` — a prohibited element is confirmed
@@ -54,10 +54,14 @@ function bySeverity<T extends { status: Status }>(items: readonly T[]): T[] {
  * judging the model, not an absence of evidence, and naming either here beside "established
  * nothing" would contradict the very verdict rendered a few lines below it. Reading the reason
  * code the engine already assigned, rather than re-deriving `matched`/cardinality logic here,
- * is what keeps this predicate from silently diverging from `judge()` the next time it changes. */
+ * is what keeps this predicate from silently diverging from `judge()` the next time it changes.
+ * Mirrors `_NOTHING_ESTABLISHED_REASONS` in `report_markdown.py` exactly -- that module's own
+ * comment names the Python-side test that keeps it total; this set has no analogous compiler
+ * check and must be kept in sync with it and with `judge()` by hand. */
 const NOTHING_ESTABLISHED_REASONS: ReadonlySet<string> = new Set([
   "SCHEMA_MISMATCH",
   "NO_SUBJECTS_NOTHING_CHECKED",
+  "NO_REQUIREMENTS_NOTHING_ASSERTED",
 ]);
 
 function establishedNothing(spec: SpecificationOutcome): boolean {

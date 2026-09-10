@@ -79,6 +79,13 @@ class ReasonCode(StrEnum):
     NO_SUBJECTS_NOTHING_CHECKED = "NO_SUBJECTS_NOTHING_CHECKED"
     PROHIBITED_SUBJECTS_PRESENT = "PROHIBITED_SUBJECTS_PRESENT"
 
+    # An `optional` specification with matched subjects but zero requirement facets: it
+    # asserted nothing about the elements it matched. Distinct from
+    # `NO_SUBJECTS_NOTHING_CHECKED`, whose wording is specifically about zero matched
+    # elements -- here elements matched fine, the rule itself just never said what to check
+    # about them.
+    NO_REQUIREMENTS_NOTHING_ASSERTED = "NO_REQUIREMENTS_NOTHING_ASSERTED"
+
 
 #: Codes that mean "the model did not carry what the rule needed", as opposed to
 #: "the model carried it and it was wrong". Presentation groups on this.

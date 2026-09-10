@@ -166,6 +166,7 @@ def judge(
     schema_matches: bool,
     failed: int,
     indeterminate: int,
+    has_requirements: bool,
 ) -> tuple[Applicability, Status, ReasonCode | None]:
     """Decide applicability and status from subjects and cardinality, not evidence alone.
 
@@ -173,6 +174,14 @@ def judge(
     reports a specification that matched nothing as a pass. Two specifications in the
     Wooden Windows rule set matched nothing in the Duplex model and came back green;
     nothing had been checked.
+
+    `has_requirements` closes the sibling hole one level up: a specification can match
+    real elements and still declare zero requirement facets (`<ids:requirements/>`,
+    empty). `required` cardinality with zero requirements is a legitimate existence
+    check -- "at least one of these must exist", and `matched > 0` genuinely
+    establishes it, so that case is left alone. `optional` with zero requirements
+    checked nothing and established nothing; `ifctester` has no verdict of its own to
+    even ask, and the naive `matched > 0` reading below would call that a pass.
     """
     if not schema_matches:
         return (
@@ -207,12 +216,23 @@ def judge(
             ReasonCode.PROHIBITED_SUBJECTS_PRESENT,
         )
 
+    if cardinality == "optional" and not has_requirements:
+        return (
+            Applicability.APPLIES,
+            Status.INDETERMINATE,
+            ReasonCode.NO_REQUIREMENTS_NOTHING_ASSERTED,
+        )
+
     # `matched` is guaranteed positive here -- the `matched == 0` branch above already
     # returned. `failed` and `indeterminate` are summed across every requirement on this
     # specification and can double-count an entity checked by more than one facet, so
     # `matched - failed - indeterminate` is not a trustworthy passed count. It does not
-    # need to be: `_aggregate` only consults `passed` when `failed == indeterminate == 0`,
-    # and in that case `matched > 0` already proves something was evaluated and passed.
+    # need to be: `_aggregate` only consults `passed` when `failed == indeterminate == 0`.
+    # In that case one of two things is true here, both legitimate: either
+    # `has_requirements` is true and real requirement facets ran and passed, or
+    # `cardinality == "required"` with zero requirements, whose existence alone is the
+    # check -- the branch above has already sent the one illegitimate zero-requirements
+    # combination, `optional`, elsewhere.
     return Applicability.APPLIES, _aggregate(matched, failed, indeterminate), None
 
 
@@ -228,7 +248,7 @@ def _specification(spec: Any, entity_limit: int) -> SpecificationOutcome:
     schema_matches = spec.is_ifc_version is not False
     cardinality = str(spec.get_usage())
     applicability, status, reason_code = judge(
-        cardinality, matched, schema_matches, failed, indeterminate
+        cardinality, matched, schema_matches, failed, indeterminate, bool(spec.requirements)
     )
 
     return SpecificationOutcome(

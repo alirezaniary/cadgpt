@@ -16,10 +16,14 @@ from collections.abc import Iterator
 from typing import Any
 
 import pytest
+from cadgpt_engine import Status, judge
 from django.utils import translation
 
 from cadgpt.apps.review.services.presentation import localize_report
-from cadgpt.apps.review.services.report_markdown import render_markdown_report
+from cadgpt.apps.review.services.report_markdown import (
+    _NOTHING_ESTABLISHED_REASONS,
+    render_markdown_report,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -141,6 +145,47 @@ def test_the_specification_that_established_nothing_is_named() -> None:
     text = _rendered()
     assert "1 specification established nothing" in text
     assert "A schema-mismatched specification" in text
+
+
+def test_every_established_nothing_reason_code_is_excluded_from_coverage() -> None:
+    """Total over every `(status, code)` `judge()` can produce -- not a hand-typed list.
+
+    `judge()` assigns a reason code only when it reaches a verdict without inspecting
+    per-entity evidence, and it pairs that early-returned code with `Status.INDETERMINATE`
+    in exactly the cases where nothing was established -- as opposed to a `FAIL`/`PASS`
+    pairing like `NO_SUBJECTS_BUT_REQUIRED`/`NO_SUBJECTS_AND_PROHIBITED`, which is a real
+    verdict the engine reached, not an absence of evidence. Sweeping every reachable
+    parameter combination and asserting the resulting set against
+    `_NOTHING_ESTABLISHED_REASONS` means a future `judge()` change that produces a new
+    INDETERMINATE-paired code fails this test until that code is added to the
+    coverage-exclusion set here -- exactly the gap a T-0038 review found:
+    `NO_REQUIREMENTS_NOTHING_ASSERTED` shipped without any test forcing it into this set,
+    the same way `test_every_engine_reason_code_has_a_translatable_label`
+    (`test_reasons.py`) forces every code into a translated label.
+
+    `ReportView.tsx`'s `NOTHING_ESTABLISHED_REASONS` mirrors `_NOTHING_ESTABLISHED_REASONS`
+    by hand and has no compiler or test enforcing that mirror -- this test only proves the
+    Python side is total, and a change here must be carried into the TypeScript constant by
+    the same hand that makes it.
+    """
+    observed: set[str] = set()
+    for cardinality in ("required", "optional", "prohibited"):
+        for matched in (0, 3):
+            for schema_matches in (True, False):
+                for failed in (0, 1):
+                    for indeterminate in (0, 1):
+                        for has_requirements in (True, False):
+                            _, status, code = judge(
+                                cardinality,
+                                matched,
+                                schema_matches,
+                                failed,
+                                indeterminate,
+                                has_requirements,
+                            )
+                            if status is Status.INDETERMINATE and code is not None:
+                                observed.add(code.value)
+    assert observed == _NOTHING_ESTABLISHED_REASONS
 
 
 def test_all_three_counts_are_always_present() -> None:

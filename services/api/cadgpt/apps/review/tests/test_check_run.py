@@ -8,14 +8,20 @@ rule" and "lacks the data the rule needs" are different answers.
 from __future__ import annotations
 
 from datetime import timedelta
+from pathlib import Path
 from typing import Any
 
 import pytest
-from conftest import IDS_FIXTURE, IFC_FIXTURE
+from conftest import ENGINE_FIXTURES, IDS_FIXTURE, IFC_FIXTURE, _upload
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from cadgpt.apps.account.models import User
 from cadgpt.apps.base.exceptions import ConflictError
+from cadgpt.apps.media.choices import MediaKind
+from cadgpt.apps.media.models import Media
+from cadgpt.apps.media.services import MediaService
+from cadgpt.apps.project.models import Project
 from cadgpt.apps.review.choices import CheckRunFailure, CheckRunStatus
 from cadgpt.apps.review.models import CheckRun, Review
 from cadgpt.apps.review.services import ReviewService
@@ -25,9 +31,43 @@ from cadgpt.apps.review.tasks import (
     reap_lost_dispatch_runs,
     reap_stalled_runs,
 )
+from cadgpt.apps.rulepack.models import RuleSet
+from cadgpt.apps.rulepack.services import RuleSetService
 from cadgpt.apps.tenancy.models import Tenant
 
 pytestmark = [pytest.mark.django_db, pytest.mark.integration]
+
+
+def _review_over(
+    ids_path: Path, *, tenant: Tenant, owner: User, project: Project
+) -> Review:
+    """A review over `three_doors.ifc` and whatever IDS `ids_path` names.
+
+    Built the same way the `review` fixture in `conftest.py` is, just with a different
+    rule set -- for T-0038, which needs an IDS with zero requirement facets that the
+    shared `review` fixture (`door_width.ids`) does not exercise.
+    """
+    media = MediaService(tenant=tenant)
+    ifc_media = media.store(
+        upload=_upload(IFC_FIXTURE, "application/octet-stream"),
+        kind=MediaKind.IFC_MODEL,
+        uploaded_by=owner,
+    )
+    ids_media: Media = media.store(
+        upload=_upload(ids_path, "application/xml"),
+        kind=MediaKind.IDS_RULESET,
+        uploaded_by=owner,
+    )
+    rule_set: RuleSet = RuleSetService(tenant=tenant).create(
+        source_file=ids_media, name=ids_path.stem, created_by=owner
+    )
+    return ReviewService(tenant=tenant).create(
+        name=ids_path.stem,
+        model_file=ifc_media,
+        project=project,
+        rule_set=rule_set,
+        created_by=owner,
+    )
 
 
 def test_a_check_separates_a_violation_from_missing_data(
@@ -114,6 +154,66 @@ def test_the_run_records_the_exact_inputs_it_checked(
     assert review.rule_set is not None
     assert run.model_checksum == review.model_file.checksum_sha256
     assert run.rule_set_checksum == review.rule_set.source_file.checksum_sha256
+
+
+def test_an_optional_specification_with_no_requirements_is_indeterminate_end_to_end(
+    api: APIClient, tenant: Tenant, owner: User, project: Project, commit: Any
+) -> None:
+    """T-0038, through the real stack: upload, review, check, read the stored run.
+
+    `door_optional_no_requirements.ids` matches all three real doors and states zero
+    requirement facets -- optional cardinality, so it checked nothing and established
+    nothing. A stored `CheckRun` must say INDETERMINATE, not PASS, and must carry the
+    engine version that changed this verdict (T-0038's `docs/decisions.md` entry: a
+    verdict-changing release bumps the engine version).
+    """
+    review = _review_over(
+        ENGINE_FIXTURES / "door_optional_no_requirements.ids",
+        tenant=tenant,
+        owner=owner,
+        project=project,
+    )
+    with commit():
+        queued = api.post(f"/api/v1/reviews/{review.uuid}/check/")
+    assert queued.status_code == 202, queued.data
+
+    run = CheckRun.objects.for_tenant(tenant).get(uuid=queued.data["uuid"])
+    assert run.status == CheckRunStatus.SUCCEEDED
+    assert run.outcome == "INDETERMINATE"
+    assert (run.passed, run.failed, run.indeterminate) == (0, 0, 0)
+    assert run.engine_version, "an old run stays explainable only if it says so itself"
+
+    detail = api.get(f"/api/v1/reviews/{review.uuid}/runs/{run.uuid}/")
+    assert detail.status_code == 200
+    spec = detail.data["report"]["specifications"][0]
+    assert spec["applicability"] == "APPLIES"
+    assert spec["matched"] == 3
+    assert spec["requirements"] == []
+    assert spec["status"] == "INDETERMINATE"
+    assert spec["reason_code"] == "NO_REQUIREMENTS_NOTHING_ASSERTED"
+    assert spec["reason_label"], "a reason code with no translation is a bare identifier"
+
+
+def test_a_required_specification_with_no_requirements_still_passes_end_to_end(
+    api: APIClient, tenant: Tenant, owner: User, project: Project, commit: Any
+) -> None:
+    """T-0038's control case, through the real stack: `required` with zero requirement
+    facets is a legitimate existence check over real matched subjects and must stay PASS.
+    """
+    review = _review_over(
+        ENGINE_FIXTURES / "door_required_no_requirements.ids",
+        tenant=tenant,
+        owner=owner,
+        project=project,
+    )
+    with commit():
+        queued = api.post(f"/api/v1/reviews/{review.uuid}/check/")
+    assert queued.status_code == 202, queued.data
+
+    run = CheckRun.objects.for_tenant(tenant).get(uuid=queued.data["uuid"])
+    assert run.status == CheckRunStatus.SUCCEEDED
+    assert run.outcome == "PASS"
+    assert run.engine_version
 
 
 def test_running_the_same_task_twice_changes_nothing(
