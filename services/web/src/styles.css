@@ -504,6 +504,17 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 .report__header { display: flex; justify-content: space-between; gap: var(--space-4); align-items: start; }
 .report__header p { font-size: var(--text-sm); }
 
+/* `.report` and `.specs` are CSS Grid containers with a single implicit "auto" column,
+   and `.spec` (a `<li>`) is itself a grid item of `.specs`. A grid item's automatic
+   minimum size defaults to its content's min-content -- so without this, the entity
+   table's fixed-column floor (T-0080, below) would size each of these tracks in turn,
+   growing `.report` / `.specs` / `.spec` themselves past `.page`'s width and overflowing
+   the page before `.entities-scroll`'s own `overflow-x: auto` ever gets a narrower box to
+   clip against. `min-inline-size: 0` is the standard escape hatch for a grid/flex item
+   that must be allowed to shrink below its content -- it only changes anything when space
+   is already tight, so report layout at ordinary widths is untouched. */
+.report, .specs, .spec { min-inline-size: 0; }
+
 /* Three columns, never two: indeterminate is displayed at the same weight as the other
    two so it cannot be read past. */
 .counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
@@ -567,7 +578,12 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
    columns line up: the previous auto layout sized each column from its own longest
    line, so the mono GUID column and the prose reason/detail columns fought each other
    and wrapped raggedly at ordinary report widths. Fixed widths make every row in a
-   table agree on where a column starts and ends. */
+   table agree on where a column starts and ends. Below ~640px the four fixed columns
+   alone already sum past the viewport (T-0080) -- rather than drop `table-layout: fixed`
+   and lose that alignment, or hide a column (status/class/GlobalId/reason/detail are each
+   load-bearing per T-0080's scope), `.entities-scroll` gives the *table* its own
+   horizontal scrollbar so the page around it never scrolls sideways. */
+.entities-scroll { overflow-x: auto; max-inline-size: 100%; }
 .entities { inline-size: 100%; border-collapse: collapse; font-size: var(--text-sm); table-layout: fixed; }
 .entities td {
   padding: var(--space-2) var(--space-3);

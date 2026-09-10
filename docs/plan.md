@@ -827,6 +827,22 @@ live stack rather than the workbench alone: a real 47MB IFC forced a genuine
 byte-for-byte. Both the non-blank and blank-detail storybook states also rendered and were
 screenshotted. 246 tests, 5 contracts kept.
 
+**T-0080 — the report cannot be read on a phone. Done 2026-09-10.** At 390px the entity
+table's fixed column widths (37.5rem, from T-0074) pushed the whole page 318px past the
+viewport — everything, not just the table, drifted sideways. The entity table now scrolls
+inside its own `.entities-scroll` container instead of the page scrolling; no column hidden,
+`table-layout: fixed` untouched. The naive version of this fix (`overflow-x: auto` alone)
+measured **worse**, 358px, because `.report`/`.specs`/`.spec` are CSS Grid containers and
+items whose automatic minimum size defaults to their content's min-content — they grew to
+the table's width before the scroll container ever got a narrower box to clip against.
+`min-inline-size: 0` on those three selectors is what actually contains it.
+
+Not reviewer-gated (no invariant, small fully-read diff: 2 files, CSS/markup only). Verified
+by repeating the exact measurement that found the bug against the real built workbench in
+Chromium — `scrollWidth - clientWidth` is `0` at 390/768/1280px in both `dir=ltr` and
+`dir=rtl` (was `+318` at 390px before), all three count tiles present at every width, and
+the entities table scrolls internally only where it needs to (390px).
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -933,8 +949,8 @@ none blocking T-0074:
 Added 2026-09-06, from the T-0079 workbench's first run — all three are current against the
 live UI, unlike the pre-redesign group above:
 
-- **T-0080** — the report overflows horizontally below ~640px; `styles.css` has no `@media`
-  query at all.
+- ~~**T-0080** — the report overflows horizontally below ~640px.~~ **Done 2026-09-10.** See
+  "What has landed" above.
 - ~~**T-0081** — a failed run never says why.~~ **Done 2026-09-10.** See "What has landed"
   above.
 - **T-0082** — the catalogue picker's jurisdiction/region/version inputs are

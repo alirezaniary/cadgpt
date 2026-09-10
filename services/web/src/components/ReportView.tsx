@@ -234,29 +234,31 @@ export function ReportView({
                     {requirement.requirement_text ?? requirement.description}
                   </p>
                   {visibleEntities.length > 0 && (
-                    <table className="entities">
-                      <tbody>
-                        {visibleEntities.map((entity) => (
-                          <tr
-                            key={`${entity.global_id}-${entity.reason_code}`}
-                            data-testid="entity-row"
-                            data-status={entity.status}
-                          >
-                            <td>
-                              <StatusPill status={entity.status} />
-                            </td>
-                            <td className="ltr">{entity.ifc_class}</td>
-                            <td className="ltr mono">{entity.global_id}</td>
-                            <td data-testid="reason" data-reason-code={entity.reason_code}>
-                              {entity.reason_label ?? entity.reason_code}
-                            </td>
-                            <td className="ltr mono muted" data-testid="detail">
-                              {entity.detail}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <div className="entities-scroll">
+                      <table className="entities">
+                        <tbody>
+                          {visibleEntities.map((entity) => (
+                            <tr
+                              key={`${entity.global_id}-${entity.reason_code}`}
+                              data-testid="entity-row"
+                              data-status={entity.status}
+                            >
+                              <td>
+                                <StatusPill status={entity.status} />
+                              </td>
+                              <td className="ltr">{entity.ifc_class}</td>
+                              <td className="ltr mono">{entity.global_id}</td>
+                              <td data-testid="reason" data-reason-code={entity.reason_code}>
+                                {entity.reason_label ?? entity.reason_code}
+                              </td>
+                              <td className="ltr mono muted" data-testid="detail">
+                                {entity.detail}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                   {orderedEntities.length > 0 && visibleEntities.length === 0 && (
                     <p className="notice" data-testid="requirement-all-hidden">
