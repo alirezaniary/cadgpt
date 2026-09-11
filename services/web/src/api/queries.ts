@@ -54,11 +54,13 @@ export function useMe(enabled: boolean): UseQueryResult<User> {
   });
 }
 
-export function useTenants(enabled: boolean): UseQueryResult<Page<Tenant>> {
+/** No `enabled` flag: the only caller is `ProtectedShell`, which `appRoute`'s guard
+ * (`router.tsx`) cannot match without a signed-in user. The flag existed to stop the old
+ * `App` from firing this while signed out, a state this can no longer be rendered in. */
+export function useTenants(): UseQueryResult<Page<Tenant>> {
   return useQuery({
     queryKey: keys.tenants,
     queryFn: () => api.get<Page<Tenant>>("/v1/tenants/"),
-    enabled,
   });
 }
 

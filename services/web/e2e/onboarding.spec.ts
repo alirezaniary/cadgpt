@@ -34,11 +34,19 @@ test("a brand-new person registers, creates a workspace and walks every project/
 
   // Step 1: the sign-in screen is the only thing an unauthenticated visitor sees, and it
   // must offer a way to a registration screen.
-  await expect(page.getByRole("heading", { name: "کدجی‌پی‌تی" })).toBeVisible();
-  await page.getByRole("button", { name: "ساخت حساب کاربری" }).click();
+  //
+  // "/" resolves by session, not unconditionally: signed out it lands on "/login". The
+  // URL assertion is the point, not decoration -- the original defect was a "/" that
+  // always redirected to "/projects", leaving the address bar claiming a projects page
+  // while a sign-in form was on screen.
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("heading", { name: "CADgpt" })).toBeVisible();
+  await page.getByRole("link", { name: "ساخت حساب کاربری" }).click();
 
-  // Step 2: the registration screen. Email and password only.
-  await expect(page.getByText("ثبت‌نام در کدجی‌پی‌تی", { exact: true })).toBeVisible();
+  // Step 2: the registration screen -- its own real URL, reachable by a real link, so it
+  // survives a reload and can be opened in a new tab. Email and password only.
+  await expect(page).toHaveURL(/\/register$/);
+  await expect(page.getByText("ثبت‌نام در CADgpt", { exact: true })).toBeVisible();
   await page.getByLabel("رایانامه").fill(email);
   await page.getByLabel("گذرواژه").fill(password);
   await page.screenshot({
@@ -46,8 +54,11 @@ test("a brand-new person registers, creates a workspace and walks every project/
   });
   await page.getByRole("button", { name: "ساخت حساب کاربری" }).click();
 
-  // Step 3: registration signs the new user in and, because they have zero tenants,
-  // they land on the first-workspace screen.
+  // Step 3: registration signs the new user in, which is itself what moves the URL --
+  // `/register`'s guard refuses a signed-in visitor and redirects to `/projects`. Having
+  // zero tenants, they land on the first-workspace screen, which is a state of
+  // `/projects` rather than a URL of its own (see `docs/decisions.md`).
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 15_000 });
   await expect(page.getByRole("heading", { name: "فضای کاری نخست خود را بسازید" })).toBeVisible({
     timeout: 15_000,
   });
@@ -61,8 +72,9 @@ test("a brand-new person registers, creates a workspace and walks every project/
   await page.getByRole("button", { name: "ایجاد فضای کاری" }).click();
 
   // Step 5: the shell renders immediately, with no reload, the new workspace is already
-  // selected, and "/" redirects to "/projects" -- route 1 of 5.
+  // selected, and the URL is still "/projects" -- route 1 of 5.
   await expect(page.locator(".avatar-trigger")).toBeVisible({ timeout: 15_000 });
+  await expect(page).toHaveURL(/\/projects$/);
   await expect(page.getByRole("heading", { name: "پروژه‌ها" })).toBeVisible();
   await page.locator(".avatar-trigger").click();
   await expect(page.locator(".user-menu-header strong")).toHaveText(workspaceName);

@@ -1,10 +1,14 @@
+import { Link } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ApiError } from "@/api/client";
 import { useSession } from "@/app/session-context";
 
-export function SignInPage({ onRegister }: { onRegister: () => void }) {
+/** Submitting does not navigate. Setting the user is what moves the URL: `/login` sits
+ * under a guard that refuses a signed-in visitor, so the session change redirects to
+ * `/projects` on its own (`router.tsx`). */
+export function SignInPage() {
   const { t } = useTranslation();
   const { signIn } = useSession();
   const [email, setEmail] = useState("");
@@ -28,6 +32,7 @@ export function SignInPage({ onRegister }: { onRegister: () => void }) {
   return (
     <main className="centered">
       <form className="card" onSubmit={onSubmit}>
+        <img src="/cadgpt-logo.png" alt="" className="brand-mark brand-mark-lg" />
         <h1>{t("app.name")}</h1>
         <p className="muted">{t("app.tagline")}</p>
 
@@ -65,9 +70,9 @@ export function SignInPage({ onRegister }: { onRegister: () => void }) {
 
         <p className="muted">
           {t("auth.registerPrompt")}{" "}
-          <button type="button" className="link-button" onClick={onRegister}>
+          <Link to="/register" className="link-button">
             {t("auth.register")}
-          </button>
+          </Link>
         </p>
       </form>
     </main>

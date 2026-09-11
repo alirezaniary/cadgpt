@@ -1,20 +1,38 @@
-import { Outlet, useNavigate } from "@tanstack/react-router";
+import { Outlet, getRouteApi, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useTenants } from "@/api/queries";
 import { LAST_TENANT_KEY, useSession } from "@/app/session-context";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { RegisterPage } from "@/features/auth/RegisterPage";
-import { SignInPage } from "@/features/auth/SignInPage";
 import { CreateWorkspacePage } from "@/features/tenancy/CreateWorkspacePage";
 
-export function App() {
+/** The route this component *is*. Addressed by id rather than by importing `appRoute`
+ * itself, which would make this module and `router.tsx` circular. What it gives back is
+ * what `requireSignedIn` returned: a `User`, already narrowed, not a `User | null`. */
+const appRoute = getRouteApi("/_app");
+
+/**
+ * The topbar/account-menu chrome around whichever protected route matched.
+ *
+ * `user` comes from the route context rather than `useSession()`, and it is not nullable:
+ * `appRoute`'s `beforeLoad` (`router.tsx`) has already refused to match this subtree
+ * without one. The old `App` had to branch on "signed out" itself and could only ever hope
+ * the URL agreed with what it chose; this cannot render at a signed-out URL, so it does
+ * not ask.
+ *
+ * It also no longer has to reset `menuOpen` on sign-out. `App` never unmounted across a
+ * sign-out -- it only re-branched its own JSX -- so the open menu, and its outside-click
+ * handler's now-null ref, leaked into the next session on the same tab. This component
+ * lives under `appRoute`, and a cleared session redirects out of that subtree entirely,
+ * so it unmounts and takes the state with it.
+ */
+export function ProtectedShell() {
   const { t } = useTranslation();
-  const { user, tenant, ready, signOut, chooseTenant } = useSession();
-  const tenants = useTenants(Boolean(user));
+  const { user } = appRoute.useRouteContext();
+  const { tenant, signOut, chooseTenant } = useSession();
+  const tenants = useTenants();
   const navigate = useNavigate();
-  const [authMode, setAuthMode] = useState<"signIn" | "register">("signIn");
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -28,16 +46,6 @@ export function App() {
       tenants.data.results[0];
     if (match) chooseTenant(match);
   }, [tenant, tenants.data, chooseTenant]);
-
-  // `App` never unmounts across a sign-out on the same tab -- it only branches its own
-  // JSX on `user` -- so `menuOpen` would otherwise survive into the next session and,
-  // since the panel isn't rendered while signed out, the outside-click handler below
-  // (guarded on `menuRef.current`, which is null with nothing mounted) can never catch
-  // it either. The next person's first click on their own avatar would then read as a
-  // toggle-closed of a menu they never opened.
-  useEffect(() => {
-    if (!user) setMenuOpen(false);
-  }, [user]);
 
   // A native `<select>`'s option list closes itself; this popover has no such platform
   // help, so it needs its own outside-click and Escape handling or it would stay open
@@ -60,20 +68,11 @@ export function App() {
     };
   }, [menuOpen]);
 
-  if (!ready) return <main className="centered" />;
-  if (!user) {
-    return authMode === "signIn" ? (
-      <SignInPage onRegister={() => setAuthMode("register")} />
-    ) : (
-      <RegisterPage onSignIn={() => setAuthMode("signIn")} />
-    );
-  }
-
   // A signed-in user with no chosen tenant yet is either mid-fetch of their tenant list,
   // or genuinely has none. Those must not render the same way: falling through to the
   // shell for the first case renders the account menu with nothing to name yet -- the
-  // shell is withheld, the same as `!ready` above, until `tenants.data` has actually
-  // arrived and the two cases can be told apart.
+  // shell is withheld until `tenants.data` has actually arrived and the two cases can be
+  // told apart.
   const tenantList = tenants.data;
   if (!tenant && !tenantList) return <main className="centered" />;
   if (!tenant && tenantList && tenantList.results.length === 0) {
@@ -85,6 +84,7 @@ export function App() {
   return (
     <div className="shell">
       <header className="topbar">
+        <img src="/cadgpt-logo.png" alt="" className="brand-mark" />
         <strong>{t("app.name")}</strong>
 
         <div className="spacer" />
@@ -125,6 +125,9 @@ export function App() {
                         // session would 404 (T-0074's own e2e run against the real
                         // stack caught this: the stale route rendered a project-detail
                         // page scoped to another tenant's now-inaccessible project).
+                        // Unlike sign-out, no guard can catch this one: both tenants
+                        // are the same signed-in user, so `requireSignedIn` is still
+                        // satisfied and the route stays matched.
                         void navigate({ to: "/projects" });
                       }}
                     >
@@ -139,11 +142,13 @@ export function App() {
                 role="menuitem"
                 className="user-menu-signout"
                 onClick={() => {
+                  // No navigation here on purpose. Clearing the session is itself what
+                  // moves the URL: `appRoute`'s guard re-runs, finds no user, and
+                  // redirects to `/login` (see `router.tsx`). Navigating by hand as
+                  // well would race the state flush -- `/login` would be entered while
+                  // `context.auth.user` still held the outgoing user, and its own guard
+                  // would bounce it straight back to `/projects`.
                   void signOut();
-                  // Same reasoning as the workspace-switch handler above: the next
-                  // person to sign in on this tab must not inherit a project/review
-                  // route scoped to the account that just signed out.
-                  void navigate({ to: "/" });
                 }}
               >
                 {t("auth.signOut")}

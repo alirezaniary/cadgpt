@@ -32,7 +32,7 @@ export function ReviewDetailPage() {
   const { t } = useTranslation();
   const { tenant } = useSession();
   const slug = tenant?.slug ?? null;
-  const { reviewUuid } = useParams({ from: "/projects/$projectUuid/reviews/$reviewUuid" });
+  const { reviewUuid } = useParams({ from: "/_app/projects/$projectUuid/reviews/$reviewUuid" });
 
   const review = useReview(slug, reviewUuid);
   const rulePacks = useRulePacks(slug);

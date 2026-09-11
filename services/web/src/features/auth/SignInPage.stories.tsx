@@ -5,8 +5,13 @@ import { session } from "@/mocks/handlers";
 import { AppAt } from "@/mocks/preview-app";
 
 /**
- * Sign-in and registration are branches of `App`, not routes, so the route below is
- * irrelevant to them -- what selects these screens is `/auth/refresh/` failing.
+ * Sign-in and registration are real routes: `/login` and `/register`.
+ *
+ * These stories still ask for `/projects` rather than `/login`, and that is the point --
+ * `/auth/refresh/` is mocked as failing, so `appRoute`'s guard (`router.tsx`) refuses the
+ * route and redirects to `/login`, which is exactly the path a real signed-out visitor
+ * takes. Starting at `/login` directly would render the same form while proving nothing
+ * about the redirect that puts them there.
  */
 const meta = {
   title: "Screens/Sign in",
@@ -41,9 +46,9 @@ export const CredentialsRejected: Story = {
   parameters: { msw: session({ authenticated: false }) },
   render: () => <AppAt route="/projects" />,
   play: async ({ canvasElement }) => {
-    // `App` renders a blank frame until `/auth/refresh/` settles, so the form does not
-    // exist yet when `play` first runs -- every step here waits for it rather than
-    // assuming it.
+    // The router's root layout renders a blank frame until `/auth/refresh/` settles, so
+    // the form does not exist yet when `play` first runs -- every step here waits for it
+    // rather than assuming it.
     const email = await waitFor(() => required<HTMLInputElement>(canvasElement, "#email"));
     const password = required<HTMLInputElement>(canvasElement, "#password");
     const submit = required<HTMLButtonElement>(canvasElement, 'button[type="submit"]');
@@ -54,9 +59,11 @@ export const CredentialsRejected: Story = {
 };
 
 /**
- * Account creation. This is a branch of `SignInPage`'s own state, not a route -- there is
- * no URL for it -- so the `play` step clicks through to it. That is the honest way to make
- * it addressable: the state is reached the way a person reaches it.
+ * Account creation. `/register` is a real route, but the `play` step still clicks through
+ * from sign-in rather than starting `AppAt` there directly -- that's the honest way to
+ * reach it, the way a person actually does, and it exercises the sign-in page's own link
+ * (a real `<Link>` to a real URL now, not a callback that swapped a state variable) at
+ * the same time.
  *
  * Registering does not itself sign anyone in; the page calls `signIn` straight afterwards,
  * so a successful submit here lands on the first-workspace screen.

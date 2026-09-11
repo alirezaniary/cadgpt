@@ -10,13 +10,14 @@
  * used twice.
  */
 
+import { Link } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api, ApiError } from "@/api/client";
 import { useSession } from "@/app/session-context";
 
-export function RegisterPage({ onSignIn }: { onSignIn: () => void }) {
+export function RegisterPage() {
   const { t } = useTranslation();
   const { signIn } = useSession();
   const [email, setEmail] = useState("");
@@ -41,6 +42,7 @@ export function RegisterPage({ onSignIn }: { onSignIn: () => void }) {
   return (
     <main className="centered">
       <form className="card" onSubmit={onSubmit}>
+        <img src="/cadgpt-logo.png" alt="" className="brand-mark brand-mark-lg" />
         <h1>{t("app.name")}</h1>
         <p className="muted">{t("auth.registerTitle")}</p>
 
@@ -78,9 +80,9 @@ export function RegisterPage({ onSignIn }: { onSignIn: () => void }) {
 
         <p className="muted">
           {t("auth.signInPrompt")}{" "}
-          <button type="button" className="link-button" onClick={onSignIn}>
+          <Link to="/login" className="link-button">
             {t("auth.backToSignIn")}
-          </button>
+          </Link>
         </p>
       </form>
     </main>

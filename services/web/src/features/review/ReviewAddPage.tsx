@@ -19,7 +19,7 @@ export function ReviewAddPage() {
   const { tenant } = useSession();
   const slug = tenant?.slug ?? null;
   const navigate = useNavigate();
-  const { projectUuid } = useParams({ from: "/projects/$projectUuid/reviews/new" });
+  const { projectUuid } = useParams({ from: "/_app/projects/$projectUuid/reviews/new" });
 
   const createReview = useCreateReview(slug);
   const [error, setError] = useState<string | null>(null);

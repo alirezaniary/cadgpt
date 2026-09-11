@@ -1017,3 +1017,65 @@ never does" names this explicitly.
 nothing else needs -- at which point a lightweight default (e.g. auto-approve below some
 severity, judge only reviews above it) is worth designing, rather than reverting to
 self-approval.
+
+---
+
+## 2026-09-12 — the route tree is where auth lives, and the URL is the app's state
+
+**Problem.** Every screen's identity was a React state variable, not a URL. `App` branched on
+`user` to render sign-in, the first-workspace screen or the shell, while the router separately
+believed it was somewhere; `"/"` redirected to `/projects` unconditionally, with no auth check
+at all. The two agreed by convention, never by construction, and the seams showed exactly where
+you would expect: a signed-out visitor sat at `/projects` looking at a sign-in form, sign-out
+left the address bar on `/projects` (reported as "pages look cached"), and sign-in/register was
+a `useState` toggle with no URL, so neither could be linked, bookmarked or reloaded.
+
+**Decision, guards in `beforeLoad` on two pathless layout routes.** `_guest` holds `/login` and
+`/register` and turns a signed-in visitor away; `_app` holds the five project/review routes,
+turns a signed-out visitor away, and renders the topbar/breadcrumbs shell. Pathless layout
+routes contribute no URL segment, so every path is registered and linked at exactly what it
+says — `/projects/$projectUuid` is unchanged from before. `"/"` now resolves by session instead
+of unconditionally. Guard redirects `replace` rather than push, so the back button cannot walk
+into a page it will immediately be redirected out of. Sign-in and sign-out deliberately do not
+navigate: changing the session is what moves the URL, because `requireSignedIn` cannot hold
+`/projects` open for a user who is no longer there. Navigating by hand as well would race the
+state flush and land on `/login` while the context still held the outgoing user.
+
+An earlier attempt abandoned this shape after concluding the installed router (1.170.32) folds
+a pathless layout's `id` into its children's registered paths, breaking every `Link`. That
+diagnosis was wrong and the note is here so it is not repeated: a route has a **path**
+(`fullPath`, the URL, which a layout contributes nothing to) and an **id** (its position in the
+tree, which every ancestor does contribute to). All 13 `Link`/`navigate` call sites typecheck
+untouched; only the three `useParams({ from })` sites needed updating, because `from` addresses
+a route rather than a URL. The layout ids are spelled `_guest`/`_app`, TanStack's own
+convention, so that prefix reads as a tree position and not a navigable segment.
+
+**Decision, the router does not mount until the session is known.** `/v1/auth/refresh/` resolves
+asynchronously, and a guard told "not resolved yet" has no answer that isn't a guess — treating
+it as signed-out bounces a real session to `/login` on every hard refresh. Rather than teach
+every guard a third state, `AuthedRouter` withholds `RouterProvider` until `ready`, so no
+`beforeLoad` can observe an unresolved session. The same gate must cover `router.invalidate()`,
+not just the render: a router owns the browser history from construction and acts on a guard
+redirect when invalidated **whether or not anything renders it**, so an ungated invalidate
+pushed the address bar to `/login` behind the blank frame — the precise flash the gate exists to
+prevent. Found by running the real container, not by any test; `e2e/routing.spec.ts` now holds
+`/auth/refresh/` open for 1.5s and reads the URL non-retryingly through that window, because a
+retrying assertion absorbs the flash and passes against a deliberately broken build.
+
+**Decision, the first-workspace screen stays a state of `/projects`, without its own URL.** It is
+the only screen that is not a route. Giving it one means deciding on a tenant list that lives in
+TanStack Query rather than router context, which means putting the query client into the router
+and fetching tenants in a blocking loader — a change that would also alter the load-window
+behaviour `session-isolation.spec.ts` deliberately pins. A signed-in user with no workspace is a
+precondition state of their projects page, the way an empty list is.
+
+**Decision, the tenant stays out of the URL.** It remains in-memory plus `LAST_TENANT_KEY` plus
+the API client's header. Isolation is enforced server-side (`for_tenant`, every tenant-owned
+table), so a path segment would be a display of the tenant, not a control on it, and would have
+to be threaded through every link, breadcrumb and e2e spec to buy nothing an attacker respects.
+
+**Reopens if:** a user needs to send a teammate a link that is unambiguous across workspaces, or
+one person routinely works in two tenants at once and wants two tabs (both of which want the
+tenant in the path or a subdomain, and want it before the first fetch, which is the point at
+which the query client belongs in router context and the first-workspace screen should become a
+real route in the same pass).

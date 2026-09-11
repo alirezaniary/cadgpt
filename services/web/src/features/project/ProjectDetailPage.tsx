@@ -17,7 +17,7 @@ export function ProjectDetailPage() {
   const { tenant } = useSession();
   const slug = tenant?.slug ?? null;
   const navigate = useNavigate();
-  const { projectUuid } = useParams({ from: "/projects/$projectUuid" });
+  const { projectUuid } = useParams({ from: "/_app/projects/$projectUuid" });
 
   const project = useProject(slug, projectUuid);
   const reviews = useReviews(slug, projectUuid);

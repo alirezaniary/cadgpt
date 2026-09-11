@@ -54,7 +54,7 @@ test("signing out clears the previous user's cached tenant and project data befo
   // --- User A: register, create a workspace, add a project that must not survive into
   // the next session on this tab. ---
   await page.goto("/");
-  await page.getByRole("button", { name: "ساخت حساب کاربری" }).click();
+  await page.getByRole("link", { name: "ساخت حساب کاربری" }).click();
   await page.getByLabel("رایانامه").fill(emailA);
   await page.getByLabel("گذرواژه").fill(passwordA);
   await page.getByRole("button", { name: "ساخت حساب کاربری" }).click();
@@ -84,7 +84,11 @@ test("signing out clears the previous user's cached tenant and project data befo
   // button, so it has to be opened first. ---
   await page.locator(".avatar-trigger").click();
   await page.getByRole("menuitem", { name: "خروج" }).click();
-  await expect(page.getByRole("heading", { name: "کدجی‌پی‌تی" })).toBeVisible();
+  // The URL has to leave /projects too, not just the screen -- `e2e/routing.spec.ts`
+  // covers that guarantee in full; asserting it here keeps this test honest about which
+  // screen it thinks it is on before it starts registering user B.
+  await expect(page).toHaveURL(/\/login$/, { timeout: 15_000 });
+  await expect(page.getByRole("heading", { name: "CADgpt" })).toBeVisible();
   await expect(page.getByLabel("رایانامه")).toBeVisible();
 
   // --- User B: a different brand-new account, same tab, same page -- no reload. If the
@@ -95,7 +99,7 @@ test("signing out clears the previous user's cached tenant and project data befo
   const passwordB = "Guarded#2026-HarnessB";
   const tenantB = `Tenant B ${b}`;
 
-  await page.getByRole("button", { name: "ساخت حساب کاربری" }).click();
+  await page.getByRole("link", { name: "ساخت حساب کاربری" }).click();
   await page.getByLabel("رایانامه").fill(emailB);
   await page.getByLabel("گذرواژه").fill(passwordB);
   await page.getByRole("button", { name: "ساخت حساب کاربری" }).click();
@@ -154,14 +158,14 @@ test("the workspace dropdown never renders with zero options while the tenant li
   });
 
   await page.goto("/");
-  await page.getByRole("button", { name: "ساخت حساب کاربری" }).click();
+  await page.getByRole("link", { name: "ساخت حساب کاربری" }).click();
   await page.getByLabel("رایانامه").fill(email);
   await page.getByLabel("گذرواژه").fill(password);
   await page.getByRole("button", { name: "ساخت حساب کاربری" }).click();
 
   // Registration must actually have succeeded before the loop below means anything --
   // otherwise an absent `select#workspace` proves nothing (see the comment above).
-  await expect(page.getByText("ثبت‌نام در کدجی‌پی‌تی", { exact: true })).toHaveCount(0, {
+  await expect(page.getByText("ثبت‌نام در CADgpt", { exact: true })).toHaveCount(0, {
     timeout: 10_000,
   });
   await expect(page.locator(".error")).toHaveCount(0);
