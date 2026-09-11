@@ -1019,6 +1019,40 @@ reproduces that exact warning and fails the test. `make e2e` was correctly not r
 fix changes rendered text, and the task's own "how to prove it ran" anticipated that a browser
 is the wrong instrument for one defect and the Storybook mechanism already covers the other.
 
+**T-0036 — the Persian report: prove RTL, and stop rendering a raw payload value. Done
+2026-09-11.** Found by the T-0025 review; **its premise had partly gone stale by the time it
+was dispatched, and the coordinator corrected the task file in place before dispatch** (the
+T-0029 precedent for fixing a drifted task's scope rather than leaving it for the builder to
+discover) — T-0083 (done 2026-09-09) hardcoded `ACTIVE_LANGUAGE = "fa"`, so every e2e spec in
+this repository already renders under `fa`/`dir="rtl"`, and `upload-limit.spec.ts` already
+asserted the `dir` attribute. "Nothing ever renders the app under `fa`" was no longer true;
+what remained was that no test checked the *report body itself* for RTL layout or leaked
+English, and `{spec.cardinality}` still rendered ifctester's raw `required`/`prohibited`/
+`optional` machine token as English prose on an otherwise-Persian page. Both closed: the
+cardinality span now renders through `t()`, keyed per value in both catalogues, and a new
+Storybook story (`RtlReportBodyHasNoLeaks`, run headless via the same `@storybook/addon-vitest`
+gate T-0034 wired into `verify`) asserts `document.documentElement.dir === "rtl"`, zero
+horizontal overflow on the coverage block/count tiles/filter controls/report body before and
+after a filter toggle, every cardinality cell showing its fa translation rather than the raw
+token, and no substring shaped like an untranslated `report.x.y` key anywhere in the report
+body — mutation-proven by reverting the cardinality fix and watching the story fail on exactly
+that assertion.
+
+Not reviewer-gated (no invariant touched). Re-verified independently: `make verify` passed
+(35 Storybook tests, up from 34), and the real Docker stack was rebuilt and `make e2e` run
+against it (9/9), regenerating `report.png` — the coordinator opened it and confirmed the
+right-to-left mirror (tiles, breadcrumb, filter row all correctly reversed, no overflow) and
+"الزامی" rendering where the raw English "required" shipped before. IDS-authored content
+(rule and requirement text) stays in English by design — that is rule-author content, not
+application chrome.
+
+**Observation for the judge, not fixed here (out of scope for this task's files):** the same
+screenshot shows entity-level `reason_label` text rendering in English despite
+`services/api/cadgpt/apps/review/reasons.py` composing it through Django `gettext` and the
+fa `.po` catalogue already carrying the translation — implying Django's active language is not
+`fa` when a check run's report is actually generated (worker/Celery context), a live gap
+between the localization the report *can* produce and what a real run *does* produce.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -1059,7 +1093,8 @@ the first of them:
   2026-09-11.** See "What has landed" above.
 - ~~**T-0035** — two latent report-view defects: an unsortable list and a colliding key.~~
   **Done 2026-09-11.** See "What has landed" above.
-- **T-0036** — the Persian report: prove RTL, and stop rendering a raw payload value.
+- ~~**T-0036** — the Persian report: prove RTL, and stop rendering a raw payload value.~~
+  **Done 2026-09-11.** See "What has landed" above.
 - **T-0039** — the subject of a citation: structured in the engine, worded in the service.
 - **T-0040** — `localize_report` must degrade, not 500.
 - **T-0041** — a verdict is reachable without the statement of what was checked.

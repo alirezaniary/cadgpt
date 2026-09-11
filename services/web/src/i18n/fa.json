@@ -90,6 +90,11 @@
     "engine": "موتور {{version}}",
     "schema": "شمای مدل {{schema}}",
     "nothingChecked": "چیزی بررسی نشد",
+    "cardinality": {
+      "required": "الزامی",
+      "prohibited": "ممنوع",
+      "optional": "اختیاری"
+    },
     "selection": {
       "title": "بسته‌های مقرراتی که بررسی شدند"
     },

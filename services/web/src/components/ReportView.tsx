@@ -220,11 +220,17 @@ export function ReportView({
         )}
       </section>
 
-      <div className="filter" role="group" aria-label={t("report.filter.label")}>
+      <div
+        className="filter"
+        role="group"
+        aria-label={t("report.filter.label")}
+        data-testid="filter-controls"
+      >
         <span className="filter__label">{t("report.filter.label")}</span>
         <label className="filter__option">
           <input
             type="checkbox"
+            data-testid="filter-option-fail"
             checked={filter.FAIL}
             onChange={(e) => setFilter((f) => ({ ...f, FAIL: e.target.checked }))}
           />
@@ -233,6 +239,7 @@ export function ReportView({
         <label className="filter__option">
           <input
             type="checkbox"
+            data-testid="filter-option-indeterminate"
             checked={filter.INDETERMINATE}
             onChange={(e) => setFilter((f) => ({ ...f, INDETERMINATE: e.target.checked }))}
           />
@@ -266,7 +273,15 @@ export function ReportView({
               <StatusPill status={spec.status} />
             </div>
             <p className="muted">
-              {t("report.matched", { count: spec.matched })} · {spec.cardinality}
+              {t("report.matched", { count: spec.matched })} ·{" "}
+              {/* `spec.cardinality` is ifctester's own machine token
+                  (`get_usage()`: "required" | "optional" | "prohibited", a closed
+                  vocabulary -- `packages/engine/.venv/.../ifctester/ids.py`'s
+                  `Cardinality`). Rendered through a key per value, the same way
+                  `StatusPill` renders `Status`, rather than interpolated raw -- an
+                  English machine token is not report prose and must not sit
+                  untranslated inside an otherwise-localized sentence (T-0036). */}
+              <span data-testid="cardinality">{t(`report.cardinality.${spec.cardinality}`)}</span>
             </p>
             {spec.applicability_description && (
               <p className="muted" data-testid="applicability">

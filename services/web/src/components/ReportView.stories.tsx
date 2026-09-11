@@ -193,6 +193,105 @@ export const FilteredWithOmissionsAndAPartialRequirement: Story = {
 };
 
 /**
+ * T-0036. The report body under `fa` -- the app's only, default locale
+ * (`src/i18n/index.ts`'s `ACTIVE_LANGUAGE`, this story's own default via `.storybook/
+ * preview.tsx`'s `initialGlobals`) -- is exercised nowhere else for two things a real e2e
+ * fixture cannot reach in one run: every value of `cardinality`'s closed vocabulary
+ * (`required` / `prohibited` / `optional`, ifctester's own `Cardinality`) rendering
+ * through `t()` rather than as a bare English token, and the T-0034 filter/omission
+ * strings (`omittedTotal`, `showing`, `partiallyHidden`, `allHidden`) never leaking their
+ * raw i18n key instead of translated text. `withMixedRequirement` already produces a
+ * mixed-status requirement (partial hide) and an all-one-status requirement (full hide)
+ * without a fixture rewrite; the one addition here is overriding the schema-mismatch
+ * specification's cardinality to `"prohibited"` so all three values are present at once
+ * (the base fixture only ever has `"required"` and `"optional"`).
+ */
+const withAllCardinalities: Report = {
+  ...withMixedRequirement,
+  specifications: withMixedRequirement.specifications.map((spec, index) =>
+    index === 3 ? { ...spec, cardinality: "prohibited" } : spec,
+  ),
+};
+
+export const RtlReportBodyHasNoLeaks: Story = {
+  args: { report: withAllCardinalities, rulePackSelection: [] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // The premise this whole story exists to prove -- not assumed, asserted. If this ever
+    // reads "ltr", every assertion below is checking the wrong direction.
+    expect(document.documentElement.dir).toBe("rtl");
+
+    const reportEl = canvasElement.querySelector("section.report");
+    if (!(reportEl instanceof HTMLElement)) throw new Error("report section did not render");
+
+    // "Lay out ... rather than overflowing" (the task's own words): a horizontal-scroll
+    // gap on any of these three regions is exactly what a physical `left`/`right` rule,
+    // or a fixed pixel width that doesn't reflow under RTL, would produce. Logical
+    // properties and a `minmax(0, 1fr)` grid (the T-0025 review's own finding) should
+    // never let `scrollWidth` exceed `clientWidth`.
+    const assertNoHorizontalOverflow = (el: Element, label: string): void => {
+      const overflow = el.scrollWidth - el.clientWidth;
+      expect(overflow, `${label} overflows its container by ${overflow}px under RTL`).toBeLessThanOrEqual(1);
+    };
+
+    const coverage = await waitFor(() => canvas.getByTestId("coverage"));
+    assertNoHorizontalOverflow(coverage, "coverage block");
+
+    const counts = coverage.querySelector(".counts");
+    if (!counts) throw new Error("count tiles did not render inside the coverage block");
+    assertNoHorizontalOverflow(counts, "count tiles");
+
+    const filterControls = await waitFor(() => canvas.getByTestId("filter-controls"));
+    assertNoHorizontalOverflow(filterControls, "filter controls");
+    assertNoHorizontalOverflow(reportEl, "report body");
+
+    // T-0036's own fix: every value of the closed vocabulary renders through gettext,
+    // never the raw machine token `check.py`'s `str(spec.get_usage())` produces.
+    const cardinalityCells = canvas.getAllByTestId("cardinality");
+    const cardinalityTexts = cardinalityCells.map((el) => el.textContent);
+    for (const rawToken of ["required", "optional", "prohibited"]) {
+      expect(
+        cardinalityTexts,
+        `the raw machine token "${rawToken}" rendered as report prose instead of its ${String(
+          i18n.t(`report.cardinality.${rawToken}`),
+        )} translation`,
+      ).not.toContain(rawToken);
+    }
+    expect(cardinalityTexts).toContain(i18n.t("report.cardinality.required"));
+    expect(cardinalityTexts).toContain(i18n.t("report.cardinality.optional"));
+    expect(cardinalityTexts).toContain(i18n.t("report.cardinality.prohibited"));
+
+    // T-0034's report-wide cap notice: this fixture's own `entities_omitted` (8 + 4, see
+    // `fx.report`'s comment) already exceeds what got itemised, so it is showing before
+    // any control is touched -- assert it renders translated, not its bare key.
+    const omittedTotal = await waitFor(() => canvas.getByTestId("filter-omitted-total"));
+    expect(omittedTotal.textContent).not.toContain("report.filter.omittedTotal");
+
+    await userEvent.click(canvas.getByTestId("filter-option-indeterminate"));
+
+    const banner = await waitFor(() => canvas.getByTestId("filter-banner"));
+    expect(banner.textContent).not.toContain("report.filter.showing");
+
+    const allHidden = await waitFor(() => canvas.getAllByTestId("requirement-all-hidden"));
+    expect(allHidden.length).toBeGreaterThan(0);
+    for (const el of allHidden) expect(el.textContent).not.toContain("report.filter.allHidden");
+
+    const partiallyHidden = await waitFor(() => canvas.getByTestId("requirement-partially-hidden"));
+    expect(partiallyHidden.textContent).not.toContain("report.filter.partiallyHidden");
+
+    // No i18n key of the shape `report.x.y` -- what an untranslated key would render
+    // verbatim as, and this task's own worked example (`report.filter.xxx`) -- survives
+    // anywhere in the rendered report body, whatever wording either catalogue uses.
+    const leakedKeyPattern = /\breport\.[a-z][a-zA-Z]*(?:\.[a-z][a-zA-Z]*)+\b/;
+    const bodyText = reportEl.textContent ?? "";
+    expect(bodyText).not.toMatch(leakedKeyPattern);
+
+    assertNoHorizontalOverflow(reportEl, "report body (after the filter toggle)");
+  },
+};
+
+/**
  * T-0035. `entity.global_id` is `string | null` for a non-rooted IFC entity, so two rows in
  * one requirement can share both a null `global_id` and the same `reason_code` -- the row
  * key built from those two fields alone collides. Two such rows sit in the door-width

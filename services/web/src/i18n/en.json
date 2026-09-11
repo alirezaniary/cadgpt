@@ -90,6 +90,11 @@
     "engine": "Engine {{version}}",
     "schema": "Model schema {{schema}}",
     "nothingChecked": "Nothing was checked",
+    "cardinality": {
+      "required": "required",
+      "prohibited": "prohibited",
+      "optional": "optional"
+    },
     "selection": {
       "title": "Rule packs checked"
     },
