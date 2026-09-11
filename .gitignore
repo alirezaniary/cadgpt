@@ -27,3 +27,7 @@ dist/
 # any dated build below is regenerated from its own commit. What is committed is the index
 # (design-previews/_archive.md), not the bytes.
 design-previews/_live/
+
+# Local source corpus and generated payloads for the INBR regulations pipeline
+# (feat/inbr-regulations-pipeline); curated metadata and schemas stay tracked.
+/.cadgpt/inbr/
