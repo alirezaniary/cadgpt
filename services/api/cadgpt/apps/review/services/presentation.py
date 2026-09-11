@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from cadgpt.apps.review.applicability import applicability_text
 from cadgpt.apps.review.disclosure import disclosure_text, disclosure_title
 from cadgpt.apps.review.reasons import label_for
 from cadgpt.apps.review.requirements import requirement_text
@@ -20,9 +21,10 @@ def localize_report(report: dict[str, Any] | None) -> dict[str, Any] | None:
     `applicability_caveat_label` beside a requirement's `applicability_caveat` (T-0037
     review round 2, F1: a requirement that evaluated real entities under a specification
     whose own applicability was never established), a `requirement_text` beside every
-    requirement's `description` / `basis`, and the I7 disclosure (`disclosure_title`,
-    `disclosure_text`) naming the model this report checked (`prd.md` 5.7 -- see
-    `cadgpt.apps.review.disclosure`).
+    requirement's `description` / `basis`, an `applicability_text` (T-0039) beside every
+    specification's `applicability_description` / `applicability_facets`, and the I7
+    disclosure (`disclosure_title`, `disclosure_text`) naming the model this report
+    checked (`prd.md` 5.7 -- see `cadgpt.apps.review.disclosure`).
 
     The stored document is not modified: a copy is annotated, so a translation never
     reaches the database and the run stays reproducible from its inputs.
@@ -67,6 +69,14 @@ def localize_report(report: dict[str, Any] | None) -> dict[str, Any] | None:
                 **spec,
                 "reason_label": label_for(spec.get("reason_code")),
                 "requirements": requirements,
+                # T-0039: `applicability_facets` is `None` for a report stored before
+                # `REPORT_SCHEMA_VERSION` 4 -- `applicability_text` degrades to
+                # `applicability_description`, the field it supersedes, exactly as
+                # `requirement_text` already degrades to `description`.
+                "applicability_text": applicability_text(
+                    spec.get("applicability_facets"),
+                    spec.get("applicability_description", ""),
+                ),
             }
         )
 

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ids:ids xmlns:ids="http://standards.buildingsmart.org/IDS" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://standards.buildingsmart.org/IDS http://standards.buildingsmart.org/IDS/1.0/ids.xsd">
+	<ids:info>
+		<ids:title>Restricted attribute name with a value bound</ids:title>
+		<ids:description>T-0039 review, F1: the requirement's own name is restricted to two attributes (an xs:enumeration of OverallWidth/OverallHeight) AND the same facet carries a value bound (minInclusive 900) -- the case ifctester's Attribute.__call__ evaluates conjunctively, not disjunctively, the moment both are present. Pair with door_named_bound.ifc, whose one door has OverallHeight=2100 (satisfies "at least 900") and OverallWidth=800 (does not): the specification must FAIL, and the citation must not read "The OverallWidth or OverallHeight shall be at least 900" -- a sentence that door satisfies -- because that would contradict the FAIL beside it.</ids:description>
+		<ids:date>2026-09-11</ids:date>
+	</ids:info>
+	<ids:specifications>
+		<ids:specification ifcVersion="IFC2X3 IFC4" name="A recorded overall dimension of at least 900">
+			<ids:applicability maxOccurs="unbounded">
+				<ids:entity>
+					<ids:name>
+						<ids:simpleValue>IFCDOOR</ids:simpleValue>
+					</ids:name>
+				</ids:entity>
+			</ids:applicability>
+			<ids:requirements>
+				<ids:attribute cardinality="required">
+					<ids:name>
+						<xs:restriction base="xs:string">
+							<xs:enumeration value="OverallWidth"/>
+							<xs:enumeration value="OverallHeight"/>
+						</xs:restriction>
+					</ids:name>
+					<ids:value>
+						<xs:restriction base="xs:double">
+							<xs:minInclusive value="900"/>
+						</xs:restriction>
+					</ids:value>
+				</ids:attribute>
+			</ids:requirements>
+		</ids:specification>
+	</ids:specifications>
+</ids:ids>

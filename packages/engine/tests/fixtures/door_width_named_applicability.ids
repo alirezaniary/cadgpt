@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ids:ids xmlns:ids="http://standards.buildingsmart.org/IDS" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://standards.buildingsmart.org/IDS http://standards.buildingsmart.org/IDS/1.0/ids.xsd">
+	<ids:info>
+		<ids:title>Minimum door width, for named doors</ids:title>
+		<ids:description>T-0039: the same door-width rule as door_width.ids, except its applicability is two facets, not one -- an IFCDOOR entity facet and a Name attribute facet -- so the joiner between them ("All IFCDOOR data" and "Data where the Name is provided") is exercised. Only the Entity facet is localized by the service; the Attribute facet falls back to ifctester's own English sentence for it, joined by the localized joiner.</ids:description>
+		<ids:date>2026-09-11</ids:date>
+	</ids:info>
+	<ids:specifications>
+		<ids:specification ifcVersion="IFC2X3 IFC4" name="Minimum clear door width 900 mm, named doors only">
+			<ids:applicability maxOccurs="unbounded">
+				<ids:entity>
+					<ids:name>
+						<ids:simpleValue>IFCDOOR</ids:simpleValue>
+					</ids:name>
+				</ids:entity>
+				<ids:attribute>
+					<ids:name>
+						<ids:simpleValue>Name</ids:simpleValue>
+					</ids:name>
+				</ids:attribute>
+			</ids:applicability>
+			<ids:requirements>
+				<ids:attribute cardinality="required">
+					<ids:name>
+						<ids:simpleValue>OverallWidth</ids:simpleValue>
+					</ids:name>
+					<ids:value>
+						<xs:restriction base="xs:double">
+							<xs:minInclusive value="900"/>
+						</xs:restriction>
+					</ids:value>
+				</ids:attribute>
+			</ids:requirements>
+		</ids:specification>
+	</ids:specifications>
+</ids:ids>

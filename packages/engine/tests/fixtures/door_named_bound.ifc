@@ -1,0 +1,10 @@
+ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('ViewDefinition [CoordinationView]'),'2;1');
+FILE_NAME('','2026-09-11T00:00:00',(''),(''),'IfcOpenShell 0.8.5-1c5b825','IfcOpenShell 0.8.5-1c5b825','');
+FILE_SCHEMA(('IFC4'));
+ENDSEC;
+DATA;
+#1=IFCDOOR('3worKcMPzD8x0Y1nJVBqA9',$,'mismatched',$,$,$,$,$,2100.,800.,$,$,$);
+ENDSEC;
+END-ISO-10303-21;

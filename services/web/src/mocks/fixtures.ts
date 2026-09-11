@@ -9,11 +9,14 @@
  * apart differ only where the UI actually changed.
  *
  * The report's prose -- `disclosure_title`, `disclosure_text`, `reason_label`,
- * `requirement_text` -- is written in Persian on purpose. That prose is composed by the
- * server in the reader's language (`docs/decisions.md`, "Report prose belongs to the
- * server"), never by the frontend, so a fixture that carried English there would be
- * showing something the fa build can never receive. The workbench's language toolbar
- * switches the *interface* strings; this prose stays as the server would have sent it.
+ * `requirement_text`, `applicability_text` -- is written in Persian on purpose. That
+ * prose is composed by the server in the reader's language (`docs/decisions.md`, "Report
+ * prose belongs to the server"), never by the frontend, so a fixture that carried English
+ * there would be showing something the fa build can never receive. The workbench's
+ * language toolbar switches the *interface* strings; this prose stays as the server would
+ * have sent it. `applicability_description` -- the field it supersedes, kept only as the
+ * fallback the server itself renders from -- stays in English here on purpose: it is
+ * upstream's own unlocalized sentence, never what the UI shows.
  */
 
 import type {
@@ -222,7 +225,8 @@ export const report: Report = {
     {
       name: "درهای خروج باید دارای عرض حداقل ۹۰ سانتی‌متر باشند",
       description: "All IFCDOOR data must have OverallWidth >= 900",
-      applicability_description: "همه درهای دارای نوع خروج",
+      applicability_description: "All IFCDOOR data must be an exit door type",
+      applicability_text: "همه درهای دارای نوع خروج",
       instructions: "عرض بازشو از داخل چارچوب اندازه‌گیری می‌شود.",
       applicability: "APPLIES",
       status: "FAIL",
@@ -283,7 +287,8 @@ export const report: Report = {
     {
       name: "پله‌های فرار باید دارای دست‌انداز باشند",
       description: "All IFCSTAIR data must have Pset_StairCommon.HandrailProvided",
-      applicability_description: "همه پله‌های فرار",
+      applicability_description: "All IFCSTAIR data must be an escape stair",
+      applicability_text: "همه پله‌های فرار",
       instructions: "",
       applicability: "APPLIES",
       status: "INDETERMINATE",
@@ -343,7 +348,8 @@ export const report: Report = {
     {
       name: "فضاها باید دارای نام باشند",
       description: "All IFCSPACE data must have Name",
-      applicability_description: "همه فضاها",
+      applicability_description: "All IFCSPACE data",
+      applicability_text: "همه فضاها",
       instructions: "",
       applicability: "APPLIES",
       status: "PASS",
@@ -379,6 +385,7 @@ export const report: Report = {
     {
       name: "پارکینگ‌ها باید دارای شیب مجاز باشند",
       description: "All IFCRAMP data must have Pset_RampCommon.Slope <= 15",
+      applicability_text: "",
       instructions: "",
       applicability: "UNDETERMINED_APPLICABILITY",
       status: "INDETERMINATE",
@@ -394,6 +401,7 @@ export const report: Report = {
     {
       name: "آسانسورها باید دارای ابعاد حداقلی کابین باشند",
       description: "All IFCTRANSPORTELEMENT data must have Pset_TransportElementCommon",
+      applicability_text: "",
       instructions: "",
       applicability: "DOES_NOT_APPLY",
       status: "INDETERMINATE",

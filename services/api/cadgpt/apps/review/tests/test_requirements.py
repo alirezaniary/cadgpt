@@ -19,6 +19,7 @@ transcription as much as `requirement_text`.
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import Any
 
 import pytest
 from django.utils import translation
@@ -158,3 +159,117 @@ def test_a_document_stored_before_basis_existed_falls_back_to_description() -> N
     """
     old_description = "The OverallWidth shall be {'minInclusive': '900'}"
     assert requirement_text(None, old_description) == old_description
+
+
+# T-0039: the attribute *name* can itself be a restriction (`name_comparisons`), not just
+# the value. Before this fix, `basis["name"]` came back `None` for exactly this case and
+# the sentence fell back to `description` -- upstream's own dict-repr string,
+# `"The {'enumeration': [...]} shall be provided"` -- as the report's primary line.
+
+
+def test_a_restricted_attribute_name_becomes_a_disjunctive_subject_not_a_dict_repr() -> (
+    None
+):
+    basis = {
+        "facet_type": "attribute",
+        "name": None,
+        "cardinality": "required",
+        "comparisons": [],
+        "name_comparisons": [
+            {"operator": "enumeration", "value": "OverallWidth"},
+            {"operator": "enumeration", "value": "OverallHeight"},
+        ],
+    }
+    fallback = "The {'enumeration': ['OverallWidth', 'OverallHeight']} shall be provided"
+    assert (
+        requirement_text(basis, fallback)
+        == "The OverallWidth or OverallHeight shall be provided."
+    )
+
+
+def test_a_single_member_restricted_name_reads_as_a_plain_subject() -> None:
+    basis = {
+        "facet_type": "attribute",
+        "name": None,
+        "cardinality": "required",
+        "comparisons": [],
+        "name_comparisons": [{"operator": "literal", "value": "OverallWidth"}],
+    }
+    assert requirement_text(basis, "fallback") == "The OverallWidth shall be provided."
+
+
+def test_a_name_restricted_by_pattern_has_no_natural_subject_and_falls_back() -> None:
+    """`pattern` restricts what characters a name may contain, not which attribute is
+    meant -- there is no single word to put in the sentence's subject position, so this
+    degrades to `description` exactly as an unrecognised *value* comparison operator does.
+    """
+    basis = {
+        "facet_type": "attribute",
+        "name": None,
+        "cardinality": "required",
+        "comparisons": [],
+        "name_comparisons": [{"operator": "pattern", "value": "Overall.*"}],
+    }
+    assert (
+        requirement_text(basis, "the real ifctester sentence")
+        == "the real ifctester sentence"
+    )
+
+
+def test_a_restricted_name_with_a_value_bound_falls_back_not_a_false_disjunction() -> None:
+    """T-0039 review, F1. A restricted name plus a value bound is what `ifctester`'s own
+    `Attribute.__call__` evaluates *conjunctively* -- every matching attribute must satisfy
+    the bound, not just one of them -- so rendering the multi-member name with the
+    disjunctive joiner would print an "or" for what is actually an "and". Reviewer's live
+    repro: a door with OverallHeight=2100 (satisfies "at least 900") and OverallWidth=800
+    (does not) is reported FAIL, and before this fix the sentence read "The OverallWidth or
+    OverallHeight shall be at least 900" -- a sentence that door satisfies, contradicting
+    its own FAIL. The safe degrade is `description`, exactly as for a `pattern`-restricted
+    name or an unrecognised value operator.
+    """
+    basis = {
+        "facet_type": "attribute",
+        "name": None,
+        "cardinality": "required",
+        "comparisons": [{"operator": "minInclusive", "value": "900"}],
+        "name_comparisons": [
+            {"operator": "enumeration", "value": "OverallWidth"},
+            {"operator": "enumeration", "value": "OverallHeight"},
+        ],
+    }
+    fallback = (
+        "The {'enumeration': ['OverallWidth', 'OverallHeight']} "
+        "shall be {'minInclusive': '900'}"
+    )
+    assert requirement_text(basis, fallback) == fallback
+
+
+def test_a_single_member_restricted_name_with_a_bound_still_renders() -> None:
+    """The case F1's fix must not break: a *single*-member restricted name has no joiner to
+    get wrong regardless of whether a value bound is also present, so it keeps rendering as
+    a normal sentence.
+    """
+    basis = {
+        "facet_type": "attribute",
+        "name": None,
+        "cardinality": "required",
+        "comparisons": [{"operator": "minInclusive", "value": "900"}],
+        "name_comparisons": [{"operator": "literal", "value": "OverallWidth"}],
+    }
+    assert requirement_text(basis, "fallback") == "The OverallWidth shall be at least 900."
+
+
+def test_a_document_stored_before_name_comparisons_existed_still_falls_back() -> None:
+    """REPORT_SCHEMA_VERSION 3 and earlier has no `name_comparisons` key on `basis` at
+    all -- `.get(...)` must degrade to "nothing to say" rather than raising `KeyError`.
+    """
+    basis: dict[str, Any] = {
+        "facet_type": "attribute",
+        "name": None,
+        "cardinality": "required",
+        "comparisons": [],
+    }
+    assert (
+        requirement_text(basis, "the real ifctester sentence")
+        == "the real ifctester sentence"
+    )

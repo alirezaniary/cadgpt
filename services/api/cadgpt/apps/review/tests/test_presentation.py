@@ -83,6 +83,20 @@ def test_a_v1_schema_document_still_localizes_through_the_fallback() -> None:
     )
 
 
+def test_a_v1_schema_document_still_gets_an_applicability_text_through_the_fallback() -> (
+    None
+):
+    """`_V1_REPORT`'s specification has no `applicability_description` key at all (that
+    field itself did not exist until schema version 2) and no `applicability_facets`
+    (version 4) -- `localize_report` must not raise `KeyError` and must degrade to the
+    empty string exactly as `applicability_description`'s own absence would render.
+    """
+    localized = localize_report(_V1_REPORT)
+
+    assert localized is not None
+    assert localized["specifications"][0]["applicability_text"] == ""
+
+
 def test_a_v1_schema_document_still_gets_the_i7_disclosure() -> None:
     # The disclosure predates no schema version -- it is derived from `ifc_filename`,
     # present since `REPORT_SCHEMA_VERSION` 1 -- so a pre-existing stored document must
@@ -92,6 +106,30 @@ def test_a_v1_schema_document_still_gets_the_i7_disclosure() -> None:
     assert localized is not None
     assert localized["disclosure_title"]
     assert "three_doors.ifc" in localized["disclosure_text"]
+
+
+def test_a_v2_schema_document_with_no_applicability_facets_falls_back_to_the_string() -> (
+    None
+):
+    """`REPORT_SCHEMA_VERSION` 2 and 3 carry `applicability_description` (T-0027) but not
+    yet `applicability_facets` (T-0039, version 4) -- `applicability_text` must degrade to
+    the whole engine-joined sentence exactly as it always rendered, not raise and not
+    silently render nothing.
+    """
+    v2_report: dict[str, Any] = {
+        **_V1_REPORT,
+        "schema_version": 2,
+        "specifications": [
+            {
+                **_V1_REPORT["specifications"][0],
+                "applicability_description": "All IFCDOOR data",
+            }
+        ],
+    }
+    localized = localize_report(v2_report)
+
+    assert localized is not None
+    assert localized["specifications"][0]["applicability_text"] == "All IFCDOOR data"
 
 
 def test_none_stays_none() -> None:

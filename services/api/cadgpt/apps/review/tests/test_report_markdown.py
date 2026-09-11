@@ -303,10 +303,11 @@ def test_a_specification_name_cannot_inject_a_second_coverage_section() -> None:
 
 
 def test_the_applicability_sentence_cannot_open_a_block_from_position_zero() -> None:
-    """`applicability_description` is rendered as a bare paragraph with nothing
-    server-written on its own line first (unlike the specification name, which always
-    follows `"### "`). A field whose first character is itself one Markdown treats as a
-    block starter must not be read as one."""
+    """`applicability_text` (T-0039's localized rendering, falling back here to
+    `applicability_description` since this fixture carries no `applicability_facets`) is
+    rendered as a bare paragraph with nothing server-written on its own line first (unlike
+    the specification name, which always follows `"### "`). A field whose first character
+    is itself one Markdown treats as a block starter must not be read as one."""
     report = {
         **_REPORT,
         "specifications": [

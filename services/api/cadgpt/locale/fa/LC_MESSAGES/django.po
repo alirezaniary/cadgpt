@@ -378,6 +378,18 @@ msgstr " و "
 msgid " or "
 msgstr " یا "
 
+#: cadgpt/apps/review/applicability.py (Entity facet, no predefinedType)
+msgid "All %(name)s data"
+msgstr "همهٔ داده‌های %(name)s"
+
+#: cadgpt/apps/review/applicability.py (Entity facet, with a predefinedType)
+msgid "All %(name)s data of type %(predefined_type)s"
+msgstr "همهٔ داده‌های %(name)s از نوع %(predefined_type)s"
+
+#: cadgpt/apps/review/applicability.py (joiner between applicability facets) reuses the
+#: existing " and " msgid above (cadgpt/apps/review/requirements.py's own conjunctive
+#: joiner) -- same English text, same Persian translation, one catalogue entry.
+
 #: cadgpt/apps/review/disclosure.py (disclosure title)
 msgid "What this report checked"
 msgstr "آنچه در این گزارش بررسی شد"

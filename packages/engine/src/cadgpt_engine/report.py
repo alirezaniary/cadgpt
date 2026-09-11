@@ -44,7 +44,25 @@ from cadgpt_engine.status import Applicability, ReasonCode, Status
 #: before this version has neither key at all, distinct from a requirement that has both
 #: keys present and set to `null` because it genuinely evaluated entities under an
 #: established applicability.
-REPORT_SCHEMA_VERSION = 3
+#:
+#: Bumped to 4 for `RequirementBasis.name_comparisons` and `SpecificationOutcome.
+#: applicability_facets` (T-0039 -- the subject of a citation, not its predicate, which
+#: T-0027 already made structured). `_facet_subject_name` returns `None` whenever the IDS
+#: wraps the attribute or property *name* itself in `<xs:restriction>` -- `Facet.parse`
+#: (`ifctester/facet.py`) is generic over every parameter, `name` included -- and until
+#: this bump that data was simply dropped, forcing the sentence to fall back to
+#: `description`, upstream's own dict-repr string (`{'enumeration': [...]}`)  as the
+#: report's primary line. `name_comparisons` carries that restriction the same way
+#: `comparisons` already carries a restricted *value*. Separately, `applicability_facets`
+#: carries each applicability facet as data (facet type, name, predefined type, and that
+#: one facet's own `to_string` sentence as its fallback) so the service can join them with
+#: a localized joiner instead of the engine's own hardcoded `" and "` baked into
+#: `applicability_description`, which stays exactly as it was, as the whole-document
+#: fallback for a report stored before this version. A document written before this
+#: version has neither key: `RequirementBasis` has no `name_comparisons` and
+#: `SpecificationOutcome` has no `applicability_facets`, and both degrade to their
+#: pre-existing fallback (`description`, `applicability_description`) rather than raising.
+REPORT_SCHEMA_VERSION = 4
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,19 +115,30 @@ class RequirementBasis:
 
     The structured counterpart to `RequirementOutcome.description`: the same fact, named
     rather than rendered into English. `name` is the attribute or property name the facet
-    reads (`None` for a facet type that names no such thing -- an entity-class or
-    classification requirement, which the fixtures this task ships against do not exercise).
+    reads, when the IDS states it literally (`None` for a facet type that names no such
+    thing -- an entity-class or classification requirement, which the fixtures this task
+    ships against do not exercise -- *and* for a facet whose name is itself an
+    `xs:restriction` rather than a literal `ids:simpleValue`; see `name_comparisons`).
     `cardinality` is the requirement's effective cardinality -- `"prohibited"` when the
     specification itself is prohibited (`maxOccurs == 0`) even if the facet's own
     `cardinality` attribute says `"required"`, mirroring the same substitution
     `check.py`'s `clause_type` makes for `description` so the two can never contradict each
     other under I5/I7.
+
+    `name_comparisons` (T-0039) is `comparisons`' sibling for the *name* rather than the
+    *value*: `Facet.parse` (`ifctester/facet.py`) turns any parameter the IDS wraps in
+    `<xs:restriction>` into a `Restriction`, `name`/`baseName` included, and before this
+    field existed that restriction was simply dropped -- `name` came back `None` and the
+    sentence fell back to `description`, upstream's own dict-repr string, as the report's
+    primary line. Empty (`()`) whenever `name` above is populated -- a facet's name is
+    either stated literally or restricted, never both at once.
     """
 
     facet_type: str
     name: str | None
     cardinality: str
     comparisons: tuple[Comparison, ...]
+    name_comparisons: tuple[Comparison, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -117,6 +146,7 @@ class RequirementBasis:
             "name": self.name,
             "cardinality": self.cardinality,
             "comparisons": [c.to_dict() for c in self.comparisons],
+            "name_comparisons": [c.to_dict() for c in self.name_comparisons],
         }
 
 
@@ -186,12 +216,50 @@ class RequirementOutcome:
 
 
 @dataclass(frozen=True, slots=True)
+class ApplicabilityFacet:
+    """One applicability facet, as data a service can put into a sentence -- the
+    structured counterpart of one term in `SpecificationOutcome.applicability_description`
+    (T-0039, mirroring `RequirementBasis` beside `RequirementOutcome.description`).
+
+    `name` and `predefined_type` are populated only when the IDS states them literally (a
+    plain `str`); `None` for a facet type that carries no such attribute, and for one that
+    restricts it (`<xs:restriction>`) rather than stating it -- a `PartOf`, `Property`,
+    `Classification`, `Material` facet's own name field, or a restricted `Entity.name`, all
+    of which fall back to `description` rather than being rendered here, matching
+    `requirements.requirement_text`'s own safe degrade for a facet type or shape it does
+    not render. `description` is this one facet's own `to_string("applicability")`
+    rendering -- upstream's English sentence for exactly this facet, always present so a
+    fallback never needs a second call into `ifctester`.
+    """
+
+    facet_type: str
+    name: str | None
+    predefined_type: str | None
+    description: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "facet_type": self.facet_type,
+            "name": self.name,
+            "predefined_type": self.predefined_type,
+            "description": self.description,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class SpecificationOutcome:
     """`description` is the IDS author's own `<ids:description>` text -- theirs, and never
     overwritten. `applicability_description` is a different fact: `ifctester`'s own
     rendering of what the applicability facets select (`to_string("applicability", ...)`,
     e.g. "All IFCDOOR data"), carried through so the report states what the rule applies to
     even when the author left `description` blank, as the shipped fixture does.
+
+    `applicability_facets` (T-0039) is `applicability_description`'s structured
+    counterpart: each applicability facet named rather than pre-joined into one English
+    sentence, so a service can render every facet in the reader's language and join them
+    with its own localized joiner instead of the engine's hardcoded `" and "`.
+    `applicability_description` is unchanged and stays the fallback for a report stored
+    before this field existed.
     """
 
     name: str
@@ -207,12 +275,14 @@ class SpecificationOutcome:
     failed: int
     indeterminate: int
     requirements: tuple[RequirementOutcome, ...]
+    applicability_facets: tuple[ApplicabilityFacet, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "description": self.description,
             "applicability_description": self.applicability_description,
+            "applicability_facets": [f.to_dict() for f in self.applicability_facets],
             "instructions": self.instructions,
             "applicability": self.applicability.value,
             "status": self.status.value,

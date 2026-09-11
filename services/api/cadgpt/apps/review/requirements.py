@@ -82,6 +82,46 @@ def _recognised(comparisons: list[dict[str, Any]]) -> bool:
     )
 
 
+def _subject_name(
+    comparisons: list[dict[str, Any]], value_comparisons: list[dict[str, Any]]
+) -> str | None:
+    """The attribute or property *name* itself, when the IDS restricted which name applies
+    rather than stating one literally (`basis.name_comparisons`, T-0039) -- `None` when
+    there is nothing to state.
+
+    Only `enumeration` and `literal` name a *name*: a closed set of acceptable attribute
+    names, or (degenerately) exactly one. Every other restriction (`pattern`, `minLength`,
+    a numeric bound, ...) constrains what characters or shape a name may take, not which
+    attribute is meant, and has no natural rendering as a sentence's subject -- callers
+    fall back to `description` for that case, the same safe degrade
+    `_recognised`/`_bound` already make for an unrecognised *value* comparison. Multiple
+    members join with `_ENUMERATION_JOINER`: `xs:enumeration` is a disjunction here exactly
+    as it is for a value (T-0039's own fixture: "one of these attributes must be
+    provided", not all of them at once) -- *provided* the facet states no value bound of
+    its own.
+
+    T-0039 review (F1): the moment the same facet *also* carries a value bound
+    (`value_comparisons` non-empty), that disjunction stops being true. `ifctester`'s own
+    `Attribute.__call__` evaluates every attribute matching a restricted name
+    conjunctively against that bound -- "the OverallWidth *and* the OverallHeight must each
+    satisfy it", not "one of them must" -- so joining several names with `_ENUMERATION_
+    JOINER` in that case would print an "or" over what is actually an "and", a sentence a
+    FAILing entity can satisfy while the citation beside it reads FAIL (I5). A multi-member
+    restricted name is therefore rendered only when `value_comparisons` is empty (a pure
+    existence check, where "or" is genuinely correct); with a value bound present, this
+    returns `None` and the caller falls back to `description` rather than asserting a
+    joiner that could describe the wrong rule. A single-member name has no joiner to get
+    wrong either way, so it keeps rendering regardless of `value_comparisons`.
+    """
+    if not comparisons:
+        return None
+    if any(c["operator"] not in ("literal", "enumeration") for c in comparisons):
+        return None
+    if len(comparisons) > 1 and value_comparisons:
+        return None
+    return str(_ENUMERATION_JOINER).join(c["value"] for c in comparisons)
+
+
 def _bound(comparisons: list[dict[str, Any]]) -> str | None:
     """The bound as a sentence fragment, or `None` when there is no comparison to state.
 
@@ -120,15 +160,34 @@ def requirement_text(basis: dict[str, Any] | None, fallback: str) -> str:
     operator `_recognised` does not know is refused rather than guessed at (see the module
     docstring). All three degrade the same way: to the sentence the engine already wrote,
     never to a confident sentence for the wrong rule.
+
+    `basis["name"]` is `None` both for a facet type this table names nothing for *and*
+    (T-0039) for an attribute whose own name is itself a restriction rather than a literal
+    string (`<xs:restriction>` under `<ids:name>`) -- `_subject_name` on
+    `basis["name_comparisons"]` is what tells those two apart: still nothing to say for the
+    first, "OverallWidth or OverallHeight" for the second. A document stored before
+    `name_comparisons` existed has no such key, and `.get(...) or []` degrades it to the
+    same "nothing to say" as a facet type with no name at all.
+
+    `comparisons` (the facet's *value* bound) is read before `name` and passed into
+    `_subject_name` (T-0039 review, F1): a multi-member restricted name renders as a
+    disjunction only when there is no value bound to satisfy alongside it, since
+    `ifctester` evaluates a restricted name conjunctively the moment a bound is also
+    present -- see `_subject_name`'s own docstring. The single-member case is unaffected.
     """
-    if not basis or basis.get("facet_type") != "attribute" or not basis.get("name"):
+    if not basis or basis.get("facet_type") != "attribute":
         return fallback
 
     comparisons = basis.get("comparisons") or []
+    name = basis.get("name") or _subject_name(
+        basis.get("name_comparisons") or [], comparisons
+    )
+    if not name:
+        return fallback
+
     if not _recognised(comparisons):
         return fallback
 
-    name = basis["name"]
     bound = _bound(comparisons)
     cardinality = basis.get("cardinality")
 

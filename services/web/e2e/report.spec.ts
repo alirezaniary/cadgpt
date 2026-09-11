@@ -376,3 +376,203 @@ test("a requirement that genuinely evaluated real entities still carries a cavea
     fullPage: true,
   });
 });
+
+test("a restricted attribute name renders as its own sentence, never the dict repr, and a two-facet applicability joins in the reader's language", async ({
+  page,
+  account,
+}) => {
+  // T-0039. `door_name_restricted.ids` ("Restricted attribute name", seeded by `manage.py
+  // seed_rule_packs`) wraps the requirement's own `<ids:name>` in an `xs:restriction`
+  // (an enumeration of two acceptable attribute names) rather than a literal
+  // `ids:simpleValue` -- exactly the shape that used to make `basis.name` come back
+  // `null` and fall back to ifctester's own dict-repr sentence,
+  // "The {'enumeration': [...]} shall be provided", as the report's primary line.
+  //
+  // `door_width_named_applicability.ids` ("Minimum door width, for named doors") is the
+  // same door-width rule as door_width.ids, except its applicability is two facets (an
+  // Entity facet and an Attribute facet), exercising the localized joiner between them
+  // rather than the engine's own hardcoded " and ".
+  await page.goto("/");
+
+  await page.getByLabel("رایانامه").fill(account.email);
+  await page.getByLabel("گذرواژه").fill(account.password);
+  await page.getByRole("button", { name: "ورود" }).click();
+
+  await expect(page.locator(".avatar-trigger")).toBeVisible({ timeout: 15_000 });
+  await page.locator(".avatar-trigger").click();
+  await expect(page.locator(".user-menu-header strong")).toHaveText(account.tenantName);
+  await page.keyboard.press("Escape");
+
+  await expect(page.getByRole("heading", { name: "پروژه‌ها" })).toBeVisible();
+
+  const projectName = `restricted-name-project-${Date.now()}`;
+  await page.getByRole("link", { name: "افزودن پروژه" }).click();
+  await page.getByLabel("نام").fill(projectName);
+  await page.getByRole("button", { name: "ایجاد پروژه" }).click();
+  await expect(page.getByRole("heading", { name: projectName })).toBeVisible({ timeout: 10_000 });
+
+  const reviewName = `restricted-name-${Date.now()}`;
+  await page.getByRole("link", { name: "افزودن بررسی" }).click();
+  await expect(page.getByRole("heading", { name: "افزودن بررسی" })).toBeVisible();
+  await page.getByLabel("نام").fill(reviewName);
+  await page.locator('input[type="file"]').setInputFiles(IFC_FILE);
+  await page.getByRole("button", { name: "ایجاد بررسی" }).click();
+  await expect(page.getByRole("heading", { name: reviewName })).toBeVisible({ timeout: 10_000 });
+
+  const picker = page.getByTestId("catalogue-picker");
+  await expect(picker).toBeVisible();
+  const restrictedNamePack = picker
+    .locator("li", { hasText: "Restricted attribute name" })
+    .filter({ hasText: "v0.1" });
+  await expect(restrictedNamePack).toBeVisible({ timeout: 10_000 });
+  await restrictedNamePack.getByRole("checkbox").check();
+  await picker.getByRole("button", { name: "اجرای بررسی با بسته‌های انتخاب‌شده" }).click();
+
+  const report = page.locator("section.report");
+  await expect(report).toBeVisible({ timeout: 30_000 });
+
+  // T-0039: the requirement's primary line is the structured sentence, never the raw
+  // Python dict repr the engine used to fall back to when the attribute name itself was
+  // a restriction.
+  const requirementText = report.locator('[data-testid="requirement-text"]').first();
+  await expect(requirementText).toHaveText(
+    "The OverallWidth or OverallHeight shall be provided.",
+  );
+  await expect(requirementText).not.toContainText("enumeration");
+  await expect(requirementText).not.toContainText("{'");
+
+  await page.screenshot({
+    path: path.resolve(__dirname, "screenshots/restricted-attribute-name.png"),
+    fullPage: true,
+  });
+
+  // Second review, second rule pack: the two-facet applicability.
+  const secondProjectName = `named-applicability-project-${Date.now()}`;
+  await page.goto("/projects");
+  await page.getByRole("link", { name: "افزودن پروژه" }).click();
+  await page.getByLabel("نام").fill(secondProjectName);
+  await page.getByRole("button", { name: "ایجاد پروژه" }).click();
+  await expect(page.getByRole("heading", { name: secondProjectName })).toBeVisible({
+    timeout: 10_000,
+  });
+
+  const secondReviewName = `named-applicability-${Date.now()}`;
+  await page.getByRole("link", { name: "افزودن بررسی" }).click();
+  await expect(page.getByRole("heading", { name: "افزودن بررسی" })).toBeVisible();
+  await page.getByLabel("نام").fill(secondReviewName);
+  await page.locator('input[type="file"]').setInputFiles(IFC_FILE);
+  await page.getByRole("button", { name: "ایجاد بررسی" }).click();
+  await expect(page.getByRole("heading", { name: secondReviewName })).toBeVisible({
+    timeout: 10_000,
+  });
+
+  const secondPicker = page.getByTestId("catalogue-picker");
+  await expect(secondPicker).toBeVisible();
+  const namedApplicabilityPack = secondPicker
+    .locator("li", { hasText: "Minimum door width, for named doors" })
+    .filter({ hasText: "v0.1" });
+  await expect(namedApplicabilityPack).toBeVisible({ timeout: 10_000 });
+  await namedApplicabilityPack.getByRole("checkbox").check();
+  await secondPicker
+    .getByRole("button", { name: "اجرای بررسی با بسته‌های انتخاب‌شده" })
+    .click();
+
+  const secondReport = page.locator("section.report");
+  await expect(secondReport).toBeVisible({ timeout: 30_000 });
+
+  // T-0039: two applicability facets -- an Entity facet ("All IFCDOOR data") and an
+  // Attribute facet ("Data where the Name is provided") -- joined by the localized
+  // joiner (English " and " here, since this harness's tenant language is English; the
+  // task's Evidence section shows the same stored document rendered in Persian too).
+  const applicability = secondReport.locator('[data-testid="applicability"]').first();
+  await expect(applicability).toHaveText("All IFCDOOR data and Data where the Name is provided");
+
+  await page.screenshot({
+    path: path.resolve(__dirname, "screenshots/two-facet-applicability.png"),
+    fullPage: true,
+  });
+});
+
+test.describe("the applicability subject localizes with the browser's own language, not just the UI chrome", () => {
+  // T-0039. `services/web` never sends `Accept-Language` itself (see `client.ts`) --
+  // every other test in this file reads Latin/English report prose because a real
+  // browser's own `Accept-Language` header (English, for this harness's Chromium) is what
+  // `LocaleMiddleware` (`services/api/cadgpt/config/settings/base.py`) actually resolves
+  // against. `applicability_text`'s `Entity` template is deliberately worded to read
+  // byte-identical to ifctester's own English sentence (the module docstring says so), so
+  // an English-only assertion cannot tell "rendered from `applicability_facets`" apart
+  // from "the field this task's fix replaces" -- a swap back to
+  // `applicability_description` would still read correctly in English and no assertion in
+  // this file's other tests would catch it. This context's `locale: "fa-IR"` makes the
+  // real browser send `Accept-Language: fa-IR`, which is what makes the two fields
+  // actually diverge in the DOM.
+  test.use({ locale: "fa-IR" });
+
+  test("the two-facet applicability's Entity term reads in Persian, not the engine's English fallback", async ({
+    page,
+    account,
+  }) => {
+    await page.goto("/");
+
+    await page.getByLabel("رایانامه").fill(account.email);
+    await page.getByLabel("گذرواژه").fill(account.password);
+    await page.getByRole("button", { name: "ورود" }).click();
+
+    await expect(page.locator(".avatar-trigger")).toBeVisible({ timeout: 15_000 });
+    await page.locator(".avatar-trigger").click();
+    await expect(page.locator(".user-menu-header strong")).toHaveText(account.tenantName);
+    await page.keyboard.press("Escape");
+
+    await expect(page.getByRole("heading", { name: "پروژه‌ها" })).toBeVisible();
+
+    const projectName = `named-applicability-fa-project-${Date.now()}`;
+    await page.getByRole("link", { name: "افزودن پروژه" }).click();
+    await page.getByLabel("نام").fill(projectName);
+    await page.getByRole("button", { name: "ایجاد پروژه" }).click();
+    await expect(page.getByRole("heading", { name: projectName })).toBeVisible({
+      timeout: 10_000,
+    });
+
+    const reviewName = `named-applicability-fa-${Date.now()}`;
+    await page.getByRole("link", { name: "افزودن بررسی" }).click();
+    await expect(page.getByRole("heading", { name: "افزودن بررسی" })).toBeVisible();
+    await page.getByLabel("نام").fill(reviewName);
+    await page.locator('input[type="file"]').setInputFiles(IFC_FILE);
+    await page.getByRole("button", { name: "ایجاد بررسی" }).click();
+    await expect(page.getByRole("heading", { name: reviewName })).toBeVisible({
+      timeout: 10_000,
+    });
+
+    const picker = page.getByTestId("catalogue-picker");
+    await expect(picker).toBeVisible();
+    const namedApplicabilityPack = picker
+      .locator("li", { hasText: "Minimum door width, for named doors" })
+      .filter({ hasText: "v0.1" });
+    await expect(namedApplicabilityPack).toBeVisible({ timeout: 10_000 });
+    await namedApplicabilityPack.getByRole("checkbox").check();
+    await picker.getByRole("button", { name: "اجرای بررسی با بسته‌های انتخاب‌شده" }).click();
+
+    const report = page.locator("section.report");
+    await expect(report).toBeVisible({ timeout: 30_000 });
+
+    // T-0039: the `Entity` term ("همهٔ داده‌های IFCDOOR") is localized; the `Attribute`
+    // term ("Data where the Name is provided") is not this task's scope and falls back
+    // to ifctester's own English sentence -- the same document, joined by the localized
+    // joiner (" و "), exactly as the task's Evidence section shows from the raw API
+    // response. This is the assertion that a field-name swap back to
+    // `applicability_description` (English-joined, English "All IFCDOOR data") cannot
+    // pass: neither the Persian entity term nor the Persian joiner would be there.
+    const applicability = report.locator('[data-testid="applicability"]').first();
+    await expect(applicability).toHaveText(
+      "همهٔ داده‌های IFCDOOR و Data where the Name is provided",
+    );
+    await expect(applicability).not.toHaveText(
+      "All IFCDOOR data and Data where the Name is provided",
+    );
+
+    await page.screenshot({
+      path: path.resolve(__dirname, "screenshots/two-facet-applicability-fa.png"),
+      fullPage: true,
+    });
+  });
+});

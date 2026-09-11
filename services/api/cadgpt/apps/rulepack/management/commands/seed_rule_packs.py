@@ -72,6 +72,25 @@ SEED_MANIFEST: tuple[SeedEntry, ...] = tuple(
         # ifctester still evaluates its requirement against three real, matched doors --
         # a genuine PASS that needs a caveat rather than reading as unqualified.
         "door_schema_mismatch.ids",
+        # T-0039: the requirement's own attribute *name* is itself an `xs:restriction`
+        # (an enumeration of two acceptable attribute names) rather than a literal
+        # `ids:simpleValue` -- the fixture that reproduces the dict-repr subject line
+        # this task exists to fix.
+        "door_name_restricted.ids",
+        # T-0039: a two-facet applicability (an Entity facet and an Attribute facet) --
+        # the fixture that exercises the localized joiner between applicability facets,
+        # replacing the engine's own hardcoded " and ".
+        "door_width_named_applicability.ids",
+        # T-0039 review, F1: the requirement's own name is restricted (as above) AND the
+        # same facet carries a value bound -- the case `ifctester` evaluates
+        # conjunctively rather than disjunctively, which the disjunctive rendering got
+        # wrong before this fix. Pairs with `door_named_bound.ifc`.
+        "door_name_restricted_with_bound.ids",
+        # T-0039 review, F2: the applicability's Entity facet restricts predefinedType
+        # to an enumeration rather than stating one literally -- the case the engine
+        # used to collapse only `predefined_type`, leaving the literal `name` to state
+        # an unrestricted template that overstated what the specification covers.
+        "door_predefined_type_restricted.ids",
     )
 )
 

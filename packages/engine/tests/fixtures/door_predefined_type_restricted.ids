@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ids:ids xmlns:ids="http://standards.buildingsmart.org/IDS" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://standards.buildingsmart.org/IDS http://standards.buildingsmart.org/IDS/1.0/ids.xsd">
+	<ids:info>
+		<ids:title>Restricted predefined type applicability</ids:title>
+		<ids:description>T-0039 review, F2: the applicability's Entity facet restricts predefinedType to an xs:enumeration (DOOR or GATE) rather than stating one literally -- a case `_applicability_facet` used to collapse only `predefined_type` to null while leaving the literal `name` ("IFCDOOR") alone, which the service could not tell apart from "no predefinedType stated at all" and rendered the unrestricted "All IFCDOOR data" template. None of three_doors.ifc's doors carry a PredefinedType at all, so this specification matches 0 real elements and FAILs (required cardinality, nothing found) -- the printed applicability line must not claim to cover every IFCDOOR in a model that has three.</ids:description>
+		<ids:date>2026-09-11</ids:date>
+	</ids:info>
+	<ids:specifications>
+		<ids:specification ifcVersion="IFC2X3 IFC4" name="Named doors and gates only">
+			<ids:applicability maxOccurs="unbounded">
+				<ids:entity>
+					<ids:name>
+						<ids:simpleValue>IFCDOOR</ids:simpleValue>
+					</ids:name>
+					<ids:predefinedType>
+						<xs:restriction base="xs:string">
+							<xs:enumeration value="DOOR"/>
+							<xs:enumeration value="GATE"/>
+						</xs:restriction>
+					</ids:predefinedType>
+				</ids:entity>
+			</ids:applicability>
+			<ids:requirements>
+				<ids:attribute cardinality="required">
+					<ids:name>
+						<ids:simpleValue>Name</ids:simpleValue>
+					</ids:name>
+				</ids:attribute>
+			</ids:requirements>
+		</ids:specification>
+	</ids:specifications>
+</ids:ids>

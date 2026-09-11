@@ -29,6 +29,7 @@ import ifctester.ids
 from cadgpt_engine.errors import InvalidIdsError, InvalidIfcError
 from cadgpt_engine.reasons import classify
 from cadgpt_engine.report import (
+    ApplicabilityFacet,
     Comparison,
     EntityOutcome,
     Report,
@@ -116,6 +117,27 @@ def _facet_subject_name(facet: Any) -> str | None:
     return name if isinstance(name, str) else None
 
 
+def _facet_subject_name_comparisons(facet: Any) -> tuple[Comparison, ...]:
+    """The attribute or property name's *own* restriction -- `name_comparisons`, the
+    sibling `_comparisons` above extracts from a restricted *value*.
+
+    `_facet_subject_name` returns `None` whenever `baseName`/`name` is a `Restriction`
+    rather than a literal string, because `Facet.parse` (`ifctester/facet.py`) is generic
+    over every parameter the IDS wraps in `<xs:restriction>` and does not special-case
+    `name`. Reusing `_comparisons` on the restriction itself (rather than on `facet.value`)
+    is exactly right: a `Restriction`'s `options` dict has the same operator/value shape
+    whichever parameter it restricts. `baseName` is checked first, mirroring
+    `_facet_subject_name`'s own priority.
+    """
+    base_name = getattr(facet, "baseName", None)
+    if isinstance(base_name, ifctester.ids.Restriction):
+        return _comparisons(base_name)
+    name = getattr(facet, "name", None)
+    if isinstance(name, ifctester.ids.Restriction):
+        return _comparisons(name)
+    return ()
+
+
 def _requirement_basis(facet: Any, specification: Any) -> RequirementBasis:
     """The structured counterpart to `description` -- see `RequirementBasis`.
 
@@ -130,6 +152,40 @@ def _requirement_basis(facet: Any, specification: Any) -> RequirementBasis:
         name=_facet_subject_name(facet),
         cardinality=cardinality,
         comparisons=_comparisons(getattr(facet, "value", None)),
+        name_comparisons=_facet_subject_name_comparisons(facet),
+    )
+
+
+def _applicability_facet(facet: Any) -> ApplicabilityFacet:
+    """One applicability facet, as data -- see `ApplicabilityFacet`.
+
+    `name` and `predefined_type` are populated only when the IDS states them literally (a
+    `str`); a restricted or absent value is `None`, and the service falls back to
+    `description` -- this facet's own `to_string("applicability")`, computed once here
+    rather than a second time by `_specification` below.
+
+    T-0039 review (F2): `predefinedType` can independently be a `Restriction` (e.g.
+    `predefinedType ∈ {DOOR, GATE}`) while `name` stays a plain literal (`"IFCDOOR"`). The
+    service (`applicability._facet_text`) has no way to tell that shape apart from "no
+    `predefinedType` stated at all" -- both arrive with `predefined_type: None` -- so it
+    would render the unrestricted "All IFCDOOR data" template for a facet whose real
+    applicability is narrower than that, overstating what the specification covers (I5).
+    A restricted `predefinedType` therefore also drops `name` to `None`, so the whole facet
+    falls back to `description` -- `to_string("applicability")`, which still states the
+    restriction correctly, just untranslated -- rather than asserting the no-type template.
+    The fuller fix (a structured `predefined_type_comparisons`, mirroring
+    `name_comparisons`) is a wire/schema change left for later; this is the smallest fix
+    that stops the false claim without one.
+    """
+    name = getattr(facet, "name", None)
+    predefined_type = getattr(facet, "predefinedType", None)
+    type_restricted = predefined_type is not None and not isinstance(predefined_type, str)
+    literal_name = name if isinstance(name, str) else None
+    return ApplicabilityFacet(
+        facet_type=type(facet).__name__.lower(),
+        name=None if type_restricted else literal_name,
+        predefined_type=predefined_type if isinstance(predefined_type, str) else None,
+        description=facet.to_string("applicability"),
     )
 
 
@@ -294,12 +350,17 @@ def _specification(spec: Any, entity_limit: int) -> SpecificationOutcome:
             for requirement in requirements
         )
 
+    # T-0039: computed once here, as data, rather than by calling `to_string` a second
+    # time -- `applicability_description` below is built from these same facets'
+    # `description` field, so the two can never state a different sentence for the same
+    # facet.
+    applicability_facets = tuple(_applicability_facet(f) for f in spec.applicability)
+
     return SpecificationOutcome(
         name=spec.name or "",
         description=spec.description or "",
-        applicability_description=" and ".join(
-            f.to_string("applicability") for f in spec.applicability
-        ),
+        applicability_description=" and ".join(f.description for f in applicability_facets),
+        applicability_facets=applicability_facets,
         instructions=spec.instructions or "",
         applicability=applicability,
         status=status,

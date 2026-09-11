@@ -112,7 +112,7 @@ def _sanitize_text(value: str) -> str:
     only ever begin at the start of a *real* line, so a field with no embedded line break
     left in it cannot open one, no matter what characters it contains. The one remaining
     seam is a field rendered as a bare paragraph with nothing server-written on its line
-    first (`applicability_description`) -- if the field's own first character is itself
+    first (`applicability_text`) -- if the field's own first character is itself
     one Markdown reads as a block starter, a zero-width space in front of it keeps that
     reading from ever applying, without changing how the text prints.
     """
@@ -240,8 +240,8 @@ def render_markdown_report(
         cardinality = _sanitize_text(spec["cardinality"])
         lines.append(f"{matched_line} · {cardinality}")
         lines.append("")
-        if spec.get("applicability_description"):
-            lines.append(_sanitize_text(spec["applicability_description"]))
+        if spec.get("applicability_text"):
+            lines.append(_sanitize_text(spec["applicability_text"]))
             lines.append("")
         if spec.get("reason_label"):
             lines.append(f"> {_sanitize_text(spec['reason_label'])}")

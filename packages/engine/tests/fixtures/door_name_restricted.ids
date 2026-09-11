@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ids:ids xmlns:ids="http://standards.buildingsmart.org/IDS" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://standards.buildingsmart.org/IDS http://standards.buildingsmart.org/IDS/1.0/ids.xsd">
+	<ids:info>
+		<ids:title>Restricted attribute name</ids:title>
+		<ids:description>T-0039: the attribute this requirement names is itself an xs:restriction (an enumeration of two acceptable attribute names) rather than a literal ids:simpleValue. `Facet.parse` (ifctester/facet.py) turns *any* parameter into a Restriction when the IDS wraps it in xs:restriction, including `name` -- this is the fixture that proves the engine carries that restriction as data instead of dropping it to null.</ids:description>
+		<ids:date>2026-09-11</ids:date>
+	</ids:info>
+	<ids:specifications>
+		<ids:specification ifcVersion="IFC2X3 IFC4" name="A recorded overall dimension">
+			<ids:applicability maxOccurs="unbounded">
+				<ids:entity>
+					<ids:name>
+						<ids:simpleValue>IFCDOOR</ids:simpleValue>
+					</ids:name>
+				</ids:entity>
+			</ids:applicability>
+			<ids:requirements>
+				<ids:attribute cardinality="required">
+					<ids:name>
+						<xs:restriction base="xs:string">
+							<xs:enumeration value="OverallWidth"/>
+							<xs:enumeration value="OverallHeight"/>
+						</xs:restriction>
+					</ids:name>
+				</ids:attribute>
+			</ids:requirements>
+		</ids:specification>
+	</ids:specifications>
+</ids:ids>

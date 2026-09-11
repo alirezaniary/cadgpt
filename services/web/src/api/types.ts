@@ -125,6 +125,12 @@ export interface RequirementBasis {
   name: string | null;
   cardinality: string;
   comparisons: Comparison[];
+  /** T-0039: the attribute or property *name* itself, restricted rather than stated
+   * literally (`<xs:restriction>` under `<ids:name>`/`<ids:baseName>`) -- the sibling of
+   * `comparisons` for the name rather than the value. Empty whenever `name` above is
+   * populated: a facet's name is either stated literally or restricted, never both.
+   * Optional because a report stored before `REPORT_SCHEMA_VERSION` 4 has no such key. */
+  name_comparisons?: Comparison[];
 }
 
 export interface RequirementOutcome {
@@ -174,9 +180,15 @@ export interface SpecificationOutcome {
   name: string;
   description: string;
   /** ifctester's own rendering of what the applicability facets select (e.g. "All IFCDOOR
-   * data") -- the report's subject line. Absent for a report stored before this field
-   * existed. */
+   * data") -- kept as the fallback `applicability_text` (below) renders from when it
+   * cannot be built. Absent for a report stored before this field existed. */
   applicability_description?: string;
+  /** `applicability_description`, localized server-side into the reader's language
+   * (T-0039) -- the field to render. Always present: `presentation.localize_report`
+   * computes it from `applicability_facets` when available, or from
+   * `applicability_description` itself otherwise, the same fallback shape
+   * `requirement_text` already has beside `description`. */
+  applicability_text: string;
   instructions: string;
   applicability: Applicability;
   status: Status;

@@ -1053,6 +1053,61 @@ fa `.po` catalogue already carrying the translation — implying Django's active
 `fa` when a check run's report is actually generated (worker/Celery context), a live gap
 between the localization the report *can* produce and what a real run *does* produce.
 
+**T-0039 — the subject of a citation: structured in the engine, worded in the service. Done
+2026-09-11.** Two findings from the T-0027 review, the same defect on the citation's
+*subject* that T-0027 already fixed on its *predicate*. `_facet_subject_name` dropped an
+attribute/property name to `None` whenever the IDS restricted the name itself
+(`<xs:restriction>` under `<ids:name>`) rather than stating it literally — `ifctester`'s
+`Facet.parse` is generic over every parameter, `name` included — forcing the sentence to
+fall back to `description`, upstream's raw Python dict repr
+(`The {'enumeration': [...]} shall be provided`), as the primary, untranslatable line.
+Separately, `_specification` joined each applicability facet's own sentence with a hardcoded
+English `" and "` baked directly into the engine, so a two-facet applicability read
+English-joined even under a Persian request. Both closed the way `reason_code`/`reason_label`
+and `basis`/`requirement_text` already established: a new `RequirementBasis.name_comparisons`
+carries a restricted name's own restriction (the sibling of `comparisons` for the value); a
+new `SpecificationOutcome.applicability_facets` carries each applicability facet as data; a
+new `services/api/cadgpt/apps/review/applicability.py` localizes only the `Entity` facet type
+(the one shipped fixtures exercise), falling back to each facet's own `description` for every
+other type and to the whole string for a pre-v4 document. `REPORT_SCHEMA_VERSION` 3 → 4.
+
+**Reviewer-gated on I5 and the gettext rule, and the review found two genuine I5
+violations — not polish, but a citation now claiming something the IDS did not establish.**
+`_subject_name` joined a multi-member restricted name with an unconditional disjunctive
+"or", which is only correct when the facet states no value bound of its own; the moment the
+same facet also carries a bound, `ifctester` evaluates every matching attribute
+*conjunctively*, so the shipped code could print "The OverallWidth or OverallHeight shall be
+at least 900" for a door that satisfies that exact sentence and still FAILs — a citation
+contradicting the verdict beside it (before this task, the same case fell back to the dict
+repr: ugly, never false). Separately, a restricted `predefinedType` on an applicability
+facet silently collapsed to "no restriction stated," so a specification narrowed to
+`predefinedType ∈ {DOOR, GATE}` rendered "All IFCDOOR data" while matching zero real elements
+— "a rule about all doors found none," reading as a contradiction in a model with three
+doors. Neither wrong case was reachable by any fixture the first round shipped — every new
+test seeded exactly the shape where the original code was correct.
+
+Fixed same-task, same builder: a multi-member restricted name now renders the disjunction
+only when the facet's own value comparisons are empty, falling back to `description`
+otherwise (a single-member name is unaffected regardless); a restricted `predefinedType`
+now also drops the facet's `name`, so the whole facet falls back to its true `description`
+rather than asserting the unrestricted template. New regression tests and fixtures
+(`door_name_restricted_with_bound.ids`, `door_predefined_type_restricted.ids`,
+`door_named_bound.ifc`) exercise exactly the shape the first round's fixtures could not
+reach. Both fixes mutation-proven by the coordinator independently — reverting either
+reproduces the reviewer's exact false output (`"The OverallWidth or OverallHeight..."`;
+`facet.name == "IFCDOOR"` instead of `None`) and restoring returns the suite to green. 284
+tests, 5 contracts kept, re-verified against the live bilingual API (same `run_uuid`, only
+`Accept-Language` differing, `basis`/`applicability_facets`/`applicability_description`
+byte-identical across languages).
+
+Three observations recorded for the judge, not acted on: a restricted `Entity` *name* in an
+applicability facet still renders the dict repr as the primary applicability line —
+pre-existing, the same defect class this task's own Why section names, now surviving on the
+field this task rewrote, blessed by a test as correct; `_subject_name`'s `"literal"` branch
+is unreachable from any real engine output and a test exercises it anyway; the pre-existing
+dirty `.gitignore`/untracked `cadgpt-logo.svg` remain unrelated and were kept out of the
+commit.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -1095,7 +1150,8 @@ the first of them:
   **Done 2026-09-11.** See "What has landed" above.
 - ~~**T-0036** — the Persian report: prove RTL, and stop rendering a raw payload value.~~
   **Done 2026-09-11.** See "What has landed" above.
-- **T-0039** — the subject of a citation: structured in the engine, worded in the service.
+- ~~**T-0039** — the subject of a citation: structured in the engine, worded in the
+  service.~~ **Done 2026-09-11.** See "What has landed" above.
 - **T-0040** — `localize_report` must degrade, not 500.
 - **T-0041** — a verdict is reachable without the statement of what was checked.
 - **T-0042** — the catalogue hands out a storage URL nothing authenticates.

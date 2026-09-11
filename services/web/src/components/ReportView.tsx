@@ -283,9 +283,15 @@ export function ReportView({
                   untranslated inside an otherwise-localized sentence (T-0036). */}
               <span data-testid="cardinality">{t(`report.cardinality.${spec.cardinality}`)}</span>
             </p>
-            {spec.applicability_description && (
+            {/* T-0039: `applicability_text` is the server's localized rendering of
+                `applicability_facets` (only the `Entity` facet type is rendered into a
+                sentence; every other facet type, and a report stored before this field
+                existed, falls back to `applicability_description` -- computed server-side,
+                never here), the same "engine names it, service words it" split
+                `requirement_text` already established. */}
+            {spec.applicability_text && (
               <p className="muted" data-testid="applicability">
-                {spec.applicability_description}
+                {spec.applicability_text}
               </p>
             )}
             {spec.reason_label && <p className="notice">{spec.reason_label}</p>}
