@@ -8,6 +8,13 @@
  * loader from `.storybook/preview.tsx`) the interactive workbench uses -- automatic since
  * Storybook 10.3, no separate setup file needed. `pnpm run test-storybook` runs this
  * project directly; `pnpm run verify` runs it as its last step.
+ *
+ * T-0035 adds a second, plain project ("unit") beside it for pure functions where a
+ * browser is not the right instrument -- `bySeverity`'s one defect only manifests for a
+ * `status` outside the app's own `EntityFilter` vocabulary, which the Storybook-rendered
+ * path would filter out of the DOM before the defect could ever be observed on screen.
+ * No new test runner: same Vitest, same config file, run as `pnpm run test-unit` and
+ * wired into `pnpm run verify` beside `test-storybook`.
  */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -36,6 +43,14 @@ export default mergeConfig(
               provider: playwright(),
               instances: [{ browser: "chromium" }],
             },
+          },
+        },
+        {
+          extends: true,
+          test: {
+            name: "unit",
+            environment: "node",
+            include: ["src/**/*.test.ts"],
           },
         },
       ],

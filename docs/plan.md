@@ -993,6 +993,32 @@ assertion proving the notice doesn't fire on an uncapped run is a bare `toHaveCo
 positive control; and `allHidden`'s wording ("every row here is hidden by the current filter")
 still allows the pre-T-0034 conflation on a requirement that is both capped and fully filtered.
 
+**T-0035 — two latent report-view defects: an unsortable list and a colliding key. Done
+2026-09-11.** Both found by the T-0025 review by reading the code, neither reachable through
+today's payload — the kind of defect that surfaces once the wire format moves, which
+`REPORT_SCHEMA_VERSION` exists to anticipate. `SEVERITY_RANK[status]` returned `undefined` for
+any status this build didn't recognize, `undefined - n` is `NaN`, and `NaN || (a.index -
+b.index)` made the *entire* comparator fall through to index order — not just the unrecognised
+row, silently disabling severity ordering across the whole list the moment a persisted report
+carried one status value an older frontend had never heard of. Now defaults to
+`SEVERITY_RANK.INDETERMINATE` via `??`: an unknown status never outranks a `FAIL` this build
+did establish, and is never buried under `PASS`. Separately, the row key
+`` `${global_id}-${reason_code}` `` collided whenever two rows in one requirement shared a null
+`global_id` (a non-rooted IFC entity) and the same reason code — now includes the entity's
+pre-filter index, assigned once so it stays a stable, unique tiebreaker across a filter toggle.
+
+Not reviewer-gated (no invariant, scope held to one file plus tests). Proved by mutation both
+ways: a new plain-Vitest `unit` project (`ReportView.test.ts`, wired into `pnpm run verify` as
+`test-unit`) feeds `bySeverity` a shuffled list with an out-of-vocabulary status and asserts
+FAIL still leads — reverting the `??` fallback makes it fail on `expected 'FAIL', received
+'PASS'`. A new Storybook story (`DuplicateGlobalIdKeysSurviveAFilterToggle`, run headless via
+the `@storybook/addon-vitest` gate T-0034 just wired into `verify`) renders two null-`global_id`
+same-reason-code rows, toggles a filter twice, and asserts both React's rendered content and
+its own `console.error` never fire a "same key" warning — reverting the index-in-key fix
+reproduces that exact warning and fails the test. `make e2e` was correctly not run: neither
+fix changes rendered text, and the task's own "how to prove it ran" anticipated that a browser
+is the wrong instrument for one defect and the Storybook mechanism already covers the other.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -1031,7 +1057,8 @@ the first of them:
   2026-09-10.** See "What has landed" above.
 - ~~**T-0034** — the filter banner must not claim credit for what the engine capped.~~ **Done
   2026-09-11.** See "What has landed" above.
-- **T-0035** — two latent report-view defects: an unsortable list and a colliding key.
+- ~~**T-0035** — two latent report-view defects: an unsortable list and a colliding key.~~
+  **Done 2026-09-11.** See "What has landed" above.
 - **T-0036** — the Persian report: prove RTL, and stop rendering a raw payload value.
 - **T-0039** — the subject of a citation: structured in the engine, worded in the service.
 - **T-0040** — `localize_report` must degrade, not 500.

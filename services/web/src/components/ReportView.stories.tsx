@@ -193,6 +193,115 @@ export const FilteredWithOmissionsAndAPartialRequirement: Story = {
 };
 
 /**
+ * T-0035. `entity.global_id` is `string | null` for a non-rooted IFC entity, so two rows in
+ * one requirement can share both a null `global_id` and the same `reason_code` -- the row
+ * key built from those two fields alone collides. Two such rows sit in the door-width
+ * requirement below (replacing two of its three kept entities, which this fixture's own
+ * comment already establishes are exactly at `entity_limit`): `keyed-a` stays `FAIL`
+ * exactly as the entity it replaces was, so `requirement.failed`/`indeterminate` need no
+ * adjustment for it; `keyed-b` moves from the `FAIL` it replaces to `INDETERMINATE`, so
+ * `failed`/`indeterminate` move by one in the same direction the existing
+ * `withMixedRequirement` fixture above already establishes is safe.
+ */
+const withDuplicateKeyEntities: Report = ((): Report => {
+  return {
+    ...fx.report,
+    specifications: fx.report.specifications.map((spec, specIndex) => {
+      if (specIndex !== 0) return spec;
+      return {
+        ...spec,
+        requirements: spec.requirements.map((requirement, requirementIndex) => {
+          if (requirementIndex !== 0) return requirement;
+          return {
+            ...requirement,
+            failed: requirement.failed - 1,
+            indeterminate: requirement.indeterminate + 1,
+            entities: [
+              // The first kept entity is untouched; the other two -- both `FAIL` in the
+              // base fixture -- are replaced (not appended) so `entities.length` stays at
+              // this requirement's `entity_limit`.
+              requirement.entities[0]!,
+              {
+                global_id: null,
+                ifc_class: "IfcDoor",
+                status: "FAIL",
+                reason_code: "SAME_REASON_CODE",
+                reason_label: null,
+                detail: "keyed-a",
+              },
+              {
+                global_id: null,
+                ifc_class: "IfcDoor",
+                status: "INDETERMINATE",
+                reason_code: "SAME_REASON_CODE",
+                reason_label: null,
+                detail: "keyed-b",
+              },
+            ],
+          };
+        }),
+      };
+    }),
+  };
+})();
+
+/** Before the fix, `keyed-a` and `keyed-b` above render the identical React key
+ * (`null-SAME_REASON_CODE`) -- two siblings in the same list with the same key, which
+ * React's own reconciler rejects with a "same key" warning and is then free to resolve
+ * however it likes, including reusing one row's already-mounted DOM node for the other
+ * row's data across a reconciliation. Unchecking, then rechecking, the INDETERMINATE
+ * filter forces exactly that: `keyed-b` (INDETERMINATE) leaves and re-enters the rendered
+ * list while `keyed-a` (FAIL) stays put throughout, so a reconciler confused about which
+ * row is which has two chances to show a stale or duplicated row instead of the one the
+ * filter asked for. Spying on `console.error` catches the warning React itself emits the
+ * moment it sees the collision, which is the one signal that survives even where the
+ * rendered *text* happens to still come out right by luck of this particular row markup
+ * being purely derived from props with no per-row state of its own. */
+export const DuplicateGlobalIdKeysSurviveAFilterToggle: Story = {
+  args: { report: withDuplicateKeyEntities, rulePackSelection: [] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const keyWarnings: unknown[][] = [];
+    const originalConsoleError = console.error;
+    console.error = (...args: unknown[]) => {
+      keyWarnings.push(args);
+      originalConsoleError(...args);
+    };
+
+    try {
+      // Both rows present from the start: the default filter shows FAIL and
+      // INDETERMINATE alike.
+      await waitFor(() => expect(canvas.getByText("keyed-a")).toBeInTheDocument());
+      expect(canvas.getByText("keyed-b")).toBeInTheDocument();
+
+      const indeterminateBox = canvas.getByRole("checkbox", { name: "نامشخص" });
+
+      // Hide INDETERMINATE: `keyed-b` leaves the rendered list, `keyed-a` (FAIL) must
+      // stay -- and keep its own row, not `keyed-b`'s stale content.
+      await userEvent.click(indeterminateBox);
+      await waitFor(() => expect(canvas.queryByText("keyed-b")).not.toBeInTheDocument());
+      expect(canvas.getByText("keyed-a")).toBeInTheDocument();
+
+      // Show INDETERMINATE again: both rows must come back, each with its own content --
+      // not one row duplicated under two labels, not one row lost.
+      await userEvent.click(indeterminateBox);
+      await waitFor(() => expect(canvas.getByText("keyed-b")).toBeInTheDocument());
+      expect(canvas.getByText("keyed-a")).toBeInTheDocument();
+      expect(canvas.getAllByText(/^keyed-[ab]$/).length).toBe(2);
+
+      // The defect's own signature: React warns the instant it renders two siblings with
+      // the same key. None of the renders above may have logged one.
+      const sameKeyWarning = keyWarnings.find((args) =>
+        args.some((arg) => typeof arg === "string" && arg.includes("same key")),
+      );
+      expect(sameKeyWarning, `console.error was called with: ${JSON.stringify(keyWarnings)}`).toBeUndefined();
+    } finally {
+      console.error = originalConsoleError;
+    }
+  },
+};
+
+/**
  * Everything passed. The indeterminate count is still rendered, still in its own column,
  * still at the same weight -- a clean report is three zeros and a total, never two
  * columns.

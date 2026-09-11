@@ -9,9 +9,10 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
-    "verify": "pnpm run lint && pnpm run typecheck && pnpm run build && pnpm run build-workbench && pnpm run test-storybook",
+    "verify": "pnpm run lint && pnpm run typecheck && pnpm run build && pnpm run build-workbench && pnpm run test-unit && pnpm run test-storybook",
     "workbench": "storybook dev -p 6006 --no-open",
     "build-workbench": "storybook build -o storybook-static --quiet",
+    "test-unit": "vitest run --project=unit",
     "test-storybook": "vitest run --project=storybook",
     "generate:api": "openapi-typescript openapi.yaml -o src/api/schema.d.ts",
     "e2e": "playwright test"

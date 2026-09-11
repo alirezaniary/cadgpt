@@ -35,11 +35,28 @@ import { StatusPill } from "@/components/StatusPill";
 /** FAIL first, then INDETERMINATE, then PASS. INDETERMINATE never sorts under PASS. */
 const SEVERITY_RANK: Record<Status, number> = { FAIL: 0, INDETERMINATE: 1, PASS: 2 };
 
-/** Stable sort by three-valued severity: equal-severity items keep the rule author's order. */
-function bySeverity<T extends { status: Status }>(items: readonly T[]): T[] {
+/** T-0035. A report is a persisted document that a *newer* engine may have written and an
+ * *older* frontend may be reading back -- `REPORT_SCHEMA_VERSION` exists precisely because
+ * that gap is expected. A status this build has never heard of is exactly the shape of an
+ * established, unestablished-ness -- neither compliant (`PASS`) nor a compliance failure
+ * this build actually determined (`FAIL`) -- so it is ranked exactly where INDETERMINATE
+ * already sits: never above (more urgent than) a `FAIL` this build *did* establish, and
+ * never buried under a `PASS`, which would silently assert compliance nobody checked. This
+ * is the default `SEVERITY_RANK[status]` falls back to via `??` when `status` is not one of
+ * the three keys the `Record` above declares -- without it, the lookup is `undefined`,
+ * `undefined - n` is `NaN`, and `NaN || (a.index - b.index)` makes the *entire* comparator
+ * fall through to index order, not just the unrecognised row (found by T-0025 review Q2). */
+const UNKNOWN_STATUS_RANK = SEVERITY_RANK.INDETERMINATE;
+
+/** Stable sort by three-valued severity: equal-severity items keep the rule author's order.
+ * Exported for the unit test that feeds it a status outside `Status`'s vocabulary -- the
+ * one shape a same-file story test cannot exercise, because `EntityFilter` has no key for
+ * an unrecognised status either and would filter such a row out of the DOM entirely. */
+export function bySeverity<T extends { status: Status }>(items: readonly T[]): T[] {
+  const rank = (status: Status): number => SEVERITY_RANK[status] ?? UNKNOWN_STATUS_RANK;
   return items
     .map((item, index) => ({ item, index }))
-    .sort((a, b) => SEVERITY_RANK[a.item.status] - SEVERITY_RANK[b.item.status] || a.index - b.index)
+    .sort((a, b) => rank(a.item.status) - rank(b.item.status) || a.index - b.index)
     .map(({ item }) => item);
 }
 
@@ -260,7 +277,18 @@ export function ReportView({
 
             {spec.requirements.map((requirement, requirementIndex) => {
               const orderedEntities = bySeverity(requirement.entities);
-              const visibleEntities = orderedEntities.filter((e) => isVisible(e, filter));
+              // T-0035. `entity.global_id` is `string | null` for a non-rooted IFC entity,
+              // so two rows in the same requirement can share both a null `global_id` and
+              // the same `reason_code` -- the row key below cannot be built from entity
+              // fields alone without colliding. Pairing each entity with its index in
+              // `orderedEntities` *before* the filter below runs makes that index a stable,
+              // unique tiebreaker: unique because no two elements of an array share a
+              // position, and stable across a filter toggle because it is assigned once,
+              // pre-filter, not recomputed from `visibleEntities`'s own (filter-dependent)
+              // position.
+              const visibleEntities = orderedEntities
+                .map((entity, entityIndex) => ({ entity, entityIndex }))
+                .filter(({ entity }) => isVisible(entity, filter));
               return (
                 <div key={requirementIndex} className="requirement">
                   <div className="requirement__head">
@@ -302,9 +330,9 @@ export function ReportView({
                     <div className="entities-scroll">
                       <table className="entities">
                         <tbody>
-                          {visibleEntities.map((entity) => (
+                          {visibleEntities.map(({ entity, entityIndex }) => (
                             <tr
-                              key={`${entity.global_id}-${entity.reason_code}`}
+                              key={`${entity.global_id}-${entity.reason_code}-${entityIndex}`}
                               data-testid="entity-row"
                               data-status={entity.status}
                             >
