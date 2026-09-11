@@ -184,6 +184,23 @@ export const rulePacks: RulePack[] = [
  * specifications that established nothing -- one from a schema mismatch, one that matched
  * no subjects. Those two are what `ReportView`'s coverage block subtracts, so a report
  * fixture without them would render a coverage line that reads "N of N" and prove nothing.
+ *
+ * T-0034 review round 2 (F3). `entities`/`entities_omitted` are shaped the way
+ * `cadgpt_engine.check._requirement` actually produces them, not typed to look plausible:
+ * `outcomes = tuple(_outcome(...) for f in facet.failures)` never contains a `PASS` row
+ * (`check.py:137`), and `entities = outcomes[:entity_limit]` / `entities_omitted =
+ * max(0, len(outcomes) - entity_limit)` (`check.py:159-160`) together mean a requirement
+ * with `entities_omitted > 0` always itemises *exactly* `entity_limit` entities, never more
+ * and never fewer. This fixture picks one `entity_limit = 3` (a fixture-only stand-in for
+ * `CHECK_ENTITY_LIMIT`, `services/api/cadgpt/config/settings/base.py:323` -- unrelated to
+ * its real deployed value, which would make every array here unreadably long) and holds
+ * every requirement in the object to it: the door-width requirement below keeps exactly 3
+ * FAIL entities (the PASS row a previous version of this fixture mixed in is gone -- a
+ * passing entity is never among `outcomes`, so it could never legitimately appear beside
+ * failures here), the stairs requirement keeps exactly 3 INDETERMINATE entities, and the
+ * spaces requirement -- which failed and indeterminate-classified nothing -- carries
+ * `entities_omitted: 0`, because `len(outcomes) = failed + indeterminate = 0` leaves
+ * nothing for any limit to cap.
  */
 export const report: Report = {
   schema_version: 2,
@@ -199,7 +216,7 @@ export const report: Report = {
   specifications_failed: 1,
   specifications_indeterminate: 2,
   passed: 34,
-  failed: 3,
+  failed: 11,
   indeterminate: 7,
   specifications: [
     {
@@ -210,11 +227,11 @@ export const report: Report = {
       applicability: "APPLIES",
       status: "FAIL",
       cardinality: "required",
-      matched: 12,
+      matched: 20,
       reason_code: null,
       reason_label: null,
       passed: 9,
-      failed: 3,
+      failed: 11,
       indeterminate: 0,
       requirements: [
         {
@@ -228,7 +245,7 @@ export const report: Report = {
           requirement_text: "ویژگی OverallWidth باید بزرگ‌تر یا مساوی ۹۰۰ باشد",
           status: "FAIL",
           passed: 9,
-          failed: 3,
+          failed: 11,
           indeterminate: 0,
           entities: [
             {
@@ -255,15 +272,10 @@ export const report: Report = {
               reason_label: "مقدار خارج از محدوده مجاز است",
               detail: "OverallWidth = 860",
             },
-            {
-              global_id: "0hVn2Q$rL5xO9pJ2mBvA9z",
-              ifc_class: "IfcDoor",
-              status: "PASS",
-              reason_code: "WITHIN_BOUNDS",
-              reason_label: "مقدار در محدوده مجاز است",
-              detail: "OverallWidth = 1000",
-            },
           ],
+          // 3 kept (== this fixture's entity_limit) + 8 omitted = 11 total failing
+          // entities, matching `failed: 11` above exactly -- `check.py`'s `entities` is a
+          // prefix of `outcomes`, never a mix that includes a passing entity.
           entities_omitted: 8,
         },
       ],
@@ -313,8 +325,18 @@ export const report: Report = {
               reason_label: "ویژگی در مدل ثبت نشده است",
               detail: "Pset_StairCommon",
             },
+            {
+              global_id: "5Fq9Rp2XZBEwUo1nY3wDaV",
+              ifc_class: "IfcStair",
+              status: "INDETERMINATE",
+              reason_code: "PROPERTY_MISSING",
+              reason_label: "ویژگی در مدل ثبت نشده است",
+              detail: "Pset_StairCommon",
+            },
           ],
-          entities_omitted: 5,
+          // 3 kept (== this fixture's entity_limit) + 4 omitted = 7 total indeterminate
+          // entities, matching `indeterminate: 7` above exactly.
+          entities_omitted: 4,
         },
       ],
     },
@@ -346,8 +368,11 @@ export const report: Report = {
           passed: 25,
           failed: 0,
           indeterminate: 0,
+          // Every subject passed: `failed = indeterminate = 0`, so `len(outcomes) = 0` and
+          // nothing is left for any limit to cap -- `entities_omitted` must be 0 here, not
+          // a number implying a limit this requirement's own counts contradict.
           entities: [],
-          entities_omitted: 25,
+          entities_omitted: 0,
         },
       ],
     },

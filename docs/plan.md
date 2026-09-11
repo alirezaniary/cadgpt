@@ -947,6 +947,52 @@ to English against a pre-existing (not introduced here) `Accept-Language` negoti
 `make verify` cannot run as one invocation in this sandbox absent `msgfmt`; and the dirty,
 unrelated `.gitignore`/`cadgpt-logo.svg` predate this task.
 
+**T-0034 — the filter banner must not claim credit for what the engine capped. Done
+2026-09-11.** `ReportView.tsx`'s filter banner built its total from `allEntities`, which
+`check.py`'s `DEFAULT_ENTITY_LIMIT` (500) had already truncated, so a run with thousands of
+non-passing entities read "Showing 12 of 500 findings — the rest are hidden by this filter,"
+crediting the filter with a gap the engine's cap produced. A report-wide notice now states the
+omitted count independent of filter state (`report.filter.omittedTotal`, fires before any
+checkbox is touched), the filter banner itself now names three distinguishable numbers
+(itemised, shown, filter-hidden), and a per-requirement signal fires when some but not all of
+a requirement's rows are hidden — the specification-level "all hidden" note was the only
+existing local signal and said nothing about a requirement showing 2 of 30 rows.
+
+**Reviewer-gated on three-valued/I7, and the review found the shipped fix correct but its own
+proof false.** The `ReportView.tsx` change itself was right — the reviewer confirmed the
+omitted-count arithmetic against `check.py` directly and found no invariant violated — but the
+Storybook `play`-function test written to prove the positive case (cap hit, filter active,
+partial-hide, all three numbers visible) used `toHaveTextContent(String(n))`, an unanchored
+substring match. The reviewer mutated the built bundle to feed the omitted total into the
+filter banner's own hidden-count slot — reintroducing verbatim the defect this task exists to
+remove — and the test passed clean, no exception. Two more findings landed in the same
+fix-now round: the play function was never executed by anything automated (`storybook build`,
+already in `make verify`, does not run `play`, and nothing else was wired to), so it was a
+one-shot manual proof rather than a regression gate; and the fixture used for it wasn't
+engine-shaped in the dimension under test — three requirements implied three different,
+mutually inconsistent `entity_limit`s, one of them holding a `PASS`-status row among counted
+"itemised findings" that `check.py`'s own outcome-building code (`facet.failures` only) could
+never produce.
+
+Same builder, same task, no new review, per `docs/agents.md`. All three closed for real: the
+play function now asserts full interpolated sentences built from the same `i18n.t` call
+`ReportView` itself makes, plus explicit negative checks against the swapped/conflated
+wording, and was proven to fail on both of the reviewer's own mutations before being reverted;
+`@storybook/addon-vitest` + Vitest browser mode (real headless Chromium) is now wired into
+`services/web/vitest.config.ts` and `.storybook/main.ts`, with `pnpm run test-storybook` as
+the last step of `pnpm run verify` — `make verify`, independently re-run, now executes all 33
+story tests including this one on every invocation; and `fx.report` was rebuilt so every
+requirement's kept-entity count equals one consistent `entity_limit` and no passing entity
+appears among itemised findings.
+
+Three non-blocking observations recorded for the judge, not acted on: the new omitted-count is
+a second, independent computation of a quantity the report already carries via
+`report.failed + report.indeterminate`, with nothing tying the two together — fixture-driven
+today, structurally capable of disagreeing with the count band tomorrow; the real e2e
+assertion proving the notice doesn't fire on an uncapped run is a bare `toHaveCount(0)` with no
+positive control; and `allHidden`'s wording ("every row here is hidden by the current filter")
+still allows the pre-T-0034 conflation on a requirement that is both capped and fully filtered.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -983,7 +1029,8 @@ the first of them:
   nothing.~~ **Done 2026-09-10.** See "What has landed" above.
 - ~~**T-0038** — a specification that asserted nothing must not report PASS either.~~ **Done
   2026-09-10.** See "What has landed" above.
-- **T-0034** — the filter banner must not claim credit for what the engine capped.
+- ~~**T-0034** — the filter banner must not claim credit for what the engine capped.~~ **Done
+  2026-09-11.** See "What has landed" above.
 - **T-0035** — two latent report-view defects: an unsortable list and a colliding key.
 - **T-0036** — the Persian report: prove RTL, and stop rendering a raw payload value.
 - **T-0039** — the subject of a citation: structured in the engine, worded in the service.

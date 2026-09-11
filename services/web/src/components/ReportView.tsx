@@ -113,8 +113,25 @@ export function ReportView({
     () => report.specifications.flatMap((s) => s.requirements.flatMap((r) => r.entities)),
     [report.specifications],
   );
+  // T-0034: `allEntities` is only what the engine itemised -- `check.py`'s
+  // `DEFAULT_ENTITY_LIMIT` already truncated each requirement's non-passing entities
+  // before this component ever sees the report, and the remainder is `entities_omitted`,
+  // summed here across every requirement. This is a fact about the run, not about the
+  // filter: it is never zero because a filter hid something, and unchecking every box in
+  // the filter above never brings a capped entity back into `allEntities`. Naming it
+  // separately from the filter's own hidden count is the whole fix -- see the banner below.
+  const totalOmitted = useMemo(
+    () =>
+      report.specifications.reduce(
+        (specSum, s) =>
+          specSum + s.requirements.reduce((reqSum, r) => reqSum + r.entities_omitted, 0),
+        0,
+      ),
+    [report.specifications],
+  );
   const filterActive = !filter.FAIL || !filter.INDETERMINATE;
   const visibleCount = allEntities.filter((e) => isVisible(e, filter)).length;
+  const hiddenByFilter = allEntities.length - visibleCount;
 
   return (
     <section className="report">
@@ -205,9 +222,21 @@ export function ReportView({
           {t("status.INDETERMINATE")}
         </label>
       </div>
+      {/* T-0034: this fires whether or not a filter is active, because the cap is a fact
+          about the run -- a reader who unchecks nothing must still learn it, not only the
+          reader who happens to have the filter banner below on screen. */}
+      {totalOmitted > 0 && (
+        <p className="notice" data-testid="filter-omitted-total">
+          {t("report.filter.omittedTotal", { omitted: totalOmitted, itemised: allEntities.length })}
+        </p>
+      )}
       {filterActive && (
         <p className="notice" data-testid="filter-banner">
-          {t("report.filter.showing", { shown: visibleCount, total: allEntities.length })}
+          {t("report.filter.showing", {
+            shown: visibleCount,
+            itemised: allEntities.length,
+            hidden: hiddenByFilter,
+          })}
         </p>
       )}
 
@@ -299,6 +328,19 @@ export function ReportView({
                   {orderedEntities.length > 0 && visibleEntities.length === 0 && (
                     <p className="notice" data-testid="requirement-all-hidden">
                       {t("report.filter.allHidden")}
+                    </p>
+                  )}
+                  {/* T-0034: the global banner is off-screen the moment a reader scrolls
+                      into a long list, and "every row hidden" above says nothing when only
+                      some of a requirement's rows are -- a requirement showing 2 of 30 rows
+                      must not read identically to one with 2 findings. Local, not derived
+                      from the global filter state, so it stays correct per requirement. */}
+                  {visibleEntities.length > 0 && visibleEntities.length < orderedEntities.length && (
+                    <p className="notice" data-testid="requirement-partially-hidden">
+                      {t("report.filter.partiallyHidden", {
+                        hidden: orderedEntities.length - visibleEntities.length,
+                        total: orderedEntities.length,
+                      })}
                     </p>
                   )}
                   {requirement.entities_omitted > 0 && (

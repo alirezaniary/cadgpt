@@ -182,6 +182,16 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
     "نمایش 1 از 2",
   );
 
+  // T-0034: three_doors.ifc has 2 non-passing findings, nowhere near
+  // `DEFAULT_ENTITY_LIMIT` (500) -- the engine capped nothing on this real run, so the
+  // report-wide omission notice must not appear. Reaching the cap itself through this
+  // real stack would need a fixture of 500+ failing entities in one requirement, which is
+  // unreasonable to ship as a fixture; that path is exercised instead by a component test
+  // (`ReportView.stories.tsx`, `FilteredWithOmissionsAndAPartialRequirement`) built on a
+  // real engine-shaped payload. This assertion is the real-path half: it proves the new
+  // notice does not fire on a real run that never hit the cap.
+  await expect(report.locator('[data-testid="filter-omitted-total"]')).toHaveCount(0);
+
   // T-0074: the run appears in this review's own run-history table beneath the picker.
   const runHistory = page.locator("section.card", {
     has: page.getByRole("heading", { name: "تاریخچهٔ اجراها" }),

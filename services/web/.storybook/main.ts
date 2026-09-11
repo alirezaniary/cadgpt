@@ -2,7 +2,7 @@ import type { StorybookConfig } from "@storybook/react-vite";
 
 const config: StorybookConfig = {
   stories: ["../src/**/*.stories.@(ts|tsx)"],
-  addons: ["@storybook/addon-a11y"],
+  addons: ["@storybook/addon-a11y", "@storybook/addon-vitest"],
   framework: { name: "@storybook/react-vite", options: {} },
   // This repository vendors its own fonts rather than depend on a font CDN, for tenants
   // who may run offline or behind a firewall. A build step that reports home would

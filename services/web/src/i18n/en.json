@@ -101,8 +101,10 @@
     },
     "filter": {
       "label": "Show",
-      "showing": "Showing {{shown}} of {{total}} findings. The rest are hidden by this filter, not resolved.",
-      "allHidden": "Every row here is hidden by the current filter."
+      "omittedTotal": "{{omitted}} more finding(s) exist beyond the {{itemised}} itemised here — the engine's per-requirement limit capped the rest before this filter ever applied.",
+      "showing": "Showing {{shown}} of {{itemised}} itemised finding(s). {{hidden}} are hidden by this filter, not resolved.",
+      "allHidden": "Every row here is hidden by the current filter.",
+      "partiallyHidden": "{{hidden}} of {{total}} itemised finding(s) here are hidden by the current filter."
     }
   },
   "error": { "generic": "Something went wrong.", "retry": "Try again" }
