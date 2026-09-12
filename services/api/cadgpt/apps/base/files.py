@@ -16,7 +16,8 @@ import shutil
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
-from typing import Any
+
+from django.db.models.fields.files import FieldFile
 
 #: Read size when copying to a temporary file. Large enough to be fast, small enough that
 #: a large model never sits in memory -- matches `media.constants.CHECKSUM_CHUNK_BYTES`.
@@ -24,7 +25,7 @@ COPY_CHUNK_BYTES = 1024 * 1024
 
 
 @contextlib.contextmanager
-def local_path(file_field: Any, display_name: str) -> Iterator[Path]:
+def local_path(file_field: FieldFile, display_name: str) -> Iterator[Path]:
     """Yield a filesystem path for `file_field`, downloading it only if it is remote.
 
     The shortcut requires a file that is actually readable, not a backend that merely
@@ -52,7 +53,7 @@ def local_path(file_field: Any, display_name: str) -> Iterator[Path]:
         Path(handle.name).unlink(missing_ok=True)
 
 
-def _readable_path(file_field: Any) -> Path | None:
+def _readable_path(file_field: FieldFile) -> Path | None:
     """The backing file's own path, but only if it exists and can be opened."""
     try:
         candidate = Path(file_field.path)

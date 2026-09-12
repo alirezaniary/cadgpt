@@ -1233,6 +1233,22 @@ reproducing the exact "genuinely exists, shown as no match" defect live in the b
 fix was restored. `make e2e` 14/15 (the one failure a pre-existing, unrelated locator ambiguity
 at `report.spec.ts:380`, already on record from T-0041's review). 296 tests, 5 contracts kept.
 
+**T-0047 — a typed boundary for the shared file helper. Done 2026-09-12.** Found by the T-0031
+review: `base/files.py`'s `local_path`/`_readable_path`, extracted from `MediaService` during
+T-0031 so `RulePackService` shares one storage-fallback helper instead of a second copy, typed
+its one parameter `Any` — `mypy --strict` passed only because checking was switched off over
+every `.open()`/`.close()`/`.path` access at a module boundary two apps now share, against
+CLAUDE.md's "types at module boundaries." Both call sites pass a Django `FieldFile`; the
+signature now says so directly rather than through a `Protocol` — `django-stubs`' plugin already
+types `FieldFile` fully and this module has no independence-from-Django contract worth
+preserving (unlike the engine), so a `Protocol` would only duplicate what is already inherited.
+
+Not reviewer-gated (typing only, four-line diff, fully read). Proven to bite: a value lacking
+`.path` typechecked clean under `Any` and is now rejected — `error: Argument 1 to "local_path"
+has incompatible type "NotAFieldFile"; expected "FieldFile"  [arg-type]`. Behaviour unchanged,
+confirmed by re-running `test_check_run.py` against real IFC fixtures through both wired call
+sites. 296 tests, 5 contracts kept.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -1295,7 +1311,8 @@ the first of them:
   catalogue's empty-state message during loading) is still real, relocated to
   `ReviewDetailPage.tsx`, and is left as an observation rather than rebuilt as a task — see
   the task file.
-- **T-0047** — a typed boundary for the shared file helper.
+- ~~**T-0047** — a typed boundary for the shared file helper.~~ **Done 2026-09-12.** See
+  "What has landed" above.
 - **T-0048** — a failed run must say what it was for, and speak the application's error language.
 - **T-0049** — every finding carries the pack identity and version that produced it.
 - **T-0050** — the suite cannot catch the class of defect that only Postgres enforces.
