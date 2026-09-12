@@ -10,7 +10,7 @@
  */
 
 import { useParams } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api, ApiError } from "@/api/client";
@@ -21,6 +21,7 @@ import {
   useReview,
   useRulePacks,
   useStartCheck,
+  type RulePackFilter,
 } from "@/api/queries";
 import { isTerminal } from "@/api/types";
 import { useSession } from "@/app/session-context";
@@ -35,7 +36,6 @@ export function ReviewDetailPage() {
   const { reviewUuid } = useParams({ from: "/_app/projects/$projectUuid/reviews/$reviewUuid" });
 
   const review = useReview(slug, reviewUuid);
-  const rulePacks = useRulePacks(slug);
   const runs = useCheckRuns(reviewUuid);
   const startCheck = useStartCheck(slug);
   const generateReportFile = useGenerateReportFile(slug);
@@ -43,11 +43,21 @@ export function ReviewDetailPage() {
   const [openRun, setOpenRun] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedPacks, setSelectedPacks] = useState<string[]>([]);
-  const [catalogueFilter, setCatalogueFilter] = useState({
+  const [catalogueFilter, setCatalogueFilter] = useState<RulePackFilter>({
     jurisdiction: "",
     region: "",
     version: "",
   });
+  // The value actually sent to `RulePackFilterSet` -- debounced so the server is asked
+  // once per pause in typing, not once per keystroke. `catalogueFilter` itself still
+  // drives the inputs directly, so typing never feels delayed.
+  const [queryFilter, setQueryFilter] = useState<RulePackFilter>(catalogueFilter);
+  useEffect(() => {
+    const handle = setTimeout(() => setQueryFilter(catalogueFilter), 300);
+    return () => clearTimeout(handle);
+  }, [catalogueFilter]);
+
+  const rulePacks = useRulePacks(slug, queryFilter);
 
   // The most recent run opens itself once the run list first arrives, so the report is
   // visible without an extra click for the common case; a person can still open an
@@ -90,15 +100,16 @@ export function ReviewDetailPage() {
       : true
     : (runs.data?.results.some((candidate) => !isTerminal(candidate.status)) ?? false);
 
-  const filteredPacks = useMemo(() => {
-    const packs = rulePacks.data?.results ?? [];
-    return packs.filter(
-      (pack) =>
-        pack.jurisdiction.toLowerCase().includes(catalogueFilter.jurisdiction.toLowerCase()) &&
-        pack.region.toLowerCase().includes(catalogueFilter.region.toLowerCase()) &&
-        pack.version.toLowerCase().includes(catalogueFilter.version.toLowerCase()),
-    );
-  }, [rulePacks.data, catalogueFilter]);
+  // Already filtered and fully paged by `useRulePacks` itself (server-side, through
+  // `RulePackFilterSet`) -- nothing left to filter client-side.
+  const packs = rulePacks.data ?? [];
+  // Distinguishes "the catalogue has not answered yet" from "it answered with zero
+  // matches" from "it could not be reached at all" -- collapsing any of these into the
+  // others is the same silent narrowing this task exists to remove, just for a
+  // different reason than the paging bug.
+  const catalogueLoading = rulePacks.isLoading;
+  const catalogueErrored = rulePacks.isError;
+  const catalogueEmpty = !catalogueLoading && !catalogueErrored && packs.length === 0;
 
   function report(caught: unknown) {
     setError(caught instanceof ApiError ? caught.message : t("error.generic"));
@@ -190,9 +201,19 @@ export function ReviewDetailPage() {
                 />
               </div>
             </div>
-            {filteredPacks.length === 0 && <p className="muted">{t("review.catalogue.empty")}</p>}
+            {catalogueLoading && (
+              <p className="muted" data-testid="catalogue-loading">
+                {t("review.catalogue.loading")}
+              </p>
+            )}
+            {catalogueErrored && <p className="error">{t("error.generic")}</p>}
+            {catalogueEmpty && (
+              <p className="muted" data-testid="catalogue-empty">
+                {t("review.catalogue.empty")}
+              </p>
+            )}
             <ul className="list">
-              {filteredPacks.map((pack) => (
+              {packs.map((pack) => (
                 <li key={pack.uuid}>
                   <label>
                     <input

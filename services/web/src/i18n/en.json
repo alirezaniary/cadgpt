@@ -52,6 +52,7 @@
       "jurisdiction": "Jurisdiction",
       "region": "Region",
       "version": "Version",
+      "loading": "Loading the catalogue…",
       "empty": "No packs match this filter.",
       "checkSelected": "Run check with selected packs"
     }

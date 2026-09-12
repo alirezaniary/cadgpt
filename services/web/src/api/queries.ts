@@ -32,10 +32,23 @@ import type {
 } from "@/api/types";
 import { isTerminal } from "@/api/types";
 
+/** The three fields `RulePackFilterSet` exposes
+ * (`services/api/cadgpt/apps/rulepack/api/v1/filters.py`) -- each `iexact`, per
+ * `prd.md` §5.5: a pack is chosen by jurisdiction, region and version, not searched by
+ * free text. Empty string means "unfiltered on this field", never sent as a query
+ * param (an empty `iexact` would ask the server for rows where the field is exactly
+ * blank, which is not what an empty picker input means). */
+export interface RulePackFilter {
+  jurisdiction: string;
+  region: string;
+  version: string;
+}
+
 export const keys = {
   me: ["me"] as const,
   tenants: ["tenants"] as const,
-  rulePacks: (tenant: string | null) => ["rule-packs", tenant] as const,
+  rulePacks: (tenant: string | null, filter: RulePackFilter) =>
+    ["rule-packs", tenant, filter] as const,
   projects: (tenant: string | null) => ["projects", tenant] as const,
   project: (tenant: string | null, uuid: string) => ["project", tenant, uuid] as const,
   reviews: (tenant: string | null, projectUuid: string | null) =>
@@ -80,13 +93,49 @@ export function useCreateTenant(): UseMutationResult<
   });
 }
 
-/** The catalogue (T-0030), read-only and the same for every tenant. Every user needs it
- * the moment a review has no `rule_set` of its own -- fetched once and filtered on the
- * client rather than refetched per review's picker. */
-export function useRulePacks(tenant: string | null): UseQueryResult<Page<RulePack>> {
+// `SimplePagination.max_page_size` (`services/api/cadgpt/apps/base/drf/pagination.py`)
+// -- the largest page the server will hand back for one request, so walking the
+// catalogue in full takes the fewest round trips it can.
+const RULE_PACK_PAGE_SIZE = 100;
+
+function rulePackListPath(filter: RulePackFilter, page: number): string {
+  const params = new URLSearchParams({ size: String(RULE_PACK_PAGE_SIZE), page: String(page) });
+  if (filter.jurisdiction) params.set("jurisdiction", filter.jurisdiction);
+  if (filter.region) params.set("region", filter.region);
+  if (filter.version) params.set("version", filter.version);
+  return `/v1/rule-packs/?${params.toString()}`;
+}
+
+/** The catalogue (T-0030), filtered on the server through `RulePackFilterSet` and
+ * walked page by page until every matching row has been collected.
+ *
+ * T-0045: this used to fetch page 1 only (`SimplePagination.page_size` is 20) and
+ * filter that one page client-side with a substring match that disagreed with the
+ * server's own `iexact` -- a pack sitting on page 2 could never be found or selected,
+ * and the picker showed "no packs match" for a filter that in fact matched something
+ * the client had simply never asked for. Walking every page here rather than adding
+ * UI pagination controls to the picker is the deliberate choice recorded in this
+ * task's Evidence: the catalogue is one row per shipped jurisdiction/region/version
+ * pack, not a per-tenant list that grows without bound, so loading it in full at this
+ * scale is honest rather than a hidden cap.
+ */
+export function useRulePacks(
+  tenant: string | null,
+  filter: RulePackFilter,
+): UseQueryResult<RulePack[]> {
   return useQuery({
-    queryKey: keys.rulePacks(tenant),
-    queryFn: () => api.get<Page<RulePack>>("/v1/rule-packs/"),
+    queryKey: keys.rulePacks(tenant, filter),
+    queryFn: async ({ signal }) => {
+      const all: RulePack[] = [];
+      let page = 1;
+      for (;;) {
+        const response = await api.get<Page<RulePack>>(rulePackListPath(filter, page), signal);
+        all.push(...response.results);
+        if (response.results.length === 0 || page >= response.pages) break;
+        page += 1;
+      }
+      return all;
+    },
     enabled: Boolean(tenant),
   });
 }

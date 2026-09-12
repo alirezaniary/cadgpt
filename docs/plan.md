@@ -1210,6 +1210,29 @@ validation to both miss, exactly as a real race's second transaction would) for 
 regression gate. Mutation-proven: removing the `IntegrityError` handling reproduces the real
 unhandled traceback. 296 tests, 5 contracts kept.
 
+**T-0045 — the catalogue picker must show every pack, and filter on the server. Done
+2026-09-12.** Found by the T-0031 review: the picker fetched one 20-row page of
+`/v1/rule-packs/` and filtered it client-side with a substring match that disagreed with the
+server's own `iexact` — a pack sitting on page 2 could never be found, selected, or run against,
+and the picker showed "no packs match this filter" for a filter that in fact matched something
+the client had simply never asked for, the same silent-narrowing failure T-0031 already refused
+on the server side. The task's scope reference had gone stale (`ReviewsPage.tsx`, replaced by
+T-0074 with `ReviewDetailPage.tsx`) and was corrected before dispatch, same precedent as T-0041.
+`useRulePacks` now sends `jurisdiction`/`region`/`version` through `RulePackFilterSet` and walks
+every page at `size=100` until exhausted, debounced 300ms so the server is asked once per pause
+in typing rather than per keystroke; the client-side `.includes` filter is gone entirely. The
+picker walks the catalogue in full rather than adding UI pagination — a deliberate call, reasoned
+against the plan's own near-term path (Iranian, then EU, then US: low hundreds of rows for years,
+not a per-tenant list) — and now distinguishes "still loading," "no match," and "unreachable"
+instead of collapsing all three into one empty state.
+
+Not reviewer-gated (no invariant, small diff fully read by the coordinator). Proven on the real
+stack: the catalogue seeded to 25 rows, a pack at position 22 found by its jurisdiction filter,
+selected, and cited in a completed run's report; the pre-fix code rebuilt and re-run once,
+reproducing the exact "genuinely exists, shown as no match" defect live in the browser before the
+fix was restored. `make e2e` 14/15 (the one failure a pre-existing, unrelated locator ambiguity
+at `report.spec.ts:380`, already on record from T-0041's review). 296 tests, 5 contracts kept.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -1264,7 +1287,8 @@ the first of them:
   language.~~ **Done 2026-09-12.** See "What has landed" above.
 - **T-0044** — seeding real packs: a manifest, and knowing when the catalogue diverges from disk.
 
-- **T-0045** — the catalogue picker must show every pack, and filter on the server.
+- ~~**T-0045** — the catalogue picker must show every pack, and filter on the server.~~
+  **Done 2026-09-12.** See "What has landed" above.
 - ~~**T-0046** — the picker has never been rendered.~~ **Obsolete, closed 2026-09-10.** Its
   test-runner ask was superseded by T-0079's workbench and its first defect (shared filter
   state) is gone with `ReviewsPage.tsx`, which T-0074 removed. Its second defect (the
