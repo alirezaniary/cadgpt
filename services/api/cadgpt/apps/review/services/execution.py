@@ -74,8 +74,12 @@ class CheckRunExecutor(BaseService):
                 if rule_set is not None:
                     with media.local_path(rule_set.source_file) as ids_path:
                         report = self._evaluate(ifc_path, ids_path, ifc_name)
+                    # No pack was involved -- a single uploaded `RuleSet`, not a catalogue
+                    # selection -- so the stored document carries no `rule_pack` on any
+                    # specification at all, the same as a document from before T-0049.
+                    document = report.to_dict()
                 else:
-                    report = self._evaluate_selection(
+                    report, document = self._evaluate_selection(
                         ifc_path, run.rule_pack_selection, ifc_name, log
                     )
         except InvalidIfcError as exc:
@@ -90,7 +94,7 @@ class CheckRunExecutor(BaseService):
             # it reaches the error tracker rather than being silently absorbed.
             raise
 
-        return self._succeed(run, report, log)
+        return self._succeed(run, report, document, log)
 
     def _evaluate_selection(
         self,
@@ -98,7 +102,7 @@ class CheckRunExecutor(BaseService):
         selection: Sequence[dict[str, Any]],
         ifc_name: str,
         log: Any,
-    ) -> Report:
+    ) -> tuple[Report, dict[str, Any]]:
         """One model against every pack in the selection, combined into one report.
 
         Each pack is a separate `run_check` call -- the engine takes one IDS file per
@@ -118,6 +122,13 @@ class CheckRunExecutor(BaseService):
         that today -- every seeded pack is immutable (T-0030) -- but the guarantee this
         task exists to make now holds by construction rather than by nothing happening to
         exploit it.
+
+        Returns the combined `Report` (unchanged, still the source of `run.passed` /
+        `run.failed` / ... and everything else `_succeed` denormalizes onto the row) and,
+        separately, the document to persist as `run.report` -- `_attribute_specifications`
+        (T-0049) re-carries each specification's own pack identity into that document, a
+        fact the combined `Report` itself cannot hold without teaching the engine what a
+        `RulePack` is.
         """
         if not selection:
             # T-0048: reachable only from `ReviewService.create(rule_set=None)` plus
@@ -143,6 +154,13 @@ class CheckRunExecutor(BaseService):
         pack_service = RulePackService()
 
         reports: list[Report] = []
+        # T-0049: the minimal citation a specification needs to carry to resolve back to
+        # `entry` in the run's own recorded `rule_pack_selection` -- uuid, name and
+        # version, never a duplicate of the fuller entry (jurisdiction, region, checksum,
+        # source_citation) that selection already carries. Parallel to `reports`, one
+        # entry per pack, in the same order -- `_attribute_specifications` zips the two
+        # back together.
+        citations: list[dict[str, str]] = []
         for entry in selection:
             pack = packs.get(entry["uuid"])
             if pack is None:
@@ -204,6 +222,13 @@ class CheckRunExecutor(BaseService):
                     ) from exc
                 report = self._evaluate(ifc_path, ids_path, ifc_name)
             reports.append(report)
+            citations.append(
+                {
+                    "uuid": entry["uuid"],
+                    "name": entry["name"],
+                    "version": entry["version"],
+                }
+            )
             # F2 (T-0031's review): logged beside the citation is what the produced
             # report actually calls itself -- its own `ids_title` and the names of the
             # specifications it evaluated -- built from `report`, never from `entry`.
@@ -225,7 +250,9 @@ class CheckRunExecutor(BaseService):
                 specifications_indeterminate=report.specifications_indeterminate,
             )
 
-        return _combine_reports(reports)
+        combined = _combine_reports(reports)
+        document = _attribute_specifications(combined, reports, citations)
+        return combined, document
 
     def _evaluate(self, ifc_path: Path, ids_path: Path, ifc_name: str) -> Report:
         return run_check(
@@ -296,7 +323,9 @@ class CheckRunExecutor(BaseService):
             log.info("check_run_claimed", claim_count=run.claim_count)
         return cast("CheckRun", run)
 
-    def _succeed(self, run: CheckRun, report: Report, log: object) -> CheckRun:
+    def _succeed(
+        self, run: CheckRun, report: Report, document: dict[str, Any], log: object
+    ) -> CheckRun:
         # T-0032: the Markdown report file is generated from this exact result, so its
         # dispatch is wrapped in the same transaction the save commits with. `on_commit`
         # is load-bearing here for the reason `ReviewService.request_check` documents for
@@ -308,7 +337,11 @@ class CheckRunExecutor(BaseService):
         with transaction.atomic():
             run.status = CheckRunStatus.SUCCEEDED
             run.finished_at = timezone.now()
-            run.report = report.to_dict()
+            # T-0049: `document` is `report.to_dict()` for a run against an uploaded
+            # `RuleSet`, and that same dict with a `rule_pack` re-attached to every
+            # specification (`_attribute_specifications`) for a catalogue run -- never a
+            # second, diverging computation of what `report` itself already produced.
+            run.report = document
             run.engine_version = report.engine_version
             run.outcome = report.status.value
             run.specifications_passed = report.specifications_passed
@@ -473,3 +506,43 @@ def _combine_reports(reports: Sequence[Report]) -> Report:
         indeterminate=indeterminate,
         specifications=specifications,
     )
+
+
+def _attribute_specifications(
+    report: Report, reports: Sequence[Report], citations: Sequence[dict[str, str]]
+) -> dict[str, Any]:
+    """`report.to_dict()`, with each specification re-carrying the pack that produced it.
+
+    `prd.md` 5.7 is explicit: every finding carries the pack identity and version that
+    produced it, because a FAIL an architect forwards to a client asserts that some named
+    rule, from some named source, says the thing. `_combine_reports` above concatenates
+    every selected pack's specifications into one flat tuple -- deliberately, so the run's
+    coverage counts span the whole selection rather than resetting per pack -- and that
+    flattening is exactly what drops which pack a given specification came from.
+
+    This does not touch the engine's own dataclasses or their `to_dict()`:
+    `SpecificationOutcome` stays exactly as it is, because the engine must not learn what
+    a `RulePack` is (`docs/tasks/T-0031-rule-selection-on-the-run.md`). Instead this walks
+    the already-serialized `dict` `report.to_dict()` produces and adds one key,
+    `rule_pack`, to each specification's dict -- `{"uuid", "name", "version"}`, enough to
+    resolve back to this run's own `CheckRun.rule_pack_selection` (which additionally
+    carries the pack's `jurisdiction`, `region` and `source_citation`) rather than
+    duplicating those here.
+
+    `reports` and `citations` are parallel, one entry per selected pack, in the exact
+    order `_combine_reports` concatenated `reports` in -- so `reports[i].specifications`
+    is exactly the slice of `report.to_dict()["specifications"]` that came from
+    `citations[i]`. Zipping the two back together is what lets this attribute every
+    specification without asking the engine to remember, on the way in, which pack it was
+    ever handed -- the engine already forgot that the moment `_combine_reports` flattened
+    its output, one call above.
+    """
+    document = report.to_dict()
+    remaining = iter(document["specifications"])
+    attributed: list[dict[str, Any]] = []
+    for citation, sub_report in zip(citations, reports, strict=True):
+        pack_ref = dict(citation)
+        for _spec in sub_report.specifications:
+            attributed.append({**next(remaining), "rule_pack": pack_ref})
+    document["specifications"] = attributed
+    return document

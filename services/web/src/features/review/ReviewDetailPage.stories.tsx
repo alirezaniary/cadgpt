@@ -130,9 +130,11 @@ export const RunFailed: Story = {
       scope.queryByText(i18n.t("report.selection.title")),
     ).not.toBeInTheDocument();
 
-    // The selection itself (F3) -- the pack this run was dispatched against, visible on
-    // its failed run for the first time.
-    await expect(scope.getByText(/مقررات ملی ساختمان/)).toBeInTheDocument();
+    // The selection itself (F3) -- the packs this run was dispatched against, visible on
+    // its failed run for the first time. `fx.DEFAULT_SELECTION` carries two entries
+    // (T-0049), both sharing this name prefix by design (`fx.rulePacks`'s own naming),
+    // so both, not one, must be findable here.
+    await expect(scope.getAllByText(/مقررات ملی ساختمان/)).toHaveLength(2);
   },
 };
 

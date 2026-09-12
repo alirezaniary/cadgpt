@@ -27,9 +27,65 @@ type Story = StoryObj<typeof meta>;
 
 /** All three verdicts, an omitted-entities tail, and two specifications that established
  * nothing -- so the coverage line reads "4 of 6" rather than the "6 of 6" a naive sum
- * would always produce. */
+ * would always produce.
+ *
+ * T-0049 review fix-now (F1/F2). Neither gap the review found had a test that could see
+ * it: F2, because nothing asserted the per-finding attribution renders at all --
+ * `{false && spec.rule_pack && ...}` still left this suite at 36/36; F1, because `fx.report`
+ * already carries two packs (see its own comment) but no assertion ever read a citation
+ * back out of the DOM and checked *which* pack it named. The play function below does
+ * both: proves the attribution exists (pack name, version and citation text present for
+ * an attributed specification), then proves it resolves per-finding, not per-report --
+ * the door-width specification (pack A, "مبحث چهارم") and the spaces specification (pack
+ * B, "مبحث سوم") each show their *own* pack's citation, and never the other's.
+ */
 export const Full: Story = {
   args: { report: fx.report, rulePackSelection: fx.detail(fx.succeededRun, fx.report).rule_pack_selection },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const specScope = (name: string): ReturnType<typeof within> => {
+      const heading = canvas.getByText(name);
+      const item = heading.closest("li.spec");
+      if (!item) throw new Error(`specification row not found for "${name}"`);
+      return within(item as HTMLElement);
+    };
+
+    // F2: the attribution renders at all, for an attributed specification -- pack name,
+    // version and citation text all present in the DOM. Commenting out
+    // `SpecificationSource`'s render entirely (the review's own mutation) leaves zero
+    // `data-testid="spec-source"` elements and this assertion is what would catch it.
+    const doorWidth = await waitFor(() =>
+      specScope("درهای خروج باید دارای عرض حداقل ۹۰ سانتی‌متر باشند"),
+    );
+    const doorWidthSource = doorWidth.getByTestId("spec-source");
+    await expect(doorWidthSource).toHaveTextContent("مقررات ملی ساختمان — مبحث چهارم");
+    await expect(doorWidthSource).toHaveTextContent("v1399");
+    const doorWidthCitation = doorWidth.getByTestId("spec-source-citation");
+    await expect(doorWidthCitation).toHaveTextContent(
+      "مقررات ملی ساختمان ایران، مبحث چهارم، ویرایش ۱۳۹۹",
+    );
+
+    // F1: a *different* specification, attributed to the *other* pack, must resolve its
+    // own citation -- never pack A's, and never "whichever pack is first in the
+    // selection." `selection.find((candidate) => candidate.uuid === pack.uuid)` is what
+    // this guards; `selection[0]` (the review's own mutation) would make this section
+    // show pack A's citation instead, because pack A sorts first in `rule_pack_selection`.
+    const spaces = await waitFor(() => specScope("فضاها باید دارای نام باشند"));
+    const spacesSource = spaces.getByTestId("spec-source");
+    await expect(spacesSource).toHaveTextContent("مقررات ملی ساختمان — مبحث سوم");
+    await expect(spacesSource).toHaveTextContent("v1395");
+    const spacesCitation = spaces.getByTestId("spec-source-citation");
+    await expect(spacesCitation).toHaveTextContent(
+      "مقررات ملی ساختمان ایران، مبحث سوم، ویرایش ۱۳۹۵",
+    );
+
+    // The negative half, belt-and-suspenders: each pack's citation must never leak into
+    // the other's section, so a mismatch cannot pass by both citations merely containing
+    // a shared substring.
+    expect(doorWidthCitation.textContent).not.toContain("مبحث سوم، ویرایش ۱۳۹۵");
+    expect(spacesCitation.textContent).not.toContain("مبحث چهارم، ویرایش ۱۳۹۹");
+  },
 };
 
 /** A run against an uploaded rule set carries no catalogue citation, so the "rule packs

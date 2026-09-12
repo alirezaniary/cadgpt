@@ -215,6 +215,14 @@ class RulePackService(BaseService):
         `CheckRunExecutor` recomputes and compares this same hash at execution time
         rather than only ever recording it, so a run whose cited bytes changed underneath
         it refuses instead of silently evaluating whatever is there now.
+
+        `source_citation` (T-0049) joins the rest for the same reproducibility reason:
+        `prd.md` 5.7 requires every finding to carry the pack identity *and* be able to
+        reach what that pack cites as its source, and a citation resolved live off
+        `RulePack.source_citation` at read time could show different wording than the one
+        this run actually asserted under, if the catalogue row's citation text is ever
+        edited after this run was dispatched. Captured here, once, it is exactly as frozen
+        as every other field in this snapshot.
         """
         return {
             "uuid": str(rule_pack.uuid),
@@ -224,4 +232,5 @@ class RulePackService(BaseService):
             "version": rule_pack.version,
             "specification_count": rule_pack.specification_count,
             "checksum_sha256": self.checksum_of(rule_pack),
+            "source_citation": rule_pack.source_citation,
         }

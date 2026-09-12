@@ -100,6 +100,23 @@ export interface RulePackSelectionEntry {
   version: string;
   specification_count: number;
   checksum_sha256: string;
+  /** What this pack cites as its authority (`RulePack.source_citation`), captured here at
+   * dispatch time for the same reason every other field on this entry is (T-0031's own
+   * reproducibility guarantee) -- a live lookup against the catalogue's current row could
+   * show wording this run never actually asserted under. Optional because a selection
+   * entry recorded before T-0049 has no such key at all. This is what
+   * `SpecificationOutcome.rule_pack` on a finding resolves to, by matching `uuid`. */
+  source_citation?: string;
+}
+
+/** The minimal identity a finding needs to point back at the pack that produced it
+ * (`SpecificationOutcome.rule_pack`, T-0049) -- uuid, name and version, enough to resolve
+ * to the matching `RulePackSelectionEntry` above (by `uuid`) rather than duplicating its
+ * `jurisdiction` / `region` / `source_citation` on every specification. */
+export interface SpecificationRulePackRef {
+  uuid: string;
+  name: string;
+  version: string;
 }
 
 export interface EntityOutcome {
@@ -201,6 +218,14 @@ export interface SpecificationOutcome {
   failed: number;
   indeterminate: number;
   requirements: RequirementOutcome[];
+  /** T-0049: which pack asserted this specification -- absent for a run against an
+   * uploaded `RuleSet` (never combined from several packs to begin with, so there is
+   * nothing to attribute) and for a document stored before this field existed alike.
+   * Present for every specification a catalogue run's `_attribute_specifications`
+   * (the service, not the engine -- it must not learn what a `RulePack` is) actually
+   * attributed. Resolve `uuid` against the run's own `rule_pack_selection` for this
+   * pack's `jurisdiction`, `region` and `source_citation`. */
+  rule_pack?: SpecificationRulePackRef;
 }
 
 export interface Report {

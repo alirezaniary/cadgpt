@@ -139,8 +139,13 @@ class CheckRun(TenantOwnedModel, UuidBaseModel):
     #: plain data -- never a foreign key a later catalogue edit could redefine underneath
     #: an already-dispatched run. Empty for a run against `review.rule_set` (the existing
     #: single-upload path); one entry per selected pack otherwise, each carrying the
-    #: pack's uuid, name, jurisdiction, region, version and a content hash. See
-    #: `rulepack.services.RulePackService.snapshot` and `docs/decisions.md`.
+    #: pack's uuid, name, jurisdiction, region, version, a content hash and (T-0049) its
+    #: `source_citation` -- what a finding attributed to this pack
+    #: (`report["specifications"][n]["rule_pack"]`) resolves back to. See
+    #: `rulepack.services.RulePackService.snapshot` and `docs/decisions.md`. An entry
+    #: recorded before T-0049 has no `source_citation` key at all -- the same
+    #: field-presence fallback every other `REPORT_SCHEMA_VERSION` bump uses, not a
+    #: version comparison.
     rule_pack_selection = models.JSONField(
         _("rule pack selection"), default=list, blank=True
     )

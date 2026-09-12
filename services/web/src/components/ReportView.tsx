@@ -28,6 +28,7 @@ import type {
   Report,
   RulePackSelectionEntry,
   SpecificationOutcome,
+  SpecificationRulePackRef,
   Status,
 } from "@/api/types";
 import { StatusPill } from "@/components/StatusPill";
@@ -143,6 +144,43 @@ export function RulePackSelectionList({
         ))}
       </ul>
     </section>
+  );
+}
+
+/**
+ * T-0049: which pack asserted one finding, and (when reachable) what that pack cites as
+ * its authority -- `prd.md` 5.7's "a finding carries the pack identity and version that
+ * produced it," rendered beside the verdict itself, not only in the selection block at
+ * the top of the report. `pack` is the finding's own minimal citation (uuid, name,
+ * version -- `SpecificationOutcome.rule_pack`); `selection` is the run's own
+ * `rule_pack_selection`, resolved by `uuid` for the jurisdiction, region and
+ * `source_citation` that entry additionally carries, rather than duplicating them onto
+ * every specification. An entry this run's own selection has no match for (unreachable
+ * through `CheckRunExecutor` itself, which builds both from the same citations -- but a
+ * stored report can be read back long after the run that wrote it) still shows the
+ * pack's own name and version, with no jurisdiction/region and no source line.
+ */
+function SpecificationSource({
+  pack,
+  selection,
+}: {
+  pack: SpecificationRulePackRef;
+  selection: RulePackSelectionEntry[];
+}) {
+  const { t } = useTranslation();
+  const entry = selection.find((candidate) => candidate.uuid === pack.uuid);
+  const region = entry?.region ? `/${entry.region}` : "";
+  const locator = `${entry?.jurisdiction ?? ""}${region} v${pack.version}`.trim();
+  return (
+    <p className="muted" data-testid="spec-source">
+      {t("report.specSource", { name: pack.name, locator })}
+      {entry?.source_citation && (
+        <span data-testid="spec-source-citation">
+          {" — "}
+          {entry.source_citation}
+        </span>
+      )}
+    </p>
   );
 }
 
@@ -306,6 +344,13 @@ export function ReportView({
               <strong>{spec.name || t("report.nothingChecked")}</strong>
               <StatusPill status={spec.status} />
             </div>
+            {/* T-0049: absent for a run against an uploaded `RuleSet` (never combined
+                from several packs to begin with) and for a report stored before this
+                field existed -- present for every specification a catalogue run's
+                `_attribute_specifications` actually attributed. */}
+            {spec.rule_pack && (
+              <SpecificationSource pack={spec.rule_pack} selection={rulePackSelection ?? []} />
+            )}
             <p className="muted">
               {t("report.matched", { count: spec.matched })} ·{" "}
               {/* `spec.cardinality` is ifctester's own machine token

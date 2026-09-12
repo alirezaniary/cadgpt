@@ -488,6 +488,11 @@ msgstr "چیزی بررسی نشد"
 msgid "Specifications"
 msgstr "مشخصه‌ها"
 
+#: cadgpt/apps/review/services/report_markdown.py (T-0049, per-finding pack attribution:
+#: pack name, jurisdiction/region and version)
+msgid "Source: %(name)s — %(locator)s"
+msgstr "منبع: %(name)s — %(locator)s"
+
 #: cadgpt/apps/review/services/report_markdown.py (matched-elements line, singular)
 msgid "%(count)s element matched"
 msgid_plural "%(count)s elements matched"

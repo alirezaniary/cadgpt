@@ -102,6 +102,7 @@
       "titleSelected": "Rule packs selected for this run",
       "ruleSetTitle": "Rule set for this run"
     },
+    "specSource": "Source: {{name}} — {{locator}}",
     "coverage": {
       "title": "Coverage",
       "evaluated": "{{evaluated}} of {{total}} specifications were evaluated.",

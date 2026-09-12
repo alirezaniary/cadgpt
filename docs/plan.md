@@ -1290,6 +1290,46 @@ file goes missing — the same class of defect as this task's second item, on a 
 the original three-item "Why" never named. Pre-existing and outside this task's scope; worth a
 task of its own.
 
+**T-0049 — every finding carries the pack identity and version that produced it. Done
+2026-09-12.** Found by the T-0031 review: `prd.md` §5.7 requires a finding to carry the pack
+identity and version that produced it, because a FAIL an architect forwards to a client asserts
+that some named rule, under our name, says the thing — but `_combine_reports` flattened every
+selected pack's specifications into one list with no attribution, so a run's own selection block
+said which packs ran without saying which one spoke, and `RulePack.source_citation` (real
+attribution text, since T-0030) was unreachable from any report surface. `_attribute_specifications`
+now tags each specification with its pack's `{uuid, name, version}` at the point several reports
+become one, in the service layer — the engine stays untouched apart from the
+`REPORT_SCHEMA_VERSION` 4→5 bump, following T-0027's field-presence-not-version fallback pattern.
+Both renderers (`ReportView.tsx`'s new `SpecificationSource`, `report_markdown.py`'s
+`_pack_attribution_lines`) resolve and print the attribution and reach the pack's
+`source_citation` from it.
+
+**Reviewer-gated on I5, and the review confirmed the attribution mechanism itself genuinely
+correct — verified independently with a real mutation (reversing citation order fails the new
+test on the exact wrong uuid) — but found the proof around it hollow in the one place this class
+of defect actually lives.** Two fix-now findings, both the "looks attributed but isn't" failure
+mode I5 exists to catch: neither renderer's pack→citation *resolution* had a test that could see
+cross-pack leakage — the reviewer proved it by mutation, replacing each renderer's per-pack
+citation lookup with "always the first pack's citation" and watching every existing test (which
+only ever selected from one pack) stay green. A FAIL from pack B could have rendered pack B's own
+name and version correctly while citing pack A's regulation underneath it — right label, wrong
+authority, indistinguishable from correct on sight. Closed with a genuinely two-pack,
+two-attributed-specification test on both sides, each asserting a citation is its own pack's and
+never the other's; mutation-proven against the reviewer's exact mutations. Second: the frontend
+attribution render had zero coverage — the whole feature could have been deleted from the UI with
+nothing noticing; closed with a Storybook assertion that the attribution renders at all, comment
+it out, watch it fail. Two trivial fixes folded into the same round: a fixture claiming
+`schema_version: 2` while carrying v5-only fields, and an engine-side comment that named the
+downstream service module by path (I1's spirit, even though the import contract itself only
+checks real imports). 306 tests, 38 Storybook tests, 5 contracts kept.
+
+**Two observations, not acted on:** the case where an attributed specification's selection entry
+carries no `source_citation` at all (a run dispatched before this bump, executed by a post-deploy
+worker) is a real deploy-window shape both renderers already degrade correctly on, but nothing
+tests it; and the automated two-pack test that exists alongside the new one is one FAIL + one
+PASS rather than two packs that both produce findings — the task's own "how to prove it ran"
+clause was satisfied by the live-stack run instead, which genuinely had both.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -1356,7 +1396,8 @@ the first of them:
   "What has landed" above.
 - ~~**T-0048** — a failed run must say what it was for, and speak the application's error
   language.~~ **Done 2026-09-12.** See "What has landed" above.
-- **T-0049** — every finding carries the pack identity and version that produced it.
+- ~~**T-0049** — every finding carries the pack identity and version that produced it.~~
+  **Done 2026-09-12.** See "What has landed" above.
 - **T-0050** — the suite cannot catch the class of defect that only Postgres enforces.
 
 - ~~**T-0051** — a report that was never generated must be recoverable.~~ **Done 2026-09-03.**

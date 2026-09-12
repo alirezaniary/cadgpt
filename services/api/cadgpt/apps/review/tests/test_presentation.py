@@ -132,5 +132,42 @@ def test_a_v2_schema_document_with_no_applicability_facets_falls_back_to_the_str
     assert localized["specifications"][0]["applicability_text"] == "All IFCDOOR data"
 
 
+def test_a_v1_schema_document_has_no_rule_pack_and_localize_does_not_invent_one() -> None:
+    """T-0049: `REPORT_SCHEMA_VERSION` 1 predates `rule_pack` by four bumps -- the same
+    field-presence fallback every bump since has used, not a `schema_version` comparison.
+    `localize_report` must neither raise on the missing key nor synthesize a pack from
+    nothing; the specification simply carries no `rule_pack` key, exactly as it did before
+    localization.
+    """
+    localized = localize_report(_V1_REPORT)
+
+    assert localized is not None
+    assert "rule_pack" not in localized["specifications"][0]
+
+
+def test_localize_report_carries_a_specifications_own_rule_pack_through_unchanged() -> None:
+    """A document written by `CheckRunExecutor._attribute_specifications` (T-0049) after
+    this bump has a `rule_pack` on the specification it belongs to -- `localize_report`
+    must pass it through exactly as given, the same way it already does for every other
+    field it does not itself localize (`description`, `matched`, `cardinality`, ...).
+    """
+    pack_ref = {
+        "uuid": "11111111-1111-1111-1111-111111111111",
+        "name": "Sample pack",
+        "version": "0.1",
+    }
+    v5_report: dict[str, Any] = {
+        **_V1_REPORT,
+        "schema_version": 5,
+        "specifications": [
+            {**_V1_REPORT["specifications"][0], "rule_pack": pack_ref},
+        ],
+    }
+    localized = localize_report(v5_report)
+
+    assert localized is not None
+    assert localized["specifications"][0]["rule_pack"] == pack_ref
+
+
 def test_none_stays_none() -> None:
     assert localize_report(None) is None

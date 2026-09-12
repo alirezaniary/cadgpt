@@ -202,9 +202,17 @@ export const rulePacks: RulePack[] = [
  * spaces requirement -- which failed and indeterminate-classified nothing -- carries
  * `entities_omitted: 0`, because `len(outcomes) = failed + indeterminate = 0` leaves
  * nothing for any limit to cap.
+ *
+ * T-0049: the door-width and stairs specifications carry `rule_pack` pointing at
+ * `DEFAULT_SELECTION[0]` (مبحث چهارم); the spaces and ramp specifications point at
+ * `DEFAULT_SELECTION[1]` (مبحث سوم) -- two packs, each actually producing findings, so a
+ * mis-wired attribution (every finding pointing at the same pack, say) would be visible
+ * in the workbench. The elevator specification carries no `rule_pack` at all, exactly as
+ * a report stored before this field existed would -- the fallback the workbench must
+ * degrade through, not just the attributed case.
  */
 export const report: Report = {
-  schema_version: 2,
+  schema_version: 5,
   engine_version: "0.4.1",
   ifc_filename: "niavaran-tower-A3.ifc",
   ifc_schema: "IFC4",
@@ -222,6 +230,11 @@ export const report: Report = {
   specifications: [
     {
       name: "درهای خروج باید دارای عرض حداقل ۹۰ سانتی‌متر باشند",
+      rule_pack: {
+        uuid: "aaaa1111-0000-4000-8000-000000000001",
+        name: "مقررات ملی ساختمان — مبحث چهارم",
+        version: "1399",
+      },
       description: "All IFCDOOR data must have OverallWidth >= 900",
       applicability_description: "All IFCDOOR data must be an exit door type",
       applicability_text: "همه درهای دارای نوع خروج",
@@ -284,6 +297,11 @@ export const report: Report = {
     },
     {
       name: "پله‌های فرار باید دارای دست‌انداز باشند",
+      rule_pack: {
+        uuid: "aaaa1111-0000-4000-8000-000000000001",
+        name: "مقررات ملی ساختمان — مبحث چهارم",
+        version: "1399",
+      },
       description: "All IFCSTAIR data must have Pset_StairCommon.HandrailProvided",
       applicability_description: "All IFCSTAIR data must be an escape stair",
       applicability_text: "همه پله‌های فرار",
@@ -345,6 +363,11 @@ export const report: Report = {
     },
     {
       name: "فضاها باید دارای نام باشند",
+      rule_pack: {
+        uuid: "aaaa1111-0000-4000-8000-000000000002",
+        name: "مقررات ملی ساختمان — مبحث سوم (حفاظت در برابر حریق)",
+        version: "1395",
+      },
       description: "All IFCSPACE data must have Name",
       applicability_description: "All IFCSPACE data",
       applicability_text: "همه فضاها",
@@ -382,6 +405,11 @@ export const report: Report = {
     },
     {
       name: "پارکینگ‌ها باید دارای شیب مجاز باشند",
+      rule_pack: {
+        uuid: "aaaa1111-0000-4000-8000-000000000002",
+        name: "مقررات ملی ساختمان — مبحث سوم (حفاظت در برابر حریق)",
+        version: "1395",
+      },
       description: "All IFCRAMP data must have Pset_RampCommon.Slope <= 15",
       applicability_text: "",
       instructions: "",
@@ -520,7 +548,13 @@ export const earlierRun: CheckRunSummary = run({
 /** The default catalogue citation every fixture run carries, unless the run belongs to a
  * review with an uploaded `rule_set` -- that shape's real `rule_pack_selection` is always
  * `[]` (`_resolve_selection`, `review.py:148`), so `handlers.ts`'s run-detail handler
- * passes `[]` explicitly for it instead of this default. */
+ * passes `[]` explicitly for it instead of this default.
+ *
+ * Two entries, not one (T-0049): `fx.report`'s specifications are split across both
+ * (see the comment on `report` below), which is what makes a mis-wired attribution
+ * visible in the workbench rather than trivially correct -- the same reason the live
+ * two-pack proof this task's evidence rests on uses two packs that both produce
+ * findings, not one. */
 const DEFAULT_SELECTION: RulePackSelectionEntry[] = [
   {
     uuid: "aaaa1111-0000-4000-8000-000000000001",
@@ -530,6 +564,17 @@ const DEFAULT_SELECTION: RulePackSelectionEntry[] = [
     version: "1399",
     specification_count: 18,
     checksum_sha256: "1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809",
+    source_citation: "مقررات ملی ساختمان ایران، مبحث چهارم، ویرایش ۱۳۹۹",
+  },
+  {
+    uuid: "aaaa1111-0000-4000-8000-000000000002",
+    name: "مقررات ملی ساختمان — مبحث سوم (حفاظت در برابر حریق)",
+    jurisdiction: "IR",
+    region: "ملی",
+    version: "1395",
+    specification_count: 24,
+    checksum_sha256: "2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8092",
+    source_citation: "مقررات ملی ساختمان ایران، مبحث سوم، ویرایش ۱۳۹۵",
   },
 ];
 

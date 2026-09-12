@@ -233,6 +233,141 @@ def test_no_selection_section_when_the_run_used_an_uploaded_rule_set() -> None:
     assert "Rule packs checked" not in text
 
 
+def test_a_specification_with_a_rule_pack_states_its_source_beneath_the_heading() -> None:
+    """T-0049: a specification's own `rule_pack` (`{"uuid", "name", "version"}`, added by
+    `execution._attribute_specifications`) is resolved against `rule_pack_selection` for
+    the jurisdiction/region that entry additionally carries, and its `source_citation` is
+    rendered as a blockquote beneath -- the same fact `RulePack.source_citation` exists to
+    make reachable from a finding (`prd.md` 5.7), not just from the top-of-file selection
+    block `test_a_rule_pack_selection_is_rendered_when_present` already covers.
+    """
+    report = {
+        **_REPORT,
+        "specifications": [
+            {
+                **_REPORT["specifications"][0],
+                "rule_pack": {
+                    "uuid": "11111111-1111-1111-1111-111111111111",
+                    "name": "Sample pack",
+                    "version": "0.1",
+                },
+            },
+            _REPORT["specifications"][1],
+        ],
+    }
+    localized = localize_report(report)
+    assert localized is not None
+    text = render_markdown_report(
+        localized,
+        [
+            {
+                "uuid": "11111111-1111-1111-1111-111111111111",
+                "name": "Sample pack",
+                "jurisdiction": "sample",
+                "region": "",
+                "version": "0.1",
+                "specification_count": 2,
+                "checksum_sha256": "abc123",
+                "source_citation": "Sample regulation, 2026 edition, article 4.",
+            }
+        ],
+    )
+    assert "Source: Sample pack — sample v0.1" in text
+    assert "Sample regulation, 2026 edition, article 4." in text
+    # The second specification carries no `rule_pack` at all -- no source line under
+    # *its* heading. `### A schema-mismatched specification` (the Specifications-section
+    # heading, not its earlier mention in the "established nothing" bullet list above it)
+    # is the unambiguous anchor; nothing follows it in this fixture's two-specification
+    # report, so the rest of the file is exactly that spec's own section.
+    heading_index = text.index("### A schema-mismatched specification")
+    assert "Source:" not in text[heading_index:]
+
+
+def test_a_specification_attributed_to_one_pack_never_cites_the_other() -> None:
+    """T-0049 review F1: `citation_by_uuid.get(pack_ref["uuid"], {})` must resolve each
+    specification's citation by *its own* pack's uuid, never by selection order.
+
+    Every test above this one selects from exactly one pack, so none of them can see
+    cross-pack leakage: the reviewer proved that replacing the `.get(pack_ref["uuid"], {})`
+    lookup with `next(iter(citation_by_uuid.values()), {})` (always the *first* pack's
+    citation, whichever pack a finding actually belongs to) left every existing test in
+    this file green. A selection with two packs, and two specifications each attributed to
+    a *different* one of them, is the only report shape that can catch it: each
+    specification's own citation must be its own pack's `source_citation`, and the other
+    pack's citation must never appear in its section.
+    """
+    report = {
+        **_REPORT,
+        "specifications": [
+            {
+                **_REPORT["specifications"][0],
+                "rule_pack": {
+                    "uuid": "11111111-1111-1111-1111-111111111111",
+                    "name": "Pack A",
+                    "version": "1.0",
+                },
+            },
+            {
+                **_REPORT["specifications"][1],
+                "name": "A specification from pack B",
+                "rule_pack": {
+                    "uuid": "22222222-2222-2222-2222-222222222222",
+                    "name": "Pack B",
+                    "version": "2.0",
+                },
+            },
+        ],
+    }
+    localized = localize_report(report)
+    assert localized is not None
+    text = render_markdown_report(
+        localized,
+        [
+            {
+                "uuid": "11111111-1111-1111-1111-111111111111",
+                "name": "Pack A",
+                "jurisdiction": "jurisdiction-a",
+                "region": "",
+                "version": "1.0",
+                "specification_count": 1,
+                "checksum_sha256": "aaa",
+                "source_citation": "Citation belonging to pack A only.",
+            },
+            {
+                "uuid": "22222222-2222-2222-2222-222222222222",
+                "name": "Pack B",
+                "jurisdiction": "jurisdiction-b",
+                "region": "",
+                "version": "2.0",
+                "specification_count": 1,
+                "checksum_sha256": "bbb",
+                "source_citation": "Citation belonging to pack B only.",
+            },
+        ],
+    )
+    # FAIL (spec 0, pack A) sorts before INDETERMINATE (spec 1, pack B) -- both headings
+    # must be present so slicing the text between them is meaningful.
+    spec_a_index = text.index("### Minimum clear door width 900 mm")
+    spec_b_index = text.index("### A specification from pack B")
+    assert spec_a_index < spec_b_index
+    spec_a_section = text[spec_a_index:spec_b_index]
+    spec_b_section = text[spec_b_index:]
+
+    assert "Citation belonging to pack A only." in spec_a_section
+    assert "Citation belonging to pack B only." not in spec_a_section
+    assert "Citation belonging to pack B only." in spec_b_section
+    assert "Citation belonging to pack A only." not in spec_b_section
+
+
+def test_a_specification_with_no_rule_pack_states_no_source() -> None:
+    """The ordinary case today -- a run against an uploaded `RuleSet` -- and every
+    document stored before T-0049 alike: no `rule_pack` key on any specification, and
+    `render_markdown_report` must not invent a source line for either.
+    """
+    text = _rendered()
+    assert "Source:" not in text
+
+
 def test_a_requirement_line_uses_requirement_text_not_the_raw_facet() -> None:
     text = _rendered()
     assert "The OverallWidth shall be at least 900." in text

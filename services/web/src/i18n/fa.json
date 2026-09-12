@@ -102,6 +102,7 @@
       "titleSelected": "بسته‌های مقرراتی انتخاب‌شده برای این اجرا",
       "ruleSetTitle": "مجموعه‌قاعدهٔ این اجرا"
     },
+    "specSource": "منبع: {{name}} — {{locator}}",
     "coverage": {
       "title": "پوشش",
       "evaluated": "{{evaluated}} از {{total}} مشخصه بررسی شد.",

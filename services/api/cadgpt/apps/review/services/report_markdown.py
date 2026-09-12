@@ -133,6 +133,40 @@ def _table(headers: list[str], rows: list[list[str]]) -> list[str]:
     return lines
 
 
+def _pack_attribution_lines(
+    pack_ref: dict[str, Any], citation_by_uuid: dict[str, dict[str, Any]]
+) -> list[str]:
+    """T-0049: the same per-finding attribution `ReportView.tsx` renders beside a
+    specification, mirrored here so the file and the screen never disagree about which
+    pack a finding came from. `pack_ref` is a specification's own `rule_pack` -- uuid,
+    name, version, never more (`execution._attribute_specifications`) -- resolved against
+    `citation_by_uuid`, this run's own `rule_pack_selection` keyed by uuid, for the
+    `jurisdiction`, `region` and `source_citation` that entry additionally carries. A
+    citation this run's own selection has no matching entry for (unreachable through
+    `CheckRunExecutor` itself -- the two are built from the same citations at execution
+    time -- but a stored document can be read back long after the run that wrote it)
+    still renders the pack's own name and version, just with no jurisdiction/region and no
+    source line, rather than a lookup crash or a fabricated citation.
+    """
+    citation = citation_by_uuid.get(pack_ref["uuid"], {})
+    name = _sanitize_text(pack_ref["name"])
+    version = _sanitize_text(pack_ref["version"])
+    jurisdiction = _sanitize_text(citation.get("jurisdiction") or "")
+    region = citation.get("region") or ""
+    region_suffix = f"/{_sanitize_text(region)}" if region else ""
+    locator = f"{jurisdiction}{region_suffix} v{version}".strip()
+    source_line = gettext("Source: %(name)s — %(locator)s") % {
+        "name": name,
+        "locator": locator,
+    }
+    lines = [source_line, ""]
+    source_citation = citation.get("source_citation")
+    if source_citation:
+        lines.append(f"> {_sanitize_text(source_citation)}")
+        lines.append("")
+    return lines
+
+
 def render_markdown_report(
     report: dict[str, Any], rule_pack_selection: list[dict[str, Any]] | None = None
 ) -> str:
@@ -140,8 +174,13 @@ def render_markdown_report(
 
     `rule_pack_selection` is `CheckRun.rule_pack_selection` -- empty for a run against an
     uploaded `RuleSet`, one entry per pack for a catalogue run (T-0031); rendered only when
-    non-empty, exactly as `ReportView.tsx`'s own selection section is.
+    non-empty, exactly as `ReportView.tsx`'s own selection section is. T-0049 additionally
+    keys it by uuid for `_pack_attribution_lines`, below, to resolve each specification's
+    own `rule_pack` against.
     """
+    citation_by_uuid: dict[str, dict[str, Any]] = {
+        pack["uuid"]: pack for pack in (rule_pack_selection or [])
+    }
     lines: list[str] = []
 
     ifc_filename = _sanitize_text(report["ifc_filename"])
@@ -234,6 +273,14 @@ def render_markdown_report(
         name = _sanitize_text(spec.get("name") or "") or gettext("Nothing was checked")
         lines.append(f"### {name} — {_status_label(spec['status'])}")
         lines.append("")
+        # T-0049: which pack asserted this -- absent for a run against an uploaded
+        # `RuleSet` (never combined from several packs to begin with) and for a document
+        # stored before this field existed; present, and rendered immediately under the
+        # heading, for every specification a catalogue run's `_attribute_specifications`
+        # actually attributed.
+        pack_ref = spec.get("rule_pack")
+        if pack_ref:
+            lines.extend(_pack_attribution_lines(pack_ref, citation_by_uuid))
         matched_line = ngettext(
             "%(count)s element matched", "%(count)s elements matched", spec["matched"]
         ) % {"count": spec["matched"]}

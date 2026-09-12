@@ -62,7 +62,24 @@ from cadgpt_engine.status import Applicability, ReasonCode, Status
 #: version has neither key: `RequirementBasis` has no `name_comparisons` and
 #: `SpecificationOutcome` has no `applicability_facets`, and both degrade to their
 #: pre-existing fallback (`description`, `applicability_description`) rather than raising.
-REPORT_SCHEMA_VERSION = 4
+#:
+#: Bumped to 5 for a `rule_pack` key on a specification's own persisted dict (T-0049,
+#: `prd.md` 5.7: "every finding carries the pack identity and version that produced it").
+#: Unlike every bump above, this one adds nothing to `SpecificationOutcome` itself or to
+#: its `to_dict()` -- the engine checks one IDS file per call and stays exactly as it is,
+#: with no notion of a `RulePack` at all (`docs/tasks/
+#: T-0031-rule-selection-on-the-run.md`). The field is layered onto the already-serialized
+#: dict downstream, by the service layer that combines several packs' `Report`s into the
+#: one document a run stores -- the only place several reports ever become one, and not
+#: this engine's concern. This constant still moves, because it is the one
+#: number every reader downstream (`presentation.py`, `report_markdown.py`,
+#: `ReportView.tsx`) already treats as "the document's wire-format version," and a stored
+#: document from before this change genuinely has no `rule_pack` on any specification --
+#: not even a run against a single uploaded `RuleSet` ever gets one, since it was never
+#: combined from several packs to begin with. Every reader of this field follows the same
+#: rule as every bump before it: the fallback keys off whether `rule_pack` is present on a
+#: given specification, never off comparing `schema_version` to 5.
+REPORT_SCHEMA_VERSION = 5
 
 
 @dataclass(frozen=True, slots=True)

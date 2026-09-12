@@ -147,6 +147,53 @@ def test_the_check_actually_executes_against_every_selected_pack(
     }
 
 
+def test_every_finding_carries_the_pack_that_produced_it(
+    catalogue_review: Review,
+    door_width_pack: RulePack,
+    door_name_pack: RulePack,
+    owner: Any,
+    tenant: Tenant,
+    commit: Any,
+) -> None:
+    """T-0049 (`prd.md` 5.7): a specification in a combined report resolves back to the
+    pack that produced it -- not just to "one of the packs this run selected," which the
+    top-of-report selection block already showed before this task. Two packs that both
+    produce findings, not one, so a mis-wired attribution (every specification pointing at
+    the same pack, say) would be visible rather than trivially correct.
+    """
+    with commit():
+        run = ReviewService(tenant=tenant).request_check(
+            review=catalogue_review,
+            requested_by=owner,
+            rule_pack_uuids=[str(door_width_pack.uuid), str(door_name_pack.uuid)],
+        )
+    run.refresh_from_db()
+    assert run.status == CheckRunStatus.SUCCEEDED
+    assert run.report is not None
+
+    by_name = {spec["name"]: spec for spec in run.report["specifications"]}
+    door_width_spec = by_name["Minimum clear door width 900 mm"]
+    door_name_spec = by_name["Door name recorded"]
+
+    assert door_width_spec["rule_pack"]["uuid"] == str(door_width_pack.uuid)
+    assert door_width_spec["rule_pack"]["name"] == door_width_pack.name
+    assert door_width_spec["rule_pack"]["version"] == door_width_pack.version
+
+    assert door_name_spec["rule_pack"]["uuid"] == str(door_name_pack.uuid)
+    assert door_name_spec["rule_pack"]["name"] == door_name_pack.name
+    assert door_name_spec["rule_pack"]["version"] == door_name_pack.version
+
+    # Never the same pack for both -- the shape a mis-wired attribution (every finding
+    # pointing at whichever pack ran last, say) would actually produce.
+    assert door_width_spec["rule_pack"]["uuid"] != door_name_spec["rule_pack"]["uuid"]
+
+    # Resolvable to the recorded selection entry, which additionally carries the
+    # source_citation a finding's own minimal `rule_pack` deliberately does not duplicate.
+    selection_by_uuid = {entry["uuid"]: entry for entry in run.rule_pack_selection}
+    cited = selection_by_uuid[door_width_spec["rule_pack"]["uuid"]]
+    assert cited["source_citation"] == door_width_pack.source_citation
+
+
 def test_an_unknown_pack_is_refused_not_silently_dropped(
     api: APIClient, catalogue_review: Review, door_width_pack: RulePack, commit: Any
 ) -> None:

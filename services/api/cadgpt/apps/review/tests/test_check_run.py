@@ -156,6 +156,26 @@ def test_the_run_records_the_exact_inputs_it_checked(
     assert run.rule_set_checksum == review.rule_set.source_file.checksum_sha256
 
 
+def test_a_run_against_an_uploaded_rule_set_carries_no_pack_attribution(
+    api: APIClient, review: Review, commit: Any
+) -> None:
+    """T-0049: `rule_pack` only ever means something for a catalogue selection --
+    `_attribute_specifications` is only ever called from `_evaluate_selection`, never
+    from the single-`RuleSet` path this review uses. Its report is `report.to_dict()`
+    unchanged, so no specification carries the key at all, the same shape a document
+    stored before T-0049 has.
+    """
+    with commit():
+        api.post(f"/api/v1/reviews/{review.uuid}/check/")
+    run = CheckRun.objects.for_tenant(review.tenant).first()
+
+    assert run is not None
+    assert run.report is not None
+    assert run.report["specifications"], "fixture must produce at least one specification"
+    for spec in run.report["specifications"]:
+        assert "rule_pack" not in spec
+
+
 def test_an_optional_specification_with_no_requirements_is_indeterminate_end_to_end(
     api: APIClient, tenant: Tenant, owner: User, project: Project, commit: Any
 ) -> None:
