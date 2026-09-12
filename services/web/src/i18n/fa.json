@@ -1,5 +1,5 @@
 {
-  "app": { "name": "کدجی‌پی‌تی", "tagline": "بررسی مدل در برابر مقررات حاکم بر آن" },
+  "app": { "name": "CADgpt", "tagline": "بررسی مدل در برابر مقررات حاکم بر آن" },
   "auth": {
     "signIn": "ورود",
     "signOut": "خروج",
@@ -8,7 +8,7 @@
     "signingIn": "در حال ورود…",
     "register": "ساخت حساب کاربری",
     "registering": "در حال ساخت حساب…",
-    "registerTitle": "ثبت‌نام در کدجی‌پی‌تی",
+    "registerTitle": "ثبت‌نام در CADgpt",
     "registerPrompt": "حساب کاربری ندارید؟",
     "signInPrompt": "قبلاً حساب دارید؟",
     "backToSignIn": "به‌جای آن وارد شوید"

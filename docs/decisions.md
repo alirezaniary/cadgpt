@@ -1020,6 +1020,85 @@ self-approval.
 
 ---
 
+## 2026-09-11 — the product's brand name is "CADgpt," not "کدجی‌پی‌تی," and the accent color follows the mark
+
+**Problem.** The app is Persian-only at runtime (`ACTIVE_LANGUAGE = "fa"`, T-0070), so the
+brand name every user actually sees was the Persian transliteration "کدجی‌پی‌تی" -- baked into
+`fa.json`'s `app.name` and `auth.registerTitle`. A logo mark was supplied (a navy rounded-
+square outline with a blue crosshair, `cadgpt-logo.svg`) to give the product a visual identity
+alongside the name.
+
+**Decision.** The brand name is the Latin "CADgpt" everywhere, including inside the Persian
+UI -- `fa.json` and `en.json` both render it unlocalized, matching the wordmark on the logo.
+The mark is rendered (via generated PNGs at the sizes actually used) in the topbar and both
+auth cards, and used as the favicon. The theme's accent color, previously an orange
+reverse-engineered from a reference product (zohal.io, T-0070), is now the logo's own blue
+(`#3165EA` family) -- the mark now appears in-product, so the CTA color has to be the one it's
+actually drawn in or the two read as competing identities.
+
+The first `cadgpt-logo.svg` supplied was a 1197-path autotrace with an opaque near-white
+backdrop baked into the art, not real alpha, so the mark was shown as a small rounded tile
+rather than fought into transparency. That file was superseded the same day by a second,
+much simpler export (one path, genuinely transparent) -- the PNGs regenerate cleanly from it
+with real alpha, and the rounded-tile styling (`border-radius` on `.brand-mark`) is removed
+since there's no longer a backdrop to hide.
+
+**Reopens if:** the logo is re-exported again and reintroduces a baked-in backdrop -- at
+which point the rounded-tile treatment is the fallback, not a redesign.
+
+---
+
+## 2026-09-12 — `e2e/screenshots/` is no longer committed
+
+**Problem.** `services/web/.gitignore` used to carry a deliberate exception for
+`e2e/screenshots/`: the directory was tracked on purpose, as the source a task file's
+evidence section pastes its image from (14 files under `docs/tasks/` link into it). In
+practice this meant every `playwright test` run touched most of the ~30 files in there --
+any real UI change (a color, a name, a layout tweak) shows up in nearly every screen a spec
+screenshots -- and nothing stopped an ad-hoc verification script from dropping new files
+straight into the same shared, tracked folder. A single afternoon's session (the CADgpt
+rebrand plus an unrelated router fix, both exercising the same e2e suite) modified 13
+existing tracked screenshots and added 5 new ones never referenced by any task file, none
+of it meaningfully reviewable as a diff.
+
+**Decision.** `e2e/screenshots/` is added to `services/web/.gitignore`, and the 34 files
+already tracked there are `git rm --cached` (removed from the index, left on disk --
+Playwright still writes to that path locally, nothing about running the suite changes). A
+task's evidence is pasted into the task file itself from here on, not linked to a path in
+a shared directory that anything can overwrite or add to. The 14 existing task files that
+already link into `e2e/screenshots/` are not being rewritten by this decision -- their
+links now point at a path that exists locally but is no longer guaranteed to exist, or to
+still show what it showed, in anyone else's checkout.
+
+**Reopens if:** a future need for shared, checked-in visual evidence resurfaces -- at which
+point committing images per-task under `docs/tasks/` (or a task-scoped subfolder) is the
+shape to reach for, not a shared mutable directory every run rewrites wholesale.
+
+---
+
+## 2026-09-12 — the three-colorway contrast fix is reverted; a design pass replaces it
+
+**Problem.** A prior pass measured the mark's real contrast against the product's dark
+chrome (navy square 1.31:1 on `--card`, invisible) and shipped a fix: a hue-preserving tint
+for in-product use, a third tone for the favicon, both derived from and alongside the
+master SVG, plus a `.brand-mark` size bump. The measurements were real, but the result did
+not read as an improvement in practice -- reviewed against the actual running app, it did
+not look like a considered redesign, and does not stand.
+
+**Decision.** Reverted. `cadgpt-logo-dark.svg` and `cadgpt-logo-favicon.svg` are deleted.
+`public/cadgpt-logo.png` and `public/favicon.png` are regenerated directly from the
+untouched master `cadgpt-logo.svg` (plain navy-and-blue, genuinely transparent -- the
+2026-09-11 fix for the *opaque-backdrop* problem still holds). `.brand-mark` is back to
+1.75rem. The contrast defect this was responding to is real and still unaddressed; a fresh
+attempt is warranted, run through this project's own UI/UX process rather than a narrower
+contrast-only brief.
+
+**Reopens if:** the next attempt is itself rejected -- at which point the actual bar for
+"reads as a considered redesign" needs to be written down explicitly, since two measured,
+reasoned passes have now both missed it.
+
+---
+
 ## 2026-09-12 — the route tree is where auth lives, and the URL is the app's state
 
 **Problem.** Every screen's identity was a React state variable, not a URL. `App` branched on

@@ -1,5 +1,5 @@
 {
-  "app": { "name": "CADGPT", "tagline": "Check a model against the rules that govern it" },
+  "app": { "name": "CADgpt", "tagline": "Check a model against the rules that govern it" },
   "auth": {
     "signIn": "Sign in",
     "signOut": "Sign out",
