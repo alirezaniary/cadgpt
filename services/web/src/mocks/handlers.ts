@@ -224,9 +224,20 @@ export function scenario(options: ScenarioOptions = {}): AnyHandler[] {
       return HttpResponse.json(paged(rows));
     }),
     http.get(`${API}/reviews/:uuid/runs/:runUuid/`, ({ params }) => {
-      const found = runFor(String(params["uuid"]), String(params["runUuid"]));
+      const reviewUuid = String(params["uuid"]);
+      const found = runFor(reviewUuid, String(params["runUuid"]));
       if (!found) return problem(404, "not_found", "Run not found.");
-      const body: CheckRunDetail = fx.detail(found, found.status === "succeeded" ? report : null);
+      // T-0048 F3: `rule_pack_selection` is only ever populated for a catalogue run --
+      // a review with an uploaded `rule_set` always resolves it to `[]`
+      // (`_resolve_selection`, `review.py:148`), which the mock must mirror rather than
+      // attaching the fixed catalogue citation to every run regardless of shape.
+      const targetReview = findReview(reviewUuid);
+      const selection = targetReview?.rule_set ? [] : undefined;
+      const body: CheckRunDetail = fx.detail(
+        found,
+        found.status === "succeeded" ? report : null,
+        selection,
+      );
       return HttpResponse.json(body);
     }),
     http.post(`${API}/reviews/:uuid/check/`, ({ params }) => {

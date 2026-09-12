@@ -106,10 +106,64 @@ export const Running: Story = {
  * a partial report for a run that did not finish -- and in its place is the reason the
  * server gave: `RESOURCE_EXHAUSTED`'s Persian `failure_detail`, rendered as the server sent
  * it (T-0081), not looked up from `failure_reason` in a frontend table.
+ *
+ * T-0048 fix-now (F1/F3): `fx.failedReview` uses a catalogue selection (its
+ * `rule_pack_selection`, attached by `fx.detail`'s default), so the failure card must
+ * also name what this run was dispatched to check -- under a heading that says
+ * "selected", never "checked": this run never produced a report, so it never checked
+ * anything.
  */
 export const RunFailed: Story = {
   parameters: { msw: [...session(), ...scenario()] },
   render: at(fx.failedReview.uuid),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const card = await waitFor(() => canvas.getByTestId("run-failure"));
+    const scope = within(card);
+
+    // The honest heading (F1) -- never the "were checked" wording `ReportView` uses on
+    // its own, genuinely-checked path.
+    await expect(
+      scope.getByText(i18n.t("report.selection.titleSelected")),
+    ).toBeInTheDocument();
+    await expect(
+      scope.queryByText(i18n.t("report.selection.title")),
+    ).not.toBeInTheDocument();
+
+    // The selection itself (F3) -- the pack this run was dispatched against, visible on
+    // its failed run for the first time.
+    await expect(scope.getByText(/مقررات ملی ساختمان/)).toBeInTheDocument();
+  },
+};
+
+/**
+ * A run that failed against an uploaded rule set rather than a catalogue selection
+ * (T-0048 F3). `rule_pack_selection` is `[]` for every run of a review shaped this way --
+ * `_resolve_selection` never populates it when `review.rule_set` is set -- so
+ * `RulePackSelectionList` alone would render nothing here, the exact defect this task's
+ * title names, unchanged for this selection shape. The failure card must name the
+ * review's own `rule_set` instead.
+ */
+export const RunFailedRuleSet: Story = {
+  parameters: {
+    msw: [
+      ...session(),
+      ...scenario({
+        reviews: { [fx.project.uuid]: [fx.failedReviewRuleSet] },
+        runs: { [fx.failedReviewRuleSet.uuid]: [fx.failedRunRuleSet] },
+      }),
+    ],
+  },
+  render: at(fx.failedReviewRuleSet.uuid),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const card = await waitFor(() => canvas.getByTestId("run-failure"));
+    const scope = within(card);
+
+    await expect(scope.getByText(fx.uploadedRuleSet.name)).toBeInTheDocument();
+    // Never the catalogue-pack list: there is no catalogue selection on this shape.
+    await expect(scope.queryByTestId("rule-pack-selection")).not.toBeInTheDocument();
+  },
 };
 
 /**

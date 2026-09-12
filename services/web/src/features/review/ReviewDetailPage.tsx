@@ -25,7 +25,7 @@ import {
 } from "@/api/queries";
 import { isTerminal } from "@/api/types";
 import { useSession } from "@/app/session-context";
-import { ReportView } from "@/components/ReportView";
+import { ReportView, RulePackSelectionList } from "@/components/ReportView";
 import { StatusPill } from "@/components/StatusPill";
 import { formatDate } from "@/lib/dates";
 
@@ -297,6 +297,30 @@ export function ReviewDetailPage() {
         <section className="card" data-testid="run-failure" data-failure-reason={failureReason}>
           <h2>{t("run.failure.heading")}</h2>
           <p className="error">{failureDetail}</p>
+          {/* T-0048: a failed run has no `report`, so `ReportView` below never mounts for
+              it -- but `rule_pack_selection` is recorded at dispatch, before the run's
+              outcome is known, so "what was this supposed to cover?" is answerable
+              regardless of how the run ended. Most of all the run that failed because a
+              cited pack vanished: it must show the selection it failed on, not just the
+              reason it failed. `heading="selected"` (fix-now round, F1): this run never
+              produced a report, so it must never claim the packs "were checked" the way
+              `ReportView`'s own, genuinely-checked path does. */}
+          {review.data?.rule_set ? (
+            // F3: `rule_pack_selection` is `[]` for every run of a review that uses an
+            // uploaded `RuleSet` (`_resolve_selection` never populates it for this
+            // shape) -- `RulePackSelectionList` renders nothing for an empty selection,
+            // so this branch names the review's own rule set instead, the only way a
+            // failed run against an uploaded IDS can still say what it was for.
+            <section className="selection" data-testid="run-failure-rule-set">
+              <h4>{t("report.selection.ruleSetTitle")}</h4>
+              <p>{review.data.rule_set.name}</p>
+            </section>
+          ) : (
+            <RulePackSelectionList
+              selection={run.data?.rule_pack_selection ?? []}
+              heading="selected"
+            />
+          )}
         </section>
       )}
 

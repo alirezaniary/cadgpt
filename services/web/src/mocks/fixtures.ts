@@ -28,6 +28,8 @@ import type {
   Report,
   Review,
   RulePack,
+  RulePackSelectionEntry,
+  RuleSet,
   Tenant,
   User,
 } from "@/api/types";
@@ -515,24 +517,33 @@ export const earlierRun: CheckRunSummary = run({
   created_at: "2026-09-01T09:02:00Z",
 });
 
-export function detail(summary: CheckRunSummary, body: Report | null): CheckRunDetail {
+/** The default catalogue citation every fixture run carries, unless the run belongs to a
+ * review with an uploaded `rule_set` -- that shape's real `rule_pack_selection` is always
+ * `[]` (`_resolve_selection`, `review.py:148`), so `handlers.ts`'s run-detail handler
+ * passes `[]` explicitly for it instead of this default. */
+const DEFAULT_SELECTION: RulePackSelectionEntry[] = [
+  {
+    uuid: "aaaa1111-0000-4000-8000-000000000001",
+    name: "مقررات ملی ساختمان — مبحث چهارم",
+    jurisdiction: "IR",
+    region: "ملی",
+    version: "1399",
+    specification_count: 18,
+    checksum_sha256: "1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809",
+  },
+];
+
+export function detail(
+  summary: CheckRunSummary,
+  body: Report | null,
+  selection: RulePackSelectionEntry[] = DEFAULT_SELECTION,
+): CheckRunDetail {
   return {
     ...summary,
     report: body,
     model_checksum: "9f2c4a1b8e7d6c5b4a39281706f5e4d3c2b1a0998877665544332211000ffeedd",
     rule_set_checksum: "",
-    rule_pack_selection: [
-      {
-        uuid: "aaaa1111-0000-4000-8000-000000000001",
-        name: "مقررات ملی ساختمان — مبحث چهارم",
-        jurisdiction: "IR",
-        region: "ملی",
-        version: "1399",
-        specification_count: 18,
-        checksum_sha256:
-          "1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809",
-      },
-    ],
+    rule_pack_selection: selection,
   };
 }
 
@@ -590,6 +601,54 @@ export const failedReviewNoDetail: Review = reviewOf(
   failedRunNoDetail,
   "2026-09-07T10:10:00Z",
 );
+
+/** An uploaded rule set (T-0048 F3), rather than a catalogue selection -- the review it
+ * belongs to has `rule_set` set and `rule_pack_selection` empty for every one of its
+ * runs. */
+export const uploadedRuleSet: RuleSet = {
+  uuid: "ffff0001-0000-4000-8000-000000000001",
+  name: "مقررات دسترسی معلولان",
+  description: "",
+  title: "Accessible doors",
+  author: "",
+  version: "1.0",
+  specification_count: 4,
+  source_file: {
+    uuid: "eeee0006-0000-4000-8000-000000000006",
+    kind: "ids_ruleset",
+    original_name: "accessible-doors.ids",
+    content_type: "application/xml",
+    size_bytes: 4_096,
+    checksum_sha256: "1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809",
+    created_at: "2026-08-20T09:00:00Z",
+  },
+  created_at: "2026-08-20T09:00:00Z",
+};
+
+export const failedRunRuleSet: CheckRunSummary = run({
+  uuid: "dddd0006-0000-4000-8000-000000000006",
+  status: "failed",
+  failure_reason: "INVALID_RULE_SET",
+  failure_detail: "فایل ذخیره‌شده برای این مجموعه‌قاعده قابل خواندن نبود.",
+  queued_at: "2026-09-08T11:00:00Z",
+  started_at: "2026-09-08T11:00:02Z",
+  finished_at: "2026-09-08T11:00:05Z",
+  duration_seconds: 3,
+  created_at: "2026-09-08T11:00:00Z",
+});
+
+/** T-0048 F3: a failed run against an uploaded rule set. `rule_pack_selection` is empty
+ * for this shape -- `handlers.ts`'s run-detail handler passes `[]` for it -- so the
+ * failed-run card must name `rule_set` itself instead, not the (empty) pack list. */
+export const failedReviewRuleSet: Review = {
+  uuid: "cccc0006-0000-4000-8000-000000000006",
+  name: "کنترل دسترسی — بازبینی نهایی",
+  model_file: model("niavaran-tower-access.ifc", 12_582_912, "eeee0007-0000-4000-8000-000000000007"),
+  rule_set: uploadedRuleSet,
+  latest_run: failedRunRuleSet,
+  created_at: "2026-09-08T10:59:00Z",
+  updated_at: "2026-09-08T10:59:00Z",
+};
 
 export const neverRunReview: Review = reviewOf(
   "cccc0004-0000-4000-8000-000000000004",

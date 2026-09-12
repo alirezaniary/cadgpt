@@ -96,6 +96,56 @@ function isVisible(entity: EntityOutcome, filter: EntityFilter): boolean {
   return entity.status === "PASS" ? true : filter[entity.status];
 }
 
+/**
+ * The run's own citation (T-0031), rendered on its own so a run that never produced a
+ * `Report` can still show it. Extracted out of `ReportView` for T-0048: a failed run has
+ * no `report`, so `ReportView` never mounts for it, but `CheckRun.rule_pack_selection` is
+ * recorded at dispatch time regardless of how the run ends -- "what was this supposed to
+ * cover?" is exactly the question a failed run must still answer, most of all the run that
+ * failed *because* a cited pack vanished (`RulePackCitationMismatchError` /
+ * `CheckRunFailure.INVALID_RULE_SET`). `ReportView` below renders this same component so a
+ * successful run's selection is not shown twice by two diverging implementations.
+ */
+export function RulePackSelectionList({
+  selection,
+  heading,
+}: {
+  selection: RulePackSelectionEntry[];
+  /**
+   * T-0048 fix-now (F1): "were checked" is only true on the path that actually
+   * produced a `Report` -- this component is also mounted on a failed run, which by
+   * definition never reached that point, so the heading must be chosen by the caller
+   * rather than hard-coded to the claim only one of the two callers can make.
+   * `"checked"` is `ReportView`'s own call, where a `Report` exists as proof;
+   * `"selected"` is the honest wording for a run that has none.
+   */
+  heading: "checked" | "selected";
+}) {
+  const { t } = useTranslation();
+  if (selection.length === 0) {
+    return null;
+  }
+  return (
+    <section className="selection" data-testid="rule-pack-selection">
+      <h4>
+        {t(heading === "checked" ? "report.selection.title" : "report.selection.titleSelected")}
+      </h4>
+      <ul className="list">
+        {selection.map((pack) => (
+          <li key={pack.uuid}>
+            {pack.name}
+            <span className="muted">
+              {" "}
+              — {pack.jurisdiction}
+              {pack.region ? `/${pack.region}` : ""} v{pack.version}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function ReportView({
   report,
   rulePackSelection,
@@ -168,23 +218,7 @@ export function ReportView({
         <p>{report.disclosure_text}</p>
       </section>
 
-      {rulePackSelection && rulePackSelection.length > 0 && (
-        <section className="selection" data-testid="rule-pack-selection">
-          <h4>{t("report.selection.title")}</h4>
-          <ul className="list">
-            {rulePackSelection.map((pack) => (
-              <li key={pack.uuid}>
-                {pack.name}
-                <span className="muted">
-                  {" "}
-                  — {pack.jurisdiction}
-                  {pack.region ? `/${pack.region}` : ""} v{pack.version}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <RulePackSelectionList selection={rulePackSelection ?? []} heading="checked" />
 
       <section className="coverage" data-testid="coverage">
         <h4>{t("report.coverage.title")}</h4>

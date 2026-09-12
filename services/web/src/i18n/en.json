@@ -98,7 +98,9 @@
       "optional": "optional"
     },
     "selection": {
-      "title": "Rule packs checked"
+      "title": "Rule packs checked",
+      "titleSelected": "Rule packs selected for this run",
+      "ruleSetTitle": "Rule set for this run"
     },
     "coverage": {
       "title": "Coverage",

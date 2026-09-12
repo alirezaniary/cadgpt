@@ -304,6 +304,19 @@ msgstr "این اجرا %(count)s بار درخواست شد و بدون تکم�
 msgid "The worker running this check stopped responding."
 msgstr "کارگری که این بررسی را اجرا می‌کرد، از پاسخ‌گویی بازایستاد."
 
+#: cadgpt/apps/review/services/execution.py (_evaluate_selection: a run that reaches
+#: execution with review.rule_set unset and an empty rule_pack_selection -- T-0048, the
+#: named reason that replaces _combine_reports([])'s IndexError)
+msgid "This run has no rule set or rule pack selected to check against."
+msgstr "این اجرا هیچ مجموعه‌قاعده یا بسته‌قاعده‌ای برای بررسی در برابر آن ندارد."
+
+#: cadgpt/apps/review/services/execution.py (_evaluate_selection: a cited pack's row is
+#: present but its stored file is gone -- T-0048, classified invalid_rule_set with the
+#: pack's own name, never the internal storage key)
+#, python-format
+msgid "The stored file for rule pack %(name)s could not be read."
+msgstr "فایل ذخیره‌شده برای بسته‌قاعده %(name)s قابل خواندن نبود."
+
 msgid "English"
 msgstr "انگلیسی"
 

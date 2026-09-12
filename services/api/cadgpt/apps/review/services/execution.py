@@ -20,6 +20,7 @@ the pool long before the queue.
 
 from __future__ import annotations
 
+import contextlib
 import uuid as uuid_lib
 from collections.abc import Sequence
 from pathlib import Path
@@ -118,6 +119,23 @@ class CheckRunExecutor(BaseService):
         task exists to make now holds by construction rather than by nothing happening to
         exploit it.
         """
+        if not selection:
+            # T-0048: reachable only from `ReviewService.create(rule_set=None)` plus
+            # `create_run` outside `request_check` -- `_resolve_selection` already refuses
+            # an empty selection at request time, and that refusal is unchanged. This
+            # guard is what keeps that same shape from crashing instead of refusing when
+            # it is reached by some other caller: without it, `_combine_reports(reports)`
+            # below is called with an empty list and `first = reports[0]` raises
+            # `IndexError`, which `execute`'s `except Exception` then reports to the
+            # tenant as `internal_error` with the Python fragment as `failure_detail`. A
+            # run with nothing to check is a rejected input, not a crash -- the same
+            # distinction `CheckRunFailure` already draws for every other case here -- so
+            # it is raised as `InvalidIdsError` and reaches the tenant as
+            # `invalid_rule_set`, worded in the application's own language.
+            raise InvalidIdsError(
+                _("This run has no rule set or rule pack selected to check against.")
+            )
+
         packs = {
             str(pack.uuid): pack
             for pack in RulePack.objects.selected(entry["uuid"] for entry in selection)
@@ -132,15 +150,58 @@ class CheckRunExecutor(BaseService):
                     f"Rule pack {entry['uuid']} ({entry['name']}) cited by this run is "
                     "no longer in the catalogue."
                 )
-            actual_checksum = pack_service.checksum_of(pack)
+            # T-0048's review (F2): the pack row is present and matches the catalogue,
+            # but the bytes behind it can still be genuinely gone from storage --
+            # `checksum_of` opens the file directly and raises `FileNotFoundError` when
+            # it is not there, the one condition that actually means "this rule pack
+            # cannot be read." Only that narrow case is caught below, and only around
+            # the two calls that can raise it: not the citation-mismatch raise, not
+            # `self._evaluate` (the engine's own run, whose `OSError`s -- if any -- are
+            # not a storage-read failure), and not `local_path`'s teardown. A bare
+            # `except OSError` here previously swallowed far more than "not there": a
+            # `PermissionError` from a storage permission fault (reproduced live with
+            # `chmod 000` on a pack file), or a `ConnectionError`/`TimeoutError` from a
+            # remote backend -- both `OSError` subclasses, and exactly the two classes
+            # `execute_check_run`'s `autoretry_for` exists to retry -- all got relabeled
+            # `invalid_rule_set` with no operator-side signal, and Celery's retry was
+            # silently defeated because `execute` does not re-raise on `InvalidIdsError`.
+            # The original exception is logged with the traceback before it is mapped to
+            # the tenant-facing sentence, so an operator still has the real cause even
+            # though the tenant only reads the honest, generic wording.
+            try:
+                actual_checksum = pack_service.checksum_of(pack)
+            except FileNotFoundError as exc:
+                log.exception(
+                    "check_run_pack_unreadable",
+                    rule_pack_id=entry["uuid"],
+                    cited_name=entry["name"],
+                )
+                raise InvalidIdsError(
+                    _("The stored file for rule pack %(name)s could not be read.")
+                    % {"name": entry["name"]}
+                ) from exc
+
             if actual_checksum != entry["checksum_sha256"]:
                 raise RulePackCitationMismatchError(
                     f"Rule pack {entry['uuid']} ({entry['name']}) was cited with "
-                    f"checksum {entry['checksum_sha256']} at dispatch, but its file now "
-                    f"hashes to {actual_checksum}. Refusing to evaluate a rule this run "
-                    "did not actually cite."
+                    f"checksum {entry['checksum_sha256']} at dispatch, but its file "
+                    f"now hashes to {actual_checksum}. Refusing to evaluate a rule "
+                    "this run did not actually cite."
                 )
-            with pack_service.local_path(pack) as ids_path:
+
+            with contextlib.ExitStack() as stack:
+                try:
+                    ids_path = stack.enter_context(pack_service.local_path(pack))
+                except FileNotFoundError as exc:
+                    log.exception(
+                        "check_run_pack_unreadable",
+                        rule_pack_id=entry["uuid"],
+                        cited_name=entry["name"],
+                    )
+                    raise InvalidIdsError(
+                        _("The stored file for rule pack %(name)s could not be read.")
+                        % {"name": entry["name"]}
+                    ) from exc
                 report = self._evaluate(ifc_path, ids_path, ifc_name)
             reports.append(report)
             # F2 (T-0031's review): logged beside the citation is what the produced

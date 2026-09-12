@@ -1249,6 +1249,47 @@ has incompatible type "NotAFieldFile"; expected "FieldFile"  [arg-type]`. Behavi
 confirmed by re-running `test_check_run.py` against real IFC fixtures through both wired call
 sites. 296 tests, 5 contracts kept.
 
+**T-0048 — a failed run must say what it was supposed to check, and speak the application's
+error language. Done 2026-09-12.** Found by the T-0031 review, which executed all three
+against the real stack: a run reaching execution with an empty selection raised an unhandled
+`IndexError`, surfacing "list index out of range" to the tenant; a cited pack's row present but
+its stored file gone raised a raw `FileNotFoundError` with an internal storage path, classified
+`internal_error` when the honest classification is `invalid_rule_set`; and a failed run never
+showed its rule-pack selection at all — `ReportView` only mounts once a `Report` exists. The
+third item's scope reference (`ReviewsPage.tsx`) had gone stale and was corrected before
+dispatch, same precedent as T-0041/T-0045. Closed: an empty-selection guard raises
+`InvalidIdsError` before `_combine_reports` ever sees an empty list; a `RulePackSelectionList`
+component (extracted from `ReportView`) now renders on the failed-run branch too.
+
+**Reviewer-gated on I7's mirror ("a failure that fails to explain itself"), and the review found
+the shipped fix honest in its transcripts but dishonest in its own UI, and its guard too wide.**
+Four fix-now findings. Most severe: the failed-run card reused `ReportView`'s "Rule packs
+checked" heading verbatim — asserting, on a run that by definition never produced a report, that
+the packs *were checked*, the exact I7-mirror dishonesty this task exists to remove, visible in
+the evidence's own screenshot. `RulePackSelectionList` now takes a `heading: "checked" |
+"selected"` prop, with an honest second wording for the failed path. Second: `except OSError`
+around the storage read wrapped far more than the file-open — the citation-mismatch raise, the
+engine's own `_evaluate` call, and teardown — so a `chmod 000` permission fault or a
+`ConnectionError`/`TimeoutError` (S3, in production) were relabeled `invalid_rule_set` with zero
+operator-side signal, silently defeating `execute_check_run`'s own retry policy. Narrowed to
+`FileNotFoundError` around exactly `checksum_of` and `local_path`'s entry, with `log.exception`
+before the tenant-facing mapping. Third: the selection display only handled the catalogue-pack
+shape — a review with an uploaded `RuleSet` (`rule_pack_selection` always `[]` for that shape)
+still showed nothing beyond the failure reason; now names the rule set directly. Fourth: zero
+tests protected any of the three original fixes — all three would have passed `make verify`
+reverted. Closed with `test_execution_failure_classification.py` (three tests, each
+mutation-proven by hand: the guard removed reproduces the real `IndexError`; the narrowing
+widened back to bare `OSError` lets a simulated `ConnectionError` misclassify) plus two
+Storybook play functions for the frontend. 299 tests, 36 Storybook tests, 5 contracts kept.
+Re-verified live: the `chmod 000` case now correctly yields `internal_error` with the real
+`PermissionError` logged, not `invalid_rule_set`.
+
+**Observation, not acted on:** `execute()`'s direct `rule_set` path (an uploaded IDS, as
+opposed to a catalogue selection) still leaks a raw storage path into `failure_detail` when its
+file goes missing — the same class of defect as this task's second item, on a sibling code path
+the original three-item "Why" never named. Pre-existing and outside this task's scope; worth a
+task of its own.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -1313,7 +1354,8 @@ the first of them:
   the task file.
 - ~~**T-0047** — a typed boundary for the shared file helper.~~ **Done 2026-09-12.** See
   "What has landed" above.
-- **T-0048** — a failed run must say what it was for, and speak the application's error language.
+- ~~**T-0048** — a failed run must say what it was for, and speak the application's error
+  language.~~ **Done 2026-09-12.** See "What has landed" above.
 - **T-0049** — every finding carries the pack identity and version that produced it.
 - **T-0050** — the suite cannot catch the class of defect that only Postgres enforces.
 
