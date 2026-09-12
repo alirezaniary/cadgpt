@@ -67,13 +67,24 @@
   --indeterminate: #e0b451;
   --indeterminate-bg: #382a10;
 
-  /* Accent: zohal.io's own measured CTA color (rgb(245,176,120) / #d57630 on its filled
-     buttons), not a navy shade -- the earlier pass mistook the *page* hue for the *accent*
-     hue. Dark text on the orange fill matches how zohal itself sets its button label. */
-  --accent: #d57630;
-  --accent-strong: #c2661f;
-  --accent-soft: rgba(245, 176, 120, 0.18);
-  --accent-fg: #1d1a2e;
+  /* Accent: the CADgpt logo's own crosshair blue (#3165EA), not zohal.io's orange -- the
+     brand mark now appears in-product (topbar, auth cards) so the CTA color has to be the
+     one it's actually drawn in, or the mark reads as a mismatched import. Light text on
+     the blue fill, since the fill itself is dark enough that dark-on-dark loses contrast. */
+  --accent: #3165ea;
+  --accent-strong: #2450c4;
+  --accent-soft: rgba(49, 101, 234, 0.18);
+  --accent-fg: #f2f5ff;
+
+  /* The ground the brand mark sits on. The mark is two-tone and *both* tones are figure --
+     navy brackets with a blue crosshair through them -- so it was drawn for a light ground,
+     and this product has none: `--bg` and `--card` are within a hair of the mark's own navy
+     (1.15:1 and 1.31:1, with the blue at 2.85:1/2.49:1, so both halves are under the 3:1
+     floor for a graphical object). The fix is to give it a ground rather than to repaint it,
+     which also keeps the mark correct on an exported or printed report, where a light tile
+     would be meaningless. Same value as `--accent-fg` today and named separately on purpose:
+     one is "text on an accent fill", the other is "the brand's ground". */
+  --brand-plaque: #f2f5ff;
 
   /* Spacing: a 4px base unit, the same rhythm zohal.io's own Tailwind scale is built on
      (their `gap-y-4`/`p-6`/`py-10` are 1rem/1.5rem/2.5rem -- exactly the steps below). */
@@ -153,6 +164,38 @@ body {
   box-shadow: var(--shadow-header);
 }
 .topbar strong { font-size: var(--text-lg); font-weight: var(--weight-bold); }
+
+/* The mark and the wordmark are one object. Left as two children of `.topbar`'s flex they
+   sat at the same `--space-3` as everything else in the bar, so they read as two adjacent
+   items rather than as a lockup; this binds them at `--space-2` and lets the bar's own gap
+   go on separating the lockup from the rest. The same lockup is the auth cards' `h1`, one
+   size up -- the mark had been stacked above a repeated wordmark there, which made the
+   product's only two brand appearances two different shapes. */
+.brand-lockup { display: flex; align-items: center; gap: var(--space-2); }
+.brand-lockup--lg { justify-content: center; gap: var(--space-3); }
+
+/* `border-radius` in percent, not a token, so the 2.25rem tile and the 2.5rem one are the
+   same *shape* rather than the same absolute corner -- a fixed 0.75rem reads noticeably
+   rounder on the smaller of the two. `--radius-pill` is deliberately not used: the account
+   avatar at the other end of the topbar is a pill, and the shape contrast is what says one
+   end is the product and the other is you. */
+.brand-plaque {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  background: var(--brand-plaque);
+  border-radius: 28%;
+}
+.brand-lockup--lg .brand-plaque { inline-size: 2.5rem; block-size: 2.5rem; }
+
+/* 78% of its tile. Below that the mark floats; at 82% the crosshair arms crowd the corner
+   radius and at 86% the vertical arm breaks the tile edge, because the asset's box is
+   square around the crosshair and the vertical arm is the one that reaches furthest, so it
+   lands exactly on the box edge. The asset is pre-trimmed (`scripts/build_brand_assets.py`)
+   from the 59%-empty box the master carries, so this is real air rather than padding. */
+.brand-mark { inline-size: 78%; block-size: 78%; }
 
 .page {
   display: grid;

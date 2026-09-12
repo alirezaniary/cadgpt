@@ -32,8 +32,12 @@ export function SignInPage() {
   return (
     <main className="centered">
       <form className="card" onSubmit={onSubmit}>
-        <img src="/cadgpt-logo.png" alt="" className="brand-mark brand-mark-lg" />
-        <h1>{t("app.name")}</h1>
+        <h1 className="brand-lockup brand-lockup--lg">
+          <span className="brand-plaque">
+            <img src="/cadgpt-mark.svg" alt="" className="brand-mark" />
+          </span>
+          {t("app.name")}
+        </h1>
         <p className="muted">{t("app.tagline")}</p>
 
         <div className="field">

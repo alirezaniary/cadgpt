@@ -1079,3 +1079,109 @@ one person routinely works in two tenants at once and wants two tabs (both of wh
 tenant in the path or a subdomain, and want it before the first fetch, which is the point at
 which the query client belongs in router context and the first-workspace screen should become a
 real route in the same pass).
+
+---
+
+## 2026-09-12 — the mark gets a ground instead of a repaint, and the asset's own box was half the defect
+
+**Problem.** Third attempt at the same defect, after two rejections. The mark is two-tone —
+navy `#1B1456` brackets with a blue `#3165EB` crosshair through them — and *both* tones are
+figure. It was drawn for a light ground; this product has none. Measured against the app's own
+surfaces: navy 1.15:1 on `--bg` and 1.31:1 on `--card`, blue 2.85:1 and 2.49:1. **Both halves
+are under the 3:1 floor for a graphical object**, so the earlier framing — "only the blue
+survives" — was itself too kind. The first pass answered this by recoloring the navy to clear
+3:1 and was rejected on sight ("garbage, no practical change"); the number was met and the
+screen looked the same from three feet away.
+
+Running the process properly surfaced a second, larger cause that both earlier passes missed
+and no contrast checker would ever report: **59% of the master asset's `0 0 1024 1024` box is
+empty** (measured alpha bbox of a 2048px render: x 213–860, y 148–807). A 1.75rem slot in the
+topbar was therefore rendering a 17.7px glyph. A large part of "the logo reads as a stray plus"
+was never contrast at all; it was padding.
+
+**Decision, the mark keeps its colors and gets a plaque.** A near-white tile, `--brand-plaque:
+#f2f5ff`, sits under the mark on every in-product surface. Both tones clear 3:1 against it by a
+wide margin (15.05:1 and 4.60:1) and the tile itself clears it against both app surfaces
+(13.10:1 / 11.45:1), so it has a defined edge without a border. The asset is untouched, which
+is the point: it is what was rejected before, and it is also what keeps the mark correct on an
+exported or printed report, where a light tile on white paper would be meaningless. **The
+plaque is a CSS wrapper and must stay one — do not "simplify" this later by baking the tile
+into the SVG.**
+
+**Decision, the viewBox is trimmed around the crosshair, not around the bounding box.** The
+first cut of this work squared the trim on the artwork's bbox and shipped it; the product owner
+saw it immediately — *"the legs are not the same length, so centring based on the edges makes it
+abnormal."* That is exactly right and it is worth writing down, because it is the kind of error a
+measurement invites. **The mark's four arms are deliberately unequal**: from the crosshair the
+horizontal stroke reaches 299 left and 349 right, the vertical 363 up and 295 down. Centring the
+tile on the midpoint of those extents put the intersection 12px right and 17px high of the tile's
+middle at a 512px render, and the eye locks onto the intersection, so the whole mark read as
+sliding out of its tile. Sampling each arm near its tip shows both strokes run at exactly x=512
+and y=512 — **the master was already optically centred, and squaring on the bbox is what broke
+it**. `services/web/public/cadgpt-mark.svg` is therefore `viewBox="148 148 728 728"`: square,
+centred on the crosshair, just large enough for the longest arm. Measured on the shipped asset,
+the intersection now sits 0.00px / 0.12px off the box centre. `scripts/build_brand_assets.py`
+measures the axes rather than hardcoding them, refuses to run if either stroke is not straight or
+if the master stops having exactly six paths in exactly two colors, and also emits the favicon.
+The master keeps its C2PA manifest; the derived vector drops it, as the derived rasters always
+have. The 128px `cadgpt-logo.png` is deleted — an SVG has no size ceiling and nothing referenced it.
+
+**The lesson, since this is the third pass:** a trim that is correct by measurement can still be
+wrong by eye, and for a mark with asymmetric arms the bounding box is the wrong datum. Optical
+centre first, extents second.
+
+**Decision, one lockup, two sizes.** The mark and wordmark are bound in `.brand-lockup` at
+`--space-2` instead of sitting at the topbar's generic `--space-3`, and the auth cards use *that
+same horizontal lockup as their `h1`*, replacing a stacked mark-above-a-repeated-wordmark. The
+product's only two brand appearances had been two different shapes, which is the thing that
+actually reads as unconsidered. Tile is 2.25rem in the bar (the avatar's size) and 2.5rem on the
+card; the mark is 78% of its tile — at 82% the arms crowd the corner radius and at 86% the
+vertical arm, which is the one that reaches furthest and therefore lands on the box edge, breaks
+the tile; `border-radius` is `28%` rather than a token, so both sizes
+are the same *shape*, and deliberately not `--radius-pill`, because the avatar at the other end
+of the bar is a pill and the shape contrast is what says one end is the product and the other is
+you. Favicon: the plaque baked in at 64px with the mark at 80% — larger than in-product, because
+a browser's tab strip is a ground CSS cannot reach and 16px has no pixels to give away.
+
+**Rejected, with the evidence in `design-previews/brand-mark/`.** An accent-filled tile inverts
+the defect (the blue crosshair vanishes into a blue ground). A *true* reversed colorway —
+brackets knocked out to `#f2f5ff`, crosshair lifted to `#6D8FF5`, keeping a real tonal split, so
+not the mistake the 2026-09-11 pass made — is the strongest rival and still loses: it costs a
+second in-product colorway, it is a recolor, and its favicon dies on a light tab strip, so it
+does not even cover every surface.
+
+**A correction worth keeping, because it is an argument for running the real thing.** The
+preview's own stylesheet had `.avatar` transcribed with `--accent-soft`, and on that basis a
+review found the topbar lopsided — a bright plaque at one end, a faint circle at the other — and
+`topbar-balance.html` was built to test three ways of lifting the avatar. The shipped rule is
+`background: var(--accent)`, a solid blue fill. Running the actual container settled it in one
+screenshot: the bar was already balanced, the finding was an artefact of the preview, and nothing
+about the avatar needed to change. The preview and the balance page have both been corrected so
+they do not mislead the next reader.
+
+**Reopens if:** the mark ever becomes a link to `/projects` (it acquires hover and focus states,
+and `alt=""` stops being right), or a light surface appears anywhere else in the product (the
+plaque would then be one instance of a pattern rather than a one-off, and `--brand-plaque` should
+be reconciled with whatever that surface's token is).
+
+---
+
+## 2026-09-12 — `--accent` on `--card` is 2.48:1, and DESIGN.md was still recording the orange
+
+**Problem.** Found while measuring for the brand-mark work, unrelated to the mark itself.
+`docs/design/DESIGN.md`'s contrast table records `--accent` on `--card` at 3.84:1 and
+`--accent-fg` on `--accent` at 5.21:1. Those are the *orange* accent's numbers. When the accent
+was swapped to the logo's blue on 2026-09-11 — so the mark would not read as a mismatched import
+— the table was never recomputed. The real figures are **2.48:1** and 4.61:1. The link color is
+therefore materially worse than the file claims, not marginally: it fails the 3:1 non-text floor,
+not just AA for text. It affects the "ساخت حساب کاربری" link on the sign-in card, `.table
+a:hover`, and the active workspace row in the account menu.
+
+**Decision, recorded and not fixed.** `DESIGN.md` now carries the measured values. The color
+itself is untouched: repainting the app's CTA is a product decision, not a side effect of a logo
+task, and the brand-mark work deliberately removes the *reason* the accent had to match the mark
+— once the mark sits on its own ground, nothing else has to be its color. For whoever takes it:
+at the same hue and saturation, `#4776EC` reaches 3:1 on `--card` and `#7699F1` reaches 4.5:1.
+
+**Reopens if:** anyone proposes changing `--accent`. It is not blocked, it is unowned — this
+entry exists so the next person does not rediscover the measurement from scratch.

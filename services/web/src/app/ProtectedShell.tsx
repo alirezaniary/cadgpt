@@ -84,8 +84,14 @@ export function ProtectedShell() {
   return (
     <div className="shell">
       <header className="topbar">
-        <img src="/cadgpt-logo.png" alt="" className="brand-mark" />
-        <strong>{t("app.name")}</strong>
+        {/* `alt=""` on purpose: the wordmark beside it is already the accessible name, and
+            naming the image too would make a screen reader say the product twice. */}
+        <span className="brand-lockup">
+          <span className="brand-plaque">
+            <img src="/cadgpt-mark.svg" alt="" className="brand-mark" />
+          </span>
+          <strong>{t("app.name")}</strong>
+        </span>
 
         <div className="spacer" />
 

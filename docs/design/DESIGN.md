@@ -18,10 +18,11 @@ toggle: the semantic tints below are the ones already tuned for a dark surface.
 | `--fg` | `#e7e9f2` | Body text |
 | `--muted` | `#9aa1ba` | Secondary text, labels, table headers |
 | `--line` | `#3c4160` | Borders and separators |
-| `--accent` | `#d57630` | Primary CTA fill, links |
-| `--accent-strong` | `#c2661f` | CTA hover |
-| `--accent-soft` | `rgba(245,176,120,0.18)` | Focus ring, row hover, menu-item hover |
-| `--accent-fg` | `#1d1a2e` | Text on an accent fill |
+| `--accent` | `#3165ea` | Primary CTA fill, links |
+| `--accent-strong` | `#2450c4` | CTA hover |
+| `--accent-soft` | `rgba(49,101,234,0.18)` | Focus ring, row hover, menu-item hover |
+| `--accent-fg` | `#f2f5ff` | Text on an accent fill |
+| `--brand-plaque` | `#f2f5ff` | The light ground the brand mark sits on — `.brand-plaque` |
 | `--pass` / `--pass-bg` | `#4fd396` / `#113023` | PASS |
 | `--fail` / `--fail-bg` | `#ef6a72` / `#3a1618` | FAIL |
 | `--indeterminate` / `--indeterminate-bg` | `#e0b451` / `#382a10` | INDETERMINATE |
@@ -40,20 +41,29 @@ Computed from the hex values above (WCAG 2.1 relative luminance), 2026-09-06:
 | `--fg` on `--card` | 10.30:1 | pass |
 | `--muted` on `--bg` | 5.56:1 | pass |
 | `--muted` on `--card` | 4.86:1 | pass |
-| `--accent-fg` on `--accent` (button label) | 5.21:1 | pass |
+| `--accent-fg` on `--accent` (button label) | 4.61:1 | pass |
 | `--pass` on `--pass-bg` | 7.54:1 | pass |
 | `--indeterminate` on `--indeterminate-bg` | 7.18:1 | pass |
 | `--fail` on `--fail-bg` | 5.33:1 | pass |
 | `--fg` on a hovered table row | 7.10:1 | pass |
-| **`--accent` on `--card`** | **3.84:1** | **fails** |
+| **`--accent` on `--card`** | **2.48:1** | **fails** |
 | **`--fail` on `--card`** | **4.14:1** | **fails** |
 
-The last two are real and open. `--accent` on `--card` is `.link-button` (the "Create account"
-link inside the sign-in card), `.table a:hover`, and `.user-menu-panel button.active`;
-`--fail` on `--card` is `.error`, which is how every form failure in the app is worded. Both
-are at or under AA for normal text, and the error case is the one a person reads while
-something has already gone wrong. Neither is fixed here — recording the measurement is what
-this file is for, and the fix is a task of its own.
+**Recomputed 2026-09-12.** The accent rows above had never been updated after the accent was
+swapped from the old orange to the logo's blue on 2026-09-11 — they recorded the orange's
+numbers. The real figures are worse: `--accent` on `--card` is **2.48:1**, which fails the 3:1
+non-text floor and not merely AA for text. It is `.link-button` (the "Create account" link inside
+the sign-in card), `.table a:hover`, and `.user-menu-panel button.active`. `--fail` on `--card` is
+`.error`, which is how every form failure in the app is worded, and is the one a person reads
+while something has already gone wrong. Neither is fixed here — recording the measurement is what
+this file is for, and the fix is a task of its own. For whoever takes it: at the same hue and
+saturation, `#4776EC` reaches 3:1 and `#7699F1` reaches 4.5:1. See `docs/decisions.md`,
+2026-09-12.
+
+The brand mark's own two tones are the reason `--brand-plaque` exists: navy `#1B1456` is 1.15:1
+on `--bg` and 1.31:1 on `--card`, and the blue `#3165EB` is 2.85:1 and 2.49:1 — **both** under
+3:1. On `--brand-plaque` they are 15.05:1 and 4.60:1, and the plaque itself is 13.10:1 / 11.45:1
+against the two surfaces it sits on, so the tile has a defined edge without a border.
 
 `--line` on `--card` is 1.26:1, which is correct: a separator is not text and 3:1 does not
 apply to a decorative rule.
@@ -119,6 +129,7 @@ Reuse these before writing a new one.
 | Field | `.field` + `label` + `input`/`select` | real `<label htmlFor>`, never placeholder-only |
 | File field | `input[type=file]::file-selector-button` | styled natively, no fake JS button |
 | Breadcrumbs | `Breadcrumbs.tsx`, `.breadcrumbs` | hidden on `/projects`; trailing crumb is `aria-current="page"` |
+| Brand lockup | `.brand-lockup`, `.brand-plaque`, `.brand-mark` | one shape, two sizes — topbar (2.25rem tile) and auth `h1` (`--lg`, 2.5rem). Mark at 78% of its tile, `border-radius: 28%` so both sizes are the same shape. Never `--radius-pill`: the avatar is the pill. |
 | Account menu | `.user-menu*` | closed, open; outside-click and Escape close it |
 | Count tile | `.count--*` | three, always three |
 | Report block | `ReportView.tsx`, `.report`, `.disclosure`, `.coverage`, `.specs`, `.entities` | see `docs/ux/flows/review-and-report.md` |
