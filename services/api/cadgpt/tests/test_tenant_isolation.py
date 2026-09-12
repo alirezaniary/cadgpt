@@ -214,12 +214,23 @@ def test_tenant_viewset_lists_only_own_tenants(
 def test_the_rule_pack_catalogue_is_the_same_for_every_tenant(
     api: APIClient, rival_api: APIClient, rule_pack: RulePack
 ) -> None:
-    """The T-0030 exemption's behavioural half: two unrelated tenants, one catalogue."""
-    for client in (api, rival_api):
-        response = client.get("/api/v1/rule-packs/")
+    """The T-0030 exemption's behavioural half: two unrelated tenants, one catalogue.
+
+    Set equality, not each merely containing the pack: nothing can differ between the
+    two responses today, so this is not closing a hole, but it is the assertion that
+    would actually catch a future filter that varied the catalogue by tenant -- "both
+    contain X" stays true even if one of them also contained something the other did
+    not.
+    """
+    responses = [client.get("/api/v1/rule-packs/") for client in (api, rival_api)]
+    for response in responses:
         assert response.status_code == 200
-        uuids = {row["uuid"] for row in response.data["results"]}
-        assert str(rule_pack.uuid) in uuids
+
+    result_sets = [
+        {row["uuid"] for row in response.data["results"]} for response in responses
+    ]
+    assert str(rule_pack.uuid) in result_sets[0]
+    assert result_sets[0] == result_sets[1]
 
 
 @pytest.mark.django_db

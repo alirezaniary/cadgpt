@@ -1186,6 +1186,30 @@ this task's explicit scope ("does not change: ... `Media`"), and production is u
 (`DEBUG=False`, and `deploy/docker/nginx.conf` has no `/media/` location to fall through to).
 Real nonetheless, and worth a task of its own rather than being folded into this one's close.
 
+**T-0043 — the seeder must survive a race, and speak the application's error language. Done
+2026-09-12.** Found by the T-0030 review: idempotence across a *sequential* re-run was proven,
+but the check-and-create in `RulePackService.seed` was two unlocked reads, so two concurrent
+seeds (two replicas, a per-container deploy hook) could both pass and let the database's
+`unique_rule_pack_identity` constraint surface as an unhandled `IntegrityError` traceback out of
+a management command — and `FileField.pre_save` had already written the loser's bytes to storage
+before the INSERT it belonged to failed, orphaning a file nothing would ever collect. `seed` now
+wraps the check-and-create in `transaction.atomic()`, catches `IntegrityError`, re-fetches, and
+reports the pack the winner created as skipped — the same pattern `RuleSetService.create` already
+used. `RulePackManager.create_rule_pack` deletes the orphaned storage file itself, the only place
+still holding the name storage gave it, and translates Django's own `ValidationError` into the
+application's, matching the rule-set path. Also added: a test for the previously-correct-but-
+untested blank/whitespace `source_citation` refusal, and the tenant-catalogue isolation test
+tightened from "the pack is in both responses" to set equality.
+
+Not reviewer-gated (no invariant, diff fully read by the coordinator). Proven with genuine
+concurrency, not a mock: two real OS processes running the actual `seed()` call against a live
+`make up` Postgres, widened only by a driver-side sleep — no traceback, one row created, no
+orphan file, the loser reporting `created=False` pointing at the winner's uuid. A deterministic
+in-suite test drives the same collision (forces the pre-check and `full_clean`'s constraint
+validation to both miss, exactly as a real race's second transaction would) for the permanent
+regression gate. Mutation-proven: removing the `IntegrityError` handling reproduces the real
+unhandled traceback. 296 tests, 5 contracts kept.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -1236,7 +1260,8 @@ the first of them:
   2026-09-12.** See "What has landed" above.
 - ~~**T-0042** — the catalogue hands out a storage URL nothing authenticates.~~ **Done
   2026-09-12.** See "What has landed" above.
-- **T-0043** — the seeder must survive a race and speak the application's error language.
+- ~~**T-0043** — the seeder must survive a race and speak the application's error
+  language.~~ **Done 2026-09-12.** See "What has landed" above.
 - **T-0044** — seeding real packs: a manifest, and knowing when the catalogue diverges from disk.
 
 - **T-0045** — the catalogue picker must show every pack, and filter on the server.

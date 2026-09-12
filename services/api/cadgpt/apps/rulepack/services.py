@@ -128,18 +128,42 @@ class RulePackService(BaseService):
             )
             return existing, False
 
-        rule_pack = RulePack.objects.create_rule_pack(
-            name=name,
-            description=summary.description,
-            jurisdiction=jurisdiction,
-            region=region,
-            version=version,
-            source_file=ContentFile(ids_path.read_bytes(), name=ids_path.name),
-            source_citation=source_citation,
-            title=summary.title,
-            author=summary.author,
-            specification_count=summary.specification_count,
-        )
+        try:
+            with transaction.atomic():
+                rule_pack = RulePack.objects.create_rule_pack(
+                    name=name,
+                    description=summary.description,
+                    jurisdiction=jurisdiction,
+                    region=region,
+                    version=version,
+                    source_file=ContentFile(ids_path.read_bytes(), name=ids_path.name),
+                    source_citation=source_citation,
+                    title=summary.title,
+                    author=summary.author,
+                    specification_count=summary.specification_count,
+                )
+        except IntegrityError:
+            # The pre-check above and full_clean's own validate_unique are both
+            # unlocked reads: two concurrent seeds against the same empty catalogue can
+            # both pass them, and only `unique_rule_pack_identity` actually stops the
+            # duplicate. The losing process re-fetches and reports the pack the winner
+            # created as skipped, exactly as a sequential re-run would have -- a race is
+            # not a different outcome, only a different order of discovering it.
+            existing = RulePack.objects.matching(
+                jurisdiction=jurisdiction, region=region, version=version, name=name
+            ).first()
+            if existing is None:
+                raise
+            self.log.info(
+                "rule_pack_seed_lost_race",
+                rule_pack_id=str(existing.uuid),
+                name=name,
+                jurisdiction=jurisdiction,
+                region=region,
+                version=version,
+            )
+            return existing, False
+
         self.log.info(
             "rule_pack_seeded",
             rule_pack_id=str(rule_pack.uuid),

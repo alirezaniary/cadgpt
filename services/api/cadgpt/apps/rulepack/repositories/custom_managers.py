@@ -2,8 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import IntegrityError
 from django.db.models import Manager
+from django.utils.translation import gettext_lazy as _
 
+from cadgpt.apps.base.exceptions import ValidationError
 from cadgpt.apps.rulepack.repositories.querysets import RulePackQuerySet, RuleSetQuerySet
 
 if TYPE_CHECKING:
@@ -102,6 +106,23 @@ class RulePackManager(_RulePackBase):  # type: ignore[misc,valid-type]
             specification_count=specification_count,
         )
         rule_pack.source_file = source_file
-        rule_pack.full_clean(exclude=["source_file"])
-        rule_pack.save(using=self._db)
+        try:
+            rule_pack.full_clean(exclude=["source_file"])
+        except DjangoValidationError as exc:
+            raise ValidationError(
+                _("The submitted data is not valid."),
+                details=exc.message_dict if hasattr(exc, "message_dict") else {},
+            ) from exc
+
+        try:
+            rule_pack.save(using=self._db)
+        except IntegrityError:
+            # `FileField.pre_save` already wrote the bytes to storage as part of
+            # building the INSERT, before the constraint that just rejected it was even
+            # checked -- so the losing side of a race leaves an orphan file under
+            # rule-packs/<jurisdiction>/ unless it is cleaned up right here, the only
+            # place that still holds the name storage gave it. `save=False`: there is no
+            # row to save this failed instance back onto.
+            rule_pack.source_file.delete(save=False)
+            raise
         return cast("RulePack", rule_pack)
