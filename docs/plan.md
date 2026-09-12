@@ -1108,6 +1108,27 @@ is unreachable from any real engine output and a test exercises it anyway; the p
 dirty `.gitignore`/untracked `cadgpt-logo.svg` remain unrelated and were kept out of the
 commit.
 
+**T-0040 — `localize_report` must degrade, not 500. Done 2026-09-12.** Found by the T-0027
+review: `requirements.py` subscripted a stored document's shape (`comparison["operator"]`,
+`basis.get(...)` on a value assumed to be a dict) instead of probing it, so a report this
+engine did not write — a newer engine's document, a restored dump, a hand-edited row — could
+500 the whole run-detail response on `KeyError`/`TypeError`/`AttributeError` three lines above
+the fallback that already exists for exactly this case. Every read in `requirement_text` now
+probes rather than subscripts (`_as_list`, `isinstance` guards in `_recognised` and
+`_subject_name`), degrading any unreadable shape — `None`, a bare string, a list, a dict
+missing `"operator"`/`"value"`, `"comparisons"` stored as a dict — to the same `fallback` an
+unrecognised operator already used. The module docstring's claim of parity with
+`reasons.label_for` (total by construction) is now true rather than merely implied.
+
+Not reviewer-gated (touches no invariant directly, small diff fully read by the coordinator).
+Verified live in a Django shell against every malformed shape named in the task: no crash,
+each degrades to its fallback, and the well-formed case renders byte-identical to before.
+Mutation-proven — reverting the guard reproduces all four named crash types verbatim across
+six tests, restoring it returns 24/24 green. 292 tests, 5 contracts kept. NOT DONE, out of
+scope and noted: `presentation.py`'s `localize_report` itself is still unguarded against a
+malformed `report`/`spec`/`requirement` — only the `basis` shape `requirement_text` receives
+was in this task's stated scope.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -1152,7 +1173,8 @@ the first of them:
   **Done 2026-09-11.** See "What has landed" above.
 - ~~**T-0039** — the subject of a citation: structured in the engine, worded in the
   service.~~ **Done 2026-09-11.** See "What has landed" above.
-- **T-0040** — `localize_report` must degrade, not 500.
+- ~~**T-0040** — `localize_report` must degrade, not 500.~~ **Done 2026-09-12.** See "What
+  has landed" above.
 - **T-0041** — a verdict is reachable without the statement of what was checked.
 - **T-0042** — the catalogue hands out a storage URL nothing authenticates.
 - **T-0043** — the seeder must survive a race and speak the application's error language.

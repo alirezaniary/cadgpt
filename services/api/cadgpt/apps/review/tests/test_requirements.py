@@ -273,3 +273,90 @@ def test_a_document_stored_before_name_comparisons_existed_still_falls_back() ->
         requirement_text(basis, "the real ifctester sentence")
         == "the real ifctester sentence"
     )
+
+
+# T-0040: `requirement_text` reads a document it did not necessarily write -- a report
+# stored by a newer engine, a restored dump, a hand-edited row -- so it must return a
+# string for *any* shape that document happens to have, never raise. Each test below
+# reproduces one of the crashes the T-0027 review found live in this module (`KeyError`,
+# `TypeError`, `AttributeError`) and asserts the safe degrade: `fallback`, exactly as an
+# unrecognised operator or an unsupported facet type already degrade.
+
+
+def test_a_comparison_missing_operator_falls_back_instead_of_raising_key_error() -> None:
+    basis = {
+        "facet_type": "attribute",
+        "name": "OverallWidth",
+        "cardinality": "required",
+        "comparisons": [{"value": "900"}],
+    }
+    assert requirement_text(basis, "fallback") == "fallback"
+
+
+def test_a_comparison_missing_value_falls_back_instead_of_raising_key_error() -> None:
+    basis = {
+        "facet_type": "attribute",
+        "name": "OverallWidth",
+        "cardinality": "required",
+        "comparisons": [{"operator": "minInclusive"}],
+    }
+    assert requirement_text(basis, "fallback") == "fallback"
+
+
+def test_comparisons_stored_as_a_dict_not_a_list_does_not_raise_type_error() -> None:
+    """Before this fix, iterating a dict yields its keys as bare strings, and
+    `comparison["operator"]` on one of those raised `TypeError: string indices must be
+    integers`. There genuinely is a name and a cardinality here, so the safe reading of a
+    malformed `"comparisons"` is the same one an absent or `None` `"comparisons"` already
+    gets: no bound stated.
+    """
+    basis = {
+        "facet_type": "attribute",
+        "name": "OverallWidth",
+        "cardinality": "required",
+        "comparisons": {"operator": "minInclusive", "value": "900"},
+    }
+    assert requirement_text(basis, "fallback") == "The OverallWidth shall be provided."
+
+
+def test_basis_stored_as_a_string_falls_back_instead_of_raising_attribute_error() -> None:
+    """Before this fix, `not basis` is `False` for a non-empty string, so execution fell
+    through to `basis.get(...)`, which a `str` does not have.
+    """
+    assert requirement_text("not a mapping", "fallback") == "fallback"  # type: ignore[arg-type]
+
+
+def test_basis_stored_as_a_list_falls_back_instead_of_raising() -> None:
+    assert requirement_text([{"facet_type": "attribute"}], "fallback") == "fallback"  # type: ignore[arg-type]
+
+
+def test_basis_none_still_falls_back_as_before() -> None:
+    """Not a new case -- `REPORT_SCHEMA_VERSION` 1 already stores no `basis` at all -- but
+    asserted here beside its siblings so this file states the whole property in one place:
+    `requirement_text` returns a string for `None`, a string, a list, and a dict of any
+    shape alike.
+    """
+    assert requirement_text(None, "fallback") == "fallback"
+
+
+def test_a_basis_whose_comparisons_is_none_still_falls_back_to_no_bound_stated() -> None:
+    basis: dict[str, Any] = {
+        "facet_type": "attribute",
+        "name": "OverallWidth",
+        "cardinality": "required",
+        "comparisons": None,
+    }
+    assert requirement_text(basis, "fallback") == "The OverallWidth shall be provided."
+
+
+def test_name_comparisons_stored_as_a_dict_not_a_list_does_not_raise() -> None:
+    basis: dict[str, Any] = {
+        "facet_type": "attribute",
+        "name": None,
+        "cardinality": "required",
+        "comparisons": [],
+        "name_comparisons": {"operator": "literal", "value": "OverallWidth"},
+    }
+    assert requirement_text(basis, "the real ifctester sentence") == (
+        "the real ifctester sentence"
+    )

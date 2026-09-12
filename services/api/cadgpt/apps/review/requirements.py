@@ -19,6 +19,17 @@ identifier, visibly unresolved. An unrecognised comparison operator degrading to
 plausible-looking sentence instead (e.g. treating `totalDigits`'s `4` as if it were the
 required value) would state the wrong rule with the same confidence as a right one, which
 is worse than saying nothing: falling back to `description` is the only safe degrade here.
+
+`requirement_text` is total, the same property `reasons.label_for` has over `ReasonCode`:
+it returns a string for *any* `basis`, not only a well-formed one. `basis` is read from a
+stored document `requirement_text` did not write -- a report from a newer engine, a
+restored dump, a hand-edited row -- so every read below probes a shape rather than
+subscripting one: `basis` itself may be `None`, a bare string, a list, or anything else
+that is not a mapping; `"comparisons"` or `"name_comparisons"` may be missing, `None`, or
+some other shape than a list; and any one comparison in either may be missing `"operator"`
+or `"value"`, or not be a mapping at all. None of that raises -- each unreadable shape
+degrades to the same `fallback` an unrecognised operator already falls back to (T-0040).
+`tests/test_requirements.py` exercises every one of these shapes directly.
 """
 
 from __future__ import annotations
@@ -70,21 +81,39 @@ _JOINER = _(" and ")
 _ENUMERATION_JOINER = _(" or ")
 
 
-def _recognised(comparisons: list[dict[str, Any]]) -> bool:
-    """Whether every comparison's operator is one `_COMPARISON_TEMPLATES` can render.
+def _as_list(value: Any) -> list[Any]:
+    """`value` if it actually is a list, else `[]`.
 
-    A single comparison this table does not recognise makes the whole bound unrenderable:
-    partially stating a multi-part restriction (e.g. a range's minimum but not its
-    `totalDigits` digit limit) would be as misleading as stating the wrong one.
+    `"comparisons"` and `"name_comparisons"` are each supposed to be a list, but this reads
+    a document `requirement_text` did not necessarily write, so the field might be
+    anything: absent (already `None` before either field existed, handled the same way),
+    a scalar, a dict standing in for what should have been a list of them. Treating
+    anything other than an actual list as "nothing stated" -- the same degrade `None`
+    already received -- keeps every read below this point an iteration over a list, never
+    a subscript into whatever shape actually showed up.
+    """
+    return value if isinstance(value, list) else []
+
+
+def _recognised(comparisons: list[Any]) -> bool:
+    """Whether every entry in `comparisons` is a mapping stating both an `"operator"` this
+    table can render and a `"value"` to render it with.
+
+    A single comparison this table cannot fully read -- an unrecognised operator, a
+    missing `"value"`, or an entry that is not even a mapping (a document this table did
+    not write may hold anything there) -- makes the whole bound unrenderable: partially
+    stating a multi-part restriction (e.g. a range's minimum but not its `totalDigits`
+    digit limit) would be as misleading as stating the wrong one.
     """
     return all(
-        comparison["operator"] in _COMPARISON_TEMPLATES for comparison in comparisons
+        isinstance(comparison, dict)
+        and comparison.get("operator") in _COMPARISON_TEMPLATES
+        and "value" in comparison
+        for comparison in comparisons
     )
 
 
-def _subject_name(
-    comparisons: list[dict[str, Any]], value_comparisons: list[dict[str, Any]]
-) -> str | None:
+def _subject_name(comparisons: list[Any], value_comparisons: list[Any]) -> str | None:
     """The attribute or property *name* itself, when the IDS restricted which name applies
     rather than stating one literally (`basis.name_comparisons`, T-0039) -- `None` when
     there is nothing to state.
@@ -115,18 +144,24 @@ def _subject_name(
     """
     if not comparisons:
         return None
-    if any(c["operator"] not in ("literal", "enumeration") for c in comparisons):
+    if any(
+        not isinstance(c, dict)
+        or c.get("operator") not in ("literal", "enumeration")
+        or "value" not in c
+        for c in comparisons
+    ):
         return None
     if len(comparisons) > 1 and value_comparisons:
         return None
     return str(_ENUMERATION_JOINER).join(c["value"] for c in comparisons)
 
 
-def _bound(comparisons: list[dict[str, Any]]) -> str | None:
+def _bound(comparisons: list[Any]) -> str | None:
     """The bound as a sentence fragment, or `None` when there is no comparison to state.
 
-    Callers check `_recognised(comparisons)` first -- every operator here is assumed to be a
-    key in `_COMPARISON_TEMPLATES`. `enumeration` members are grouped and joined with
+    Callers check `_recognised(comparisons)` first -- every entry here is assumed to be a
+    mapping whose operator is a key in `_COMPARISON_TEMPLATES` and which carries a
+    `"value"`. `enumeration` members are grouped and joined with
     `_ENUMERATION_JOINER` (a disjunction); every other comparison joins the rest with
     `_JOINER` (a conjunction) -- see the two joiners' own docstrings for why that split is
     keyed on the operator rather than on the count of comparisons.
@@ -161,12 +196,23 @@ def requirement_text(basis: dict[str, Any] | None, fallback: str) -> str:
     docstring). All three degrade the same way: to the sentence the engine already wrote,
     never to a confident sentence for the wrong rule.
 
+    The type annotation states the shape `basis` is *supposed* to have; it is read here as
+    though it might not, because the document underneath it may not be one this table wrote
+    (T-0040): `basis` itself may be a bare string or a list rather than a mapping, and
+    `"comparisons"` / `"name_comparisons"` may be missing, `None`, or some other shape than
+    a list, down to an individual comparison missing `"operator"` or `"value"`. Every one of
+    those degrades to `fallback` the same way an unsupported facet type or an unrecognised
+    operator already does -- never a `KeyError`, `TypeError`, or `AttributeError` reaching
+    the caller. `isinstance(basis, dict)` below is that guard, not a redundant check against
+    the annotation: the annotation is the contract, the `isinstance` is what holds when a
+    caller's document violates it.
+
     `basis["name"]` is `None` both for a facet type this table names nothing for *and*
     (T-0039) for an attribute whose own name is itself a restriction rather than a literal
     string (`<xs:restriction>` under `<ids:name>`) -- `_subject_name` on
     `basis["name_comparisons"]` is what tells those two apart: still nothing to say for the
     first, "OverallWidth or OverallHeight" for the second. A document stored before
-    `name_comparisons` existed has no such key, and `.get(...) or []` degrades it to the
+    `name_comparisons` existed has no such key, and `_as_list(...)` degrades it to the
     same "nothing to say" as a facet type with no name at all.
 
     `comparisons` (the facet's *value* bound) is read before `name` and passed into
@@ -175,12 +221,12 @@ def requirement_text(basis: dict[str, Any] | None, fallback: str) -> str:
     `ifctester` evaluates a restricted name conjunctively the moment a bound is also
     present -- see `_subject_name`'s own docstring. The single-member case is unaffected.
     """
-    if not basis or basis.get("facet_type") != "attribute":
+    if not isinstance(basis, dict) or basis.get("facet_type") != "attribute":
         return fallback
 
-    comparisons = basis.get("comparisons") or []
+    comparisons = _as_list(basis.get("comparisons"))
     name = basis.get("name") or _subject_name(
-        basis.get("name_comparisons") or [], comparisons
+        _as_list(basis.get("name_comparisons")), comparisons
     )
     if not name:
         return fallback
