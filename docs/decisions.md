@@ -1292,3 +1292,42 @@ serializer the way `RuleSetSerializer.source_file` does over `Media`.
 "download the source IDS" feature, for instance. That would need the second option this task
 considered and rejected: a read-only, authenticated download route, the way `Media` and a
 generated report already have one.
+
+---
+
+## 2026-09-12 — Postgres-only regressions get their own marked suite, not a slower `make verify`
+
+**Problem.** T-0031's real defect — `CheckRunExecutor._claim`'s `select_for_update()` locking
+across `review__rule_set`, which became a LEFT OUTER JOIN once `Review.rule_set` went nullable
+— was invisible to `make verify` because sqlite, the test backend, does not enforce "FOR
+UPDATE cannot be applied to the nullable side of an outer join"; only a real Postgres does.
+The fix (`select_for_update(of=("self",))`) was correct and cheap, but nothing in the suite
+guarded the class of defect, and the only proof it worked was a manual `make up` run pasted
+into a task file — not reproducible, not re-checked on the next change.
+
+**Decision.** Postgres-enforced behaviour gets its own `pytest.mark.postgres` marker and its
+own `make test-postgres` target, run against the real Postgres `make up` already starts
+(`cadgpt.config.settings.test_postgres`, identical to `cadgpt.config.settings.test` except
+`DATABASES` points at the real server instead of sqlite in memory). `make verify`'s `test`
+target excludes it (`pytest -m "not postgres"`) and stays exactly as fast and hermetic as
+before — confirmed at 1m18s wall clock with the new test correctly deselected (`306 passed, 1
+deselected`). This is the same shape `make e2e` already established: a gate that needs real
+infrastructure is kept separate and opt-in, not folded into the gate every change must pass.
+Rejected: a CI-only backend switch (would still leave local `make verify` blind to the same
+class of defect, which is exactly how T-0031 shipped), and moving `make verify` to Postgres
+wholesale (loses the sqlite-in-memory speed and hermeticity the gate exists for, to guard
+against a category of bug that is genuinely rare — this is the first one in the project's
+history).
+
+`test_claim_locking_postgres.py` is the guard for the specific defect: it constructs a check
+run through `ReviewService.request_check` (the real path, not a bare `CheckRun.objects.create`)
+against `catalogue_review`, whose `rule_set_id` is genuinely `None`, and calls `_claim` on it.
+Proven both ways against the real Postgres: reverting `of=("self",)` back to a bare
+`select_for_update()` reproduces T-0031's exact failure (`django.db.utils.NotSupportedError:
+FOR UPDATE cannot be applied to the nullable side of an outer join`), and restoring the fix
+passes again. See T-0050's Evidence for both transcripts.
+
+**Reopens if:** the Postgres-only suite grows large enough that its own wall-clock cost starts
+mattering for how often it actually gets run (at that point, CI running it on every push
+rather than leaving it to a developer's discretion becomes the live question) — or if a second
+Postgres-specific defect surfaces that this marker/target split does not comfortably cover.

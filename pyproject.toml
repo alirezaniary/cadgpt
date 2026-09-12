@@ -119,6 +119,9 @@ testpaths = ["packages/engine/tests", "services/api/cadgpt"]
 addopts = "-q --strict-markers"
 markers = [
     "integration: enters at a real entry point over real files and exits at a real output",
+    """postgres: exercises database behaviour Postgres enforces and sqlite does not; run \
+with `make test-postgres` (--ds=cadgpt.config.settings.test_postgres) against the compose \
+stack's real Postgres, never collected by the hermetic `make verify`""",
 ]
 filterwarnings = ["error::DeprecationWarning:cadgpt.*"]
 

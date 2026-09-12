@@ -6,8 +6,8 @@ API     := services/api
 WEB     := services/web
 COMPOSE := docker compose -f deploy/compose.yaml
 
-.PHONY: help verify lint format types contracts test test-fast web-verify install \
-        migrations migrate run worker shell schema messages compile-messages \
+.PHONY: help verify lint format types contracts test test-fast test-postgres web-verify \
+        install migrations migrate run worker shell schema messages compile-messages \
         up down logs reset e2e
 
 help:  ## Show this help
@@ -32,11 +32,14 @@ types:  ## mypy --strict over the engine and the service
 contracts:  ## The import contracts: I1, engine independence, app layering
 	$(UV) lint-imports --no-cache
 
-test: compile-messages  ## The whole suite, engine and service
-	$(UV) pytest
+test: compile-messages  ## The whole suite, engine and service (sqlite; `postgres`-marked tests excluded, see test-postgres)
+	$(UV) pytest -m "not postgres"
 
 test-fast: compile-messages  ## Skip the tests that parse real IFC files
-	$(UV) pytest -m "not integration"
+	$(UV) pytest -m "not integration and not postgres"
+
+test-postgres: compile-messages  ## Database behaviour sqlite does not enforce -- needs `make up`'s real Postgres
+	$(UV) pytest -m postgres --ds=cadgpt.config.settings.test_postgres
 
 web-verify:  ## Frontend type check, lint and production build
 	cd $(WEB) && pnpm install --frozen-lockfile && pnpm run verify

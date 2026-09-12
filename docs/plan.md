@@ -1330,6 +1330,28 @@ tests it; and the automated two-pack test that exists alongside the new one is o
 PASS rather than two packs that both produce findings — the task's own "how to prove it ran"
 clause was satisfied by the live-stack run instead, which genuinely had both.
 
+**T-0050 — the suite cannot catch the class of defect that only Postgres enforces. Done
+2026-09-12.** Found by, and demonstrated by, T-0031 itself: making `Review.rule_set` nullable
+turned `_claim`'s `select_for_update()` over `review__rule_set` into a lock across a LEFT OUTER
+JOIN, which sqlite (the whole suite's backend) never enforces and Postgres refuses outright —
+the fifth defect in this repository found by running the real stack rather than by its suite,
+and the only proof the one-line fix (`of=("self",)`) worked was a manual `docker compose` run
+pasted into a task file. Closed with the same shape `make e2e` already established: a
+`postgres`-marked test suite, excluded from the hermetic `make verify` (`-m "not postgres"`) and
+run explicitly against the compose stack's real Postgres by a new `make test-postgres` target —
+not a CI-only backend switch, and not moving `make verify` to Postgres wholesale, which would
+have traded away the fast, hermetic gate this repository depends on for every other change.
+Decision recorded in `docs/decisions.md`.
+
+Not reviewer-gated (no invariant, an infrastructure/process decision the task itself framed and
+delegated). Mutation-proven against a real Postgres, not narrated: reverting `of=("self",)` back
+to a bare `select_for_update()` and re-running `make test-postgres` reproduces the exact
+`django.db.utils.NotSupportedError: FOR UPDATE cannot be applied to the nullable side of an
+outer join` T-0031 hit in production, the assertions never reached; restoring the fix passes
+again. `make verify` stays at 1m18s wall clock, unaffected — the new suite adds nothing to it
+because it never runs there; `make test-postgres` itself costs under 15s against an
+already-running Postgres. 306 tests deselected correctly under the Postgres backend, 1 passed.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -1398,7 +1420,8 @@ the first of them:
   language.~~ **Done 2026-09-12.** See "What has landed" above.
 - ~~**T-0049** — every finding carries the pack identity and version that produced it.~~
   **Done 2026-09-12.** See "What has landed" above.
-- **T-0050** — the suite cannot catch the class of defect that only Postgres enforces.
+- ~~**T-0050** — the suite cannot catch the class of defect that only Postgres enforces.~~
+  **Done 2026-09-12.** See "What has landed" above.
 
 - ~~**T-0051** — a report that was never generated must be recoverable.~~ **Done 2026-09-03.**
   See "What has landed" above.
