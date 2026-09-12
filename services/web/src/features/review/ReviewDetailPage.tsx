@@ -252,7 +252,18 @@ export function ReviewDetailPage() {
                   onClick={() => setOpenRun(candidate.uuid)}
                 >
                   <td>{t(`status.${candidate.status}`)}</td>
-                  <td>{candidate.outcome ? <StatusPill status={candidate.outcome} /> : null}</td>
+                  <td>
+                    {candidate.outcome ? (
+                      <div className="table__outcome">
+                        <StatusPill status={candidate.outcome} />
+                        {/* T-0041: this row names no model file of its own -- the review's
+                            model is stated once, above, in the model_file line at the top
+                            of this page -- so the pill still needs its own tie back to the
+                            model rather than to whatever the reader last had on screen. */}
+                        <span className="table__scope">{t("review.outcomeScope")}</span>
+                      </div>
+                    ) : null}
+                  </td>
                   <td className="muted">{formatDate(candidate.created_at)}</td>
                 </tr>
               ))}

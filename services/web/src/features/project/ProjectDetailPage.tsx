@@ -2,6 +2,15 @@
  * Inside one project: its own name as a heading, and the reviews that live under it --
  * Django admin's detail-view shape, one level in from `ProjectsListPage`. Reviews come
  * from `useReviews(tenant, projectUuid)`, T-0073's `ReviewFilterSet` `project` filter.
+ *
+ * T-0041: the outcome pill in each row is a verdict, and prd.md 5.7 requires every verdict
+ * to travel with what it is about -- this is the surface a reader most plausibly
+ * screenshots into an email before opening the report underneath it, so `review.outcomeScope`
+ * sits directly beside the pill rather than only in a column header a cropped screenshot
+ * could drop. It is UI chrome, not report prose: unlike the report's own I7 disclosure
+ * (`disclosure.py`, T-0029), this is never stored, never rendered outside a browser that
+ * already has react-i18next loaded, and it does not carry the filename -- the adjacent
+ * `modelFile` cell already names the artifact, so this only ties the outcome to it.
  */
 
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
@@ -76,7 +85,14 @@ export function ProjectDetailPage() {
                     </td>
                     <td className="ltr muted">{review.model_file.original_name}</td>
                     <td>{latest ? t(`status.${latest.status}`) : t("review.neverRun")}</td>
-                    <td>{latest?.outcome ? <StatusPill status={latest.outcome} /> : null}</td>
+                    <td>
+                      {latest?.outcome ? (
+                        <div className="table__outcome">
+                          <StatusPill status={latest.outcome} />
+                          <span className="table__scope">{t("review.outcomeScope")}</span>
+                        </div>
+                      ) : null}
+                    </td>
                     <td className="muted">{latest ? formatDate(latest.created_at) : ""}</td>
                   </tr>
                 );

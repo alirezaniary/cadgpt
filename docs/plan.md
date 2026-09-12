@@ -1129,6 +1129,33 @@ scope and noted: `presentation.py`'s `localize_report` itself is still unguarded
 malformed `report`/`spec`/`requirement` — only the `basis` shape `requirement_text` receives
 was in this task's stated scope.
 
+**T-0041 — a verdict is reachable without the statement of what was checked. Done
+2026-09-12.** Found by the T-0029 review, one level up: the report carries the I7 disclosure,
+but the reviews list renders a status pill and three counts before anyone opens a run, and that
+row is the surface most plausibly screenshotted into an email. This task's own scope had gone
+stale — it named `ReviewsPage.tsx`, which T-0074 replaced with
+`features/project/ProjectDetailPage.tsx` and `features/review/ReviewDetailPage.tsx` — corrected
+by the coordinator before dispatch, the T-0029/T-0036 precedent for a drifted task file. A new
+`review.outcomeScope` string ("Describes the model, not the drawings" /
+"دربارهٔ مدل است، نه نقشه‌ها") now renders beside every outcome pill on both surfaces, for all
+three outcome values — a condensation of the server's own disclosure sentence, kept as UI chrome
+in the frontend catalogues (never stored, never composed server-side) rather than duplicated as
+report prose.
+
+**Reviewer-gated on I7, and the review found the shipped behaviour correct but the proof
+protecting it incomplete.** Both fix-now: the second surface (`ReviewDetailPage`'s run-history
+table) had zero regression coverage — deleting its scope span left the whole Storybook suite
+green — and the one assertion that did exist resolved `review.outcomeScope` through a second
+`i18n.t()` call, so deleting the key from *both* catalogues left every row silently rendering the
+raw key name while the test still passed, i18next's `fallbackLng` making the check pass against
+its own blind spot. Both fixed same-task, same builder: a `play` function added to
+`ReviewDetailPage.stories.tsx`'s `Checked` story, and both assertions rewritten against the
+literal Persian string rather than a second catalogue lookup. Both mutation-proven by the
+builder and independently by the reviewer beforehand. `make verify` clean (292 pytest, 35
+Storybook tests, 5/5 contracts); `make e2e` 12/13, the one failure a pre-existing catalogue-
+picker locator ambiguity (two similarly-named seeded packs) unrelated to any file this task
+touched.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -1175,7 +1202,8 @@ the first of them:
   service.~~ **Done 2026-09-11.** See "What has landed" above.
 - ~~**T-0040** — `localize_report` must degrade, not 500.~~ **Done 2026-09-12.** See "What
   has landed" above.
-- **T-0041** — a verdict is reachable without the statement of what was checked.
+- ~~**T-0041** — a verdict is reachable without the statement of what was checked.~~ **Done
+  2026-09-12.** See "What has landed" above.
 - **T-0042** — the catalogue hands out a storage URL nothing authenticates.
 - **T-0043** — the seeder must survive a race and speak the application's error language.
 - **T-0044** — seeding real packs: a manifest, and knowing when the catalogue diverges from disk.

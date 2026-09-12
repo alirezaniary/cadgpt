@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, waitFor, within } from "storybook/test";
 
+import i18n from "@/i18n";
+import { formatDate } from "@/lib/dates";
 import * as fx from "@/mocks/fixtures";
 import {
   failing,
@@ -53,10 +56,42 @@ export const NeverChecked: Story = {
  *
  * The filter offers FAIL and INDETERMINATE only. Turn one off and the banner states how
  * many rows are hidden rather than resolved, and the three counts do not move.
+ *
+ * T-0041: the run-history table above the report repeats the same pill-without-scope gap
+ * the reviews changelist had -- a row here is `candidate.outcome` and three counts, with no
+ * statement of what the outcome is about, and this table names its model once, above,
+ * not per row. `play` proves the fix the same way `ProjectDetailPage.stories.tsx`'s own
+ * `play` does: locate one real row (the succeeded run's, by its formatted date, which is
+ * unique in this table) and assert the pill and the scope statement both live inside it,
+ * not merely somewhere on the page.
  */
 export const Checked: Story = {
   parameters: { msw: [...session(), ...scenario()] },
   render: at(fx.checkedReview.uuid),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const dateCell = await waitFor(() =>
+      canvas.getByText(formatDate(fx.succeededRun.created_at)),
+    );
+    const row = dateCell.closest("tr");
+    if (!row) throw new Error("run-history row not found for the succeeded run");
+    const rowScope = within(row);
+
+    // The verdict itself: FAIL, per `fx.succeededRun`'s fixture outcome.
+    await expect(rowScope.getByText(i18n.t("status.FAIL"))).toBeInTheDocument();
+
+    // The scope statement travels in the *same row* as the pill. Asserted against the
+    // literal Persian string, not a second `i18n.t("review.outcomeScope")` lookup: the
+    // component and a second catalogue read resolve through the very same JSON, so if the
+    // key were deleted from both `en.json` and `fa.json`, i18next's `fallbackLng` would
+    // make both sides render the bare key name and this assertion would still pass --
+    // catching nothing. The literal string only passes while the catalogue actually says
+    // this.
+    await expect(
+      rowScope.getByText("دربارهٔ مدل است، نه نقشه‌ها"),
+    ).toBeInTheDocument();
+  },
 };
 
 /** A check in flight. The button reads "Checking…" and is disabled, and both polls are

@@ -518,6 +518,12 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
   border-radius: 50%;
   background: currentColor;
 }
+/* T-0041: the outcome pill never appears without a short statement of what it is about,
+   so a screenshot of the row alone still carries the scope -- not only the column header,
+   which a cropped screenshot can drop. */
+.table__outcome { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+.table__scope { font-size: var(--text-xs); color: var(--muted); }
+
 .pill--pass { color: var(--pass); background: var(--pass-bg); }
 .pill--fail { color: var(--fail); background: var(--fail-bg); }
 .pill--indeterminate { color: var(--indeterminate); background: var(--indeterminate-bg); }

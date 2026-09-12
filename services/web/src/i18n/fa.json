@@ -39,6 +39,7 @@
     "modelFile": "پروندهٔ مدل",
     "statusColumn": "وضعیت",
     "outcomeColumn": "نتیجه",
+    "outcomeScope": "دربارهٔ مدل است، نه نقشه‌ها",
     "latestRun": "آخرین اجرا",
     "create": "ایجاد بررسی",
     "check": "اجرای بررسی",

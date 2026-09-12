@@ -39,6 +39,7 @@
     "modelFile": "Model file",
     "statusColumn": "Status",
     "outcomeColumn": "Outcome",
+    "outcomeScope": "Describes the model, not the drawings",
     "latestRun": "Latest run",
     "create": "Create review",
     "check": "Run check",
