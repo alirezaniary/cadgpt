@@ -131,11 +131,13 @@ class CheckRunViewSet(
         `get_object()` narrows through `get_queryset()` above -- `for_tenant(self.tenant)`
         composed with this review's uuid -- exactly like `retrieve`, so another tenant's
         run 404s rather than handing out a bare storage URL the way `RulePackSerializer.
-        source_file` does today (`docs/tasks/T-0042-the-catalogue-hands-out-a-storage-url.
-        md`, queued rather than fixed there because the catalogue is deliberately global;
-        a generated report is tenant data, and this route is what keeps it authenticated).
-        Not routed through `BaseViewSet.respond()`: that wraps a serializer's JSON body,
-        and a file has none to wrap.
+        source_file` used to (`docs/tasks/T-0042-the-catalogue-hands-out-a-storage-url.
+        md` closed that by dropping the field outright -- the catalogue is global and
+        nothing consumes its bytes over HTTP, so there was nothing to route through an
+        authenticated download). A generated report is tenant data, unlike a rule pack,
+        and this route is what keeps it authenticated. Not routed through
+        `BaseViewSet.respond()`: that wraps a serializer's JSON body, and a file has none
+        to wrap.
         """
         run = self.get_object()
         if run.report_file_id is None:

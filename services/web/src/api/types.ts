@@ -72,7 +72,9 @@ export interface Project {
 
 /** A shipped pack from the catalogue (T-0030) -- belongs to no tenant, every tenant reads
  * the same rows. Selected at check-request time rather than at review creation; see
- * `RulePackSelectionEntry`. */
+ * `RulePackSelectionEntry`. Deliberately has no `source_file` (T-0042): the server no
+ * longer serialises it -- nothing here ever fetched a pack's IDS bytes, so the field was
+ * a raw storage URL with no consumer, not a download route worth authenticating. */
 export interface RulePack {
   uuid: string;
   name: string;
@@ -84,7 +86,6 @@ export interface RulePack {
   author: string;
   specification_count: number;
   source_citation: string;
-  source_file: string;
   created_at: string;
 }
 

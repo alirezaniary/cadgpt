@@ -15,6 +15,14 @@ from cadgpt.apps.rulepack.services import RuleSetService
 class RulePackSerializer(serializers.ModelSerializer[RulePack]):
     """Read-only: the catalogue is written by `manage.py seed_rule_packs`, never by a
     request. See `RulePackViewSet`.
+
+    Deliberately omits `source_file` (T-0042): it is a `FileField`, and DRF serialises a
+    `FileField` to its storage URL. `MediaSerializer` already refuses to hand out a raw
+    file URL for the same reason; nothing in this codebase consumes a rule pack's IDS
+    bytes through the catalogue API -- a selected pack's IDS is read from disk by the
+    check task itself (`cadgpt.apps.review.services`), never fetched over HTTP -- so
+    there is no authenticated download to route this through either. A pack is
+    identified by its metadata alone.
     """
 
     class Meta:
@@ -30,7 +38,6 @@ class RulePackSerializer(serializers.ModelSerializer[RulePack]):
             "author",
             "specification_count",
             "source_citation",
-            "source_file",
             "created_at",
         )
         read_only_fields = fields

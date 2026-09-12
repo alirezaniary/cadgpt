@@ -1264,3 +1264,31 @@ at the same hue and saturation, `#4776EC` reaches 3:1 on `--card` and `#7699F1` 
 
 **Reopens if:** anyone proposes changing `--accent`. It is not blocked, it is unowned — this
 entry exists so the next person does not rediscover the measurement from scratch.
+
+---
+
+## 2026-09-12 — A rule pack is identified by metadata alone; no download route
+
+**Problem.** `RulePackSerializer.source_file` (T-0042) serialised a `FileField` straight to
+its storage URL — a link nothing authenticates. The catalogue is global by design, so this
+was never a tenancy breach, but it was the first place this codebase serialised a `FileField`
+to a URL at all; `MediaSerializer` had deliberately never done that for `Media.file`.
+
+**Decision.** Drop the field rather than route it through an authenticated download.
+Confirmed before choosing: nothing in `services/web/src` renders, links to, or fetches
+`source_file` (`services/web/src/api/types.ts` typed it as a bare `string` and it was read
+nowhere), and nothing server-side fetches a rule pack's IDS bytes over HTTP either — a
+selected pack's IDS is read straight off disk by the check task itself
+(`cadgpt.apps.rulepack.services._local_path` / `RulePack.source_file.chunks()`). With no
+consumer of the bytes through the API, an authenticated download route would exist to serve
+no one; the field is simply gone from `RulePackSerializer.Meta.fields`, and a pack is
+identified by its metadata (name, jurisdiction, version, title, author, …) alone. Guarded
+against recurrence by a structural test (`cadgpt/tests/test_serializer_file_fields.py`) that
+walks every `ModelSerializer` in the project and fails if any of them names a
+`FileField`/`ImageField` in `Meta.fields` without declaring it explicitly as a nested
+serializer the way `RuleSetSerializer.source_file` does over `Media`.
+
+**Reopens if:** something starts needing a rule pack's IDS bytes over HTTP — a client-side
+"download the source IDS" feature, for instance. That would need the second option this task
+considered and rejected: a read-only, authenticated download route, the way `Media` and a
+generated report already have one.

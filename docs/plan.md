@@ -1156,6 +1156,36 @@ Storybook tests, 5/5 contracts); `make e2e` 12/13, the one failure a pre-existin
 picker locator ambiguity (two similarly-named seeded packs) unrelated to any file this task
 touched.
 
+**T-0042 — the catalogue hands out a storage URL nothing authenticates. Done 2026-09-12.**
+Found by the T-0030 review: `RulePackSerializer` serialised `source_file`, a bare `FileField`,
+straight to its storage URL — the first "FileField to URL" in the codebase, against
+`MediaSerializer`'s deliberate omission of `Media.file` for exactly that reason, and a lie in
+production where nginx has no `/media/` location at all. Not a tenancy leak today (catalogue
+content is global, published rule bytes), reviewer-gated on tenancy by precedent rather than by
+breach. The coordinator confirmed before dispatch that nothing in `services/web` consumes the
+field — a selected pack's IDS is read off disk server-side by the check task itself, never
+fetched over HTTP — so the field was dropped rather than routed through an authenticated
+download the task's own guidance would only have preferred if something needed it.
+
+**Reviewer-gated, and the review found the fix correct but its own proof empty.** Re-adding
+`source_file` to `Meta.fields` at runtime and re-running the whole suite still gave `292
+passed` — identical to baseline, because no test named the change at all. Since the task's
+whole point is precedent, not one instance, the fix-now round added a structural test in
+`test_tenant_isolation.py`'s own style: walk every loaded `ModelSerializer`, fail if any names
+a model `FileField`/`ImageField` in `Meta.fields` without declaring it explicitly (the escape
+hatch `RuleSetSerializer.source_file → MediaSerializer` already uses on purpose). Mutation-
+proven — re-adding the field flips it from 1 passed to 1 failed, naming the offending
+serializer. Two stale present-tense docstrings elsewhere claiming the defect still existed were
+corrected, and the decision (drop, don't route) is now in `docs/decisions.md`. 293 tests, 5
+contracts kept.
+
+**Observation, not acted on:** the review also found that `/media/...` under `DEBUG=True`
+serves any tenant's uploaded model or generated report with no `Authorization` header at all —
+genuinely readable across tenants in this dev configuration. Confirmed pre-existing and outside
+this task's explicit scope ("does not change: ... `Media`"), and production is unaffected
+(`DEBUG=False`, and `deploy/docker/nginx.conf` has no `/media/` location to fall through to).
+Real nonetheless, and worth a task of its own rather than being folded into this one's close.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -1204,7 +1234,8 @@ the first of them:
   has landed" above.
 - ~~**T-0041** — a verdict is reachable without the statement of what was checked.~~ **Done
   2026-09-12.** See "What has landed" above.
-- **T-0042** — the catalogue hands out a storage URL nothing authenticates.
+- ~~**T-0042** — the catalogue hands out a storage URL nothing authenticates.~~ **Done
+  2026-09-12.** See "What has landed" above.
 - **T-0043** — the seeder must survive a race and speak the application's error language.
 - **T-0044** — seeding real packs: a manifest, and knowing when the catalogue diverges from disk.
 

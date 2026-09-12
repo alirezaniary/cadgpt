@@ -135,7 +135,6 @@ export const rulePacks: RulePack[] = [
     author: "وزارت راه و شهرسازی",
     specification_count: 18,
     source_citation: "مقررات ملی ساختمان ایران، مبحث چهارم، ویرایش ۱۳۹۹",
-    source_file: "/api/v1/rule-packs/aaaa1111-0000-4000-8000-000000000001/file/",
     created_at: "2026-05-02T07:00:00Z",
   },
   {
@@ -149,7 +148,6 @@ export const rulePacks: RulePack[] = [
     author: "وزارت راه و شهرسازی",
     specification_count: 24,
     source_citation: "مقررات ملی ساختمان ایران، مبحث سوم، ویرایش ۱۳۹۵",
-    source_file: "/api/v1/rule-packs/aaaa1111-0000-4000-8000-000000000002/file/",
     created_at: "2026-05-02T07:00:00Z",
   },
   {
@@ -163,7 +161,6 @@ export const rulePacks: RulePack[] = [
     author: "شهرداری تهران",
     specification_count: 11,
     source_citation: "ضوابط و مقررات طرح تفصیلی شهر تهران، ۱۴۰۲",
-    source_file: "/api/v1/rule-packs/aaaa1111-0000-4000-8000-000000000003/file/",
     created_at: "2026-06-18T07:00:00Z",
   },
   {
@@ -177,7 +174,6 @@ export const rulePacks: RulePack[] = [
     author: "سازمان نظام مهندسی ساختمان",
     specification_count: 9,
     source_citation: "چک‌لیست کنترل نقشه معماری، سازمان نظام مهندسی، ۱۴۰۱",
-    source_file: "/api/v1/rule-packs/aaaa1111-0000-4000-8000-000000000004/file/",
     created_at: "2026-06-18T07:00:00Z",
   },
 ];

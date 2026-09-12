@@ -62,11 +62,13 @@ class CheckRunSummarySerializer(serializers.ModelSerializer[CheckRun]):
     def get_report_file_url(self, obj: CheckRun) -> str | None:
         """The authenticated download route, never the storage URL directly.
 
-        T-0042 (queued, found by the T-0030 review) is exactly the mistake this avoids:
-        serialising a `FileField` straight to a URL hands out a link nothing authenticates.
-        This returns a path into `CheckRunViewSet.report_file`, which resolves through the
-        same tenant-scoped `get_object()` as every other read on this viewset -- another
-        tenant's run 404s rather than leaking a file.
+        Serialising a `FileField` straight to a URL hands out a link nothing
+        authenticates -- the mistake `RulePackSerializer.source_file` made until T-0042
+        closed it by dropping the field (a report, unlike the catalogue, is tenant data,
+        so here the fix is a route, not a removal). This returns a path into
+        `CheckRunViewSet.report_file`, which resolves through the same tenant-scoped
+        `get_object()` as every other read on this viewset -- another tenant's run 404s
+        rather than leaking a file.
         """
         if obj.report_file_id is None:
             return None
