@@ -1331,3 +1331,64 @@ passes again. See T-0050's Evidence for both transcripts.
 mattering for how often it actually gets run (at that point, CI running it on every push
 rather than leaving it to a developer's discretion becomes the live question) — or if a second
 Postgres-specific defect surfaces that this marker/target split does not comfortably cover.
+
+---
+
+## 2026-09-12 — The coverage predicate and severity rank are owned by the engine; UI chrome stays two catalogues
+
+**Problem (T-0052).** "Established nothing" (which reason codes mean a specification evaluated
+nothing) and the severity ranking (FAIL, INDETERMINATE, PASS) were each hand-copied three times:
+once in `judge()`'s own reasoning, once as `_NOTHING_ESTABLISHED_REASONS`/`_SEVERITY_RANK` in
+`report_markdown.py`, once as `NOTHING_ESTABLISHED_REASONS`/`SEVERITY_RANK` in `ReportView.tsx`.
+Nothing compared the three, and T-0032's review already found the same shape of problem had
+drifted once for real, in Persian wording, on a string ("Rule packs checked" vs.
+`report.selection.title`) nobody had enumerated.
+
+**Decision.** The predicate and the ranking are properties of `ReasonCode` and `Status`, which
+the engine already owns, so the engine owns both:
+`cadgpt_engine.status.NOTHING_ESTABLISHED_REASONS`/`established_nothing`/`SEVERITY_RANK`.
+`report_markdown.py` (same language) imports them directly — zero duplication. `ReportView.tsx`
+cannot import Python, so the two duplicates are treated differently, on their own merits, rather
+than both forced into one mechanism:
+
+- **`established_nothing`** carries no information `presentation.localize_report` cannot compute
+  once and hand down. It now does, on every `SpecificationOutcome`, from
+  `cadgpt_engine.established_nothing` — the same "server sends the already-decided value, the
+  screen never re-derives it" rule `reason_label` and `requirement_text` already established
+  ("Report prose belongs to the server, not to the frontend catalogue", above). `ReportView.tsx`
+  reads the field; the TypeScript predicate is deleted, not merely re-sourced, so there is
+  nothing left to diverge.
+- **`SEVERITY_RANK`** cannot be fully retired from the frontend the same way: T-0025 review Q2
+  needs a client-side rank for a `status` value this build has never heard of
+  (`UNKNOWN_STATUS_RANK`, a report a *newer* engine wrote read by an *older* frontend), which has
+  no wire-format equivalent the server could hand down instead — pre-sorting on the server would
+  silently drop that forward-compatibility guard. `ReportView.tsx` keeps its own three-entry
+  table, and `test_report_markdown.py`'s `test_report_view_severity_rank_matches_the_engine`
+  reads that literal back out of the `.tsx` source and fails the build if it and
+  `cadgpt_engine.SEVERITY_RANK` ever disagree on the three known ranks.
+
+The one live divergence T-0032 found (`report_markdown.py`'s "Rule packs checked" heading vs.
+`fa.json`'s `report.selection.title`, worded differently in Persian) is fixed directly:
+`django.po`'s `msgstr` for `"Rule packs checked"` now reads word-for-word identical to
+`fa.json`'s Persian, per `report_markdown.py`'s own rule that where the file and the screen
+disagree, the file is wrong.
+
+**The rest of the duplicated label set (headings, table columns — "Coverage", "Passed",
+"Specifications" — between `django.po` and `services/web/src/i18n/*.json`) is deliberately left
+alone.** "Report prose belongs to the server" governs *report prose*: sentences composed from the
+run's own data (the disclosure, `reason_label`, `requirement_text`, `applicability_text`) that a
+Celery worker generates into a file no browser ever touches. A static section heading is UI
+chrome, not prose about this run, and the screen already gets every piece of actual report prose
+server-authored, exactly like the file does — the two catalogues holding their own translation of
+"Coverage" is two idioms naming the same static section, not two authorities computing the same
+fact differently. Merging them would need a live channel from the server's catalogue into the
+React build (or vice versa) for strings that carry no per-run data at all, which is
+scaffolding this task's problem does not call for. What made the "Rule packs checked" divergence
+real was a *predicate/wording pair that must describe the same run identically*, not that a
+catalogue key existed twice: the fix here is fixing that one heading and giving the two
+predicates a single owner, not merging the catalogues.
+
+**Reopens if:** the frontend ever needs to render a *new* piece of report prose (data-derived,
+per-run wording) — that string belongs server-side from the start, per the existing decision — or
+if `Status` or `ReasonCode`'s zero-evidence set changes often enough that the `.tsx`-literal
+regex test above becomes a maintenance burden worth replacing with generated code.

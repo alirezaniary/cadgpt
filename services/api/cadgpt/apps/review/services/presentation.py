@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from cadgpt_engine import established_nothing
+
 from cadgpt.apps.review.applicability import applicability_text
 from cadgpt.apps.review.disclosure import disclosure_text, disclosure_title
 from cadgpt.apps.review.reasons import label_for
@@ -22,9 +24,17 @@ def localize_report(report: dict[str, Any] | None) -> dict[str, Any] | None:
     review round 2, F1: a requirement that evaluated real entities under a specification
     whose own applicability was never established), a `requirement_text` beside every
     requirement's `description` / `basis`, an `applicability_text` (T-0039) beside every
-    specification's `applicability_description` / `applicability_facets`, and the I7
+    specification's `applicability_description` / `applicability_facets`, an
+    `established_nothing` beside every specification's `reason_code` (T-0052), and the I7
     disclosure (`disclosure_title`, `disclosure_text`) naming the model this report
     checked (`prd.md` 5.7 -- see `cadgpt.apps.review.disclosure`).
+
+    `established_nothing` is the engine's own predicate
+    (`cadgpt_engine.established_nothing`, over `cadgpt_engine.NOTHING_ESTABLISHED_REASONS`)
+    applied here, once, so neither renderer restates which reason codes mean "nothing was
+    evaluated": `report_markdown.py` used to hand-copy that set and `ReportView.tsx` cannot
+    import Python at all, so this field is what it reads instead of a TypeScript copy of
+    the same list.
 
     The stored document is not modified: a copy is annotated, so a translation never
     reaches the database and the run stays reproducible from its inputs.
@@ -68,6 +78,7 @@ def localize_report(report: dict[str, Any] | None) -> dict[str, Any] | None:
             {
                 **spec,
                 "reason_label": label_for(spec.get("reason_code")),
+                "established_nothing": established_nothing(spec.get("reason_code")),
                 "requirements": requirements,
                 # T-0039: `applicability_facets` is `None` for a report stored before
                 # `REPORT_SCHEMA_VERSION` 4 -- `applicability_text` degrades to

@@ -1352,6 +1352,28 @@ again. `make verify` stays at 1m18s wall clock, unaffected — the new suite add
 because it never runs there; `make test-postgres` itself costs under 15s against an
 already-running Postgres. 306 tests deselected correctly under the Postgres backend, 1 passed.
 
+**T-0052 — the coverage predicate exists three times; the engine now owns it once. Done
+2026-09-12.** `NOTHING_ESTABLISHED_REASONS`/`established_nothing()`/`SEVERITY_RANK` moved to
+`cadgpt_engine.status`, derived from `judge()`'s own reasoning rather than hand-copied.
+`report_markdown.py` imports the engine's copy directly; `presentation.localize_report` computes
+one new wire field, `established_nothing`, so `ReportView.tsx` reads it instead of re-deriving
+its own set. The one live divergence T-0032 found — `report_markdown.py`'s "Rule packs checked"
+heading against `fa.json`'s Persian — is fixed to match byte-for-byte. `SEVERITY_RANK` stays
+duplicated in the frontend on purpose (a forward-compatibility fallback for a `Status` value an
+older frontend has never heard of, with no wire representation to hand down instead), guarded
+instead by a test that reads the `.tsx` literal back out and fails if it disagrees with the
+engine's. Decision, including why the rest of the UI-chrome label set stays two catalogues, in
+`docs/decisions.md`.
+
+Reviewer-gated (three-valued results, I7). Verdict: clean — the reviewer independently
+reproduced the mutation test plus three more of their own (frontend `SEVERITY_RANK`,
+`established_nothing` reverted to a local set, the field deleted from `localize_report`), all
+four caught by the new tests. Three non-fix-now findings queued as observations for the judge:
+the screen's actual consumption of `established_nothing` has no test (mutating it to always
+`false` passed the full frontend suite), a guard comment names a nonexistent test, and
+`SEVERITY_RANK` is exported as a mutable `dict` instead of a `frozenset`. Full verdict in the
+task file.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -1425,8 +1447,8 @@ the first of them:
 
 - ~~**T-0051** — a report that was never generated must be recoverable.~~ **Done 2026-09-03.**
   See "What has landed" above.
-- **T-0052** — the coverage predicate exists three times; the engine should own it once. One
-  divergence is already live.
+- ~~**T-0052** — the coverage predicate exists three times; the engine should own it once.~~
+  **Done 2026-09-12.** See "What has landed" above.
 - **T-0053** — the download button has never executed, and two defects are visible in it.
 - **T-0054** — four loose ends in the generation path.
 - **T-0055** — the report file must stand on its own once it leaves the building.

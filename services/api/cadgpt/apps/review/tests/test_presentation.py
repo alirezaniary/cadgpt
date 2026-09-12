@@ -171,3 +171,32 @@ def test_localize_report_carries_a_specifications_own_rule_pack_through_unchange
 
 def test_none_stays_none() -> None:
     assert localize_report(None) is None
+
+
+def test_established_nothing_is_false_for_a_spec_that_evaluated_real_entities() -> None:
+    """T-0052: `established_nothing` is computed here, once, from
+    `cadgpt_engine.established_nothing` -- `ReportView.tsx` reads this field instead of
+    restating `NOTHING_ESTABLISHED_REASONS` in TypeScript. `_V1_REPORT`'s specification
+    carries `reason_code: None` because it genuinely evaluated its matched doors.
+    """
+    localized = localize_report(_V1_REPORT)
+
+    assert localized is not None
+    assert localized["specifications"][0]["established_nothing"] is False
+
+
+def test_established_nothing_is_true_for_a_schema_mismatch() -> None:
+    """`SCHEMA_MISMATCH` is one of the three reason codes `judge()` pairs with an
+    INDETERMINATE it reached without inspecting a single entity -- see
+    `cadgpt_engine.status.NOTHING_ESTABLISHED_REASONS`.
+    """
+    v1_with_schema_mismatch: dict[str, Any] = {
+        **_V1_REPORT,
+        "specifications": [
+            {**_V1_REPORT["specifications"][0], "reason_code": "SCHEMA_MISMATCH"},
+        ],
+    }
+    localized = localize_report(v1_with_schema_mismatch)
+
+    assert localized is not None
+    assert localized["specifications"][0]["established_nothing"] is True

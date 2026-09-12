@@ -51,24 +51,10 @@ from __future__ import annotations
 
 from typing import Any, TypeVar
 
+from cadgpt_engine import SEVERITY_RANK
 from django.utils.translation import gettext, ngettext, pgettext
 
 from cadgpt.apps.review.choices import OutcomeStatus
-
-#: Reason codes `judge()` assigns only when a specification established no compliance at
-#: all -- mirrors `NOTHING_ESTABLISHED_REASONS` in `ReportView.tsx` exactly. See that
-#: constant's own comment for why these three and not `NO_SUBJECTS_BUT_REQUIRED` /
-#: `NO_SUBJECTS_AND_PROHIBITED`, which are real verdicts, not an absence of evidence.
-#: T-0038 review: this set is total over every `ReasonCode` `judge()` can pair with an
-#: INDETERMINATE it reached without evaluating anything -- `test_report_markdown.py`'s
-#: `test_every_established_nothing_reason_code_is_excluded_from_coverage` fails the build
-#: if a future spec-level "checked nothing" code is added upstream and not added here.
-_NOTHING_ESTABLISHED_REASONS = frozenset(
-    {"SCHEMA_MISMATCH", "NO_SUBJECTS_NOTHING_CHECKED", "NO_REQUIREMENTS_NOTHING_ASSERTED"}
-)
-
-#: FAIL first, then INDETERMINATE, then PASS -- `SEVERITY_RANK` in `ReportView.tsx`.
-_SEVERITY_RANK: dict[str, int] = {"FAIL": 0, "INDETERMINATE": 1, "PASS": 2}
 
 #: A markdown block (heading, blockquote, list item, table row, thematic break) can only
 #: ever start at the true beginning of a line. A sanitized field is single-line by
@@ -85,13 +71,22 @@ def _by_severity(items: list[_T]) -> list[_T]:
 
     `sorted` is stable in Python, so this is `bySeverity` in `ReportView.tsx` exactly:
     a schwartzian index is not needed here the way it is in the TypeScript, because
-    Python's sort already guarantees it.
+    Python's sort already guarantees it. `SEVERITY_RANK` is `cadgpt_engine`'s own -- see
+    its docstring (T-0052) for why the file imports it directly while the screen keeps a
+    copy.
     """
-    return sorted(items, key=lambda item: _SEVERITY_RANK[item["status"]])
+    return sorted(items, key=lambda item: SEVERITY_RANK[item["status"]])
 
 
 def _established_nothing(spec: dict[str, Any]) -> bool:
-    return spec.get("reason_code") in _NOTHING_ESTABLISHED_REASONS
+    """Whether `spec` established no compliance at all.
+
+    `presentation.localize_report` already computed this, once, from
+    `cadgpt_engine.established_nothing` (T-0052) -- read back here rather than
+    re-derived, so the file can never disagree with the engine's own predicate about
+    which reason codes mean "nothing was evaluated".
+    """
+    return bool(spec.get("established_nothing"))
 
 
 def _status_label(status: str) -> str:

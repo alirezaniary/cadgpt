@@ -438,9 +438,12 @@ msgstr "موتور %(version)s"
 msgid "Status"
 msgstr "وضعیت"
 
-#: cadgpt/apps/review/services/report_markdown.py (rule pack selection heading)
+#: cadgpt/apps/review/services/report_markdown.py (rule pack selection heading -- T-0052:
+#: kept word-for-word identical to services/web/src/i18n/fa.json's report.selection.title;
+#: it previously read "بسته‌های قاعدهٔ بررسی‌شده", a different Persian phrase for the same
+#: English heading, which was the live divergence T-0052 was opened to fix)
 msgid "Rule packs checked"
-msgstr "بسته‌های قاعدهٔ بررسی‌شده"
+msgstr "بسته‌های مقرراتی که بررسی شدند"
 
 #: cadgpt/apps/review/services/report_markdown.py (coverage heading)
 msgid "Coverage"

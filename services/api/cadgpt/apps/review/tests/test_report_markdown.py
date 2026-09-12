@@ -12,18 +12,17 @@ assertion below against the Persian translation by hand.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import pytest
-from cadgpt_engine import Status, judge
+from cadgpt_engine import SEVERITY_RANK
 from django.utils import translation
 
 from cadgpt.apps.review.services.presentation import localize_report
-from cadgpt.apps.review.services.report_markdown import (
-    _NOTHING_ESTABLISHED_REASONS,
-    render_markdown_report,
-)
+from cadgpt.apps.review.services.report_markdown import render_markdown_report
 
 
 @pytest.fixture(autouse=True)
@@ -147,45 +146,30 @@ def test_the_specification_that_established_nothing_is_named() -> None:
     assert "A schema-mismatched specification" in text
 
 
-def test_every_established_nothing_reason_code_is_excluded_from_coverage() -> None:
-    """Total over every `(status, code)` `judge()` can produce -- not a hand-typed list.
-
-    `judge()` assigns a reason code only when it reaches a verdict without inspecting
-    per-entity evidence, and it pairs that early-returned code with `Status.INDETERMINATE`
-    in exactly the cases where nothing was established -- as opposed to a `FAIL`/`PASS`
-    pairing like `NO_SUBJECTS_BUT_REQUIRED`/`NO_SUBJECTS_AND_PROHIBITED`, which is a real
-    verdict the engine reached, not an absence of evidence. Sweeping every reachable
-    parameter combination and asserting the resulting set against
-    `_NOTHING_ESTABLISHED_REASONS` means a future `judge()` change that produces a new
-    INDETERMINATE-paired code fails this test until that code is added to the
-    coverage-exclusion set here -- exactly the gap a T-0038 review found:
-    `NO_REQUIREMENTS_NOTHING_ASSERTED` shipped without any test forcing it into this set,
-    the same way `test_every_engine_reason_code_has_a_translatable_label`
-    (`test_reasons.py`) forces every code into a translated label.
-
-    `ReportView.tsx`'s `NOTHING_ESTABLISHED_REASONS` mirrors `_NOTHING_ESTABLISHED_REASONS`
-    by hand and has no compiler or test enforcing that mirror -- this test only proves the
-    Python side is total, and a change here must be carried into the TypeScript constant by
-    the same hand that makes it.
+def test_established_nothing_reads_the_field_presentation_computed() -> None:
+    """T-0052: this file no longer decides which reason codes mean "nothing was
+    evaluated" -- `presentation.localize_report` already annotates `established_nothing`
+    on every specification, from `cadgpt_engine.established_nothing`, before this module
+    ever sees the report. `test_nothing_established_reason_codes_are_total_over_judge`
+    (`packages/engine/tests/test_judgement.py`) is the exhaustive test over every
+    `judge()` combination, total over `NOTHING_ESTABLISHED_REASONS`; this test only proves
+    the Markdown renderer actually *reads* that field rather than re-deriving one of its
+    own from `reason_code` -- forcing `established_nothing` to `True` on a specification
+    whose `reason_code` is `None` (a real evaluation) and confirming the renderer follows
+    the field, not the code, is exactly the mutation a regression back to a hand-copied
+    set would fail.
     """
-    observed: set[str] = set()
-    for cardinality in ("required", "optional", "prohibited"):
-        for matched in (0, 3):
-            for schema_matches in (True, False):
-                for failed in (0, 1):
-                    for indeterminate in (0, 1):
-                        for has_requirements in (True, False):
-                            _, status, code = judge(
-                                cardinality,
-                                matched,
-                                schema_matches,
-                                failed,
-                                indeterminate,
-                                has_requirements,
-                            )
-                            if status is Status.INDETERMINATE and code is not None:
-                                observed.add(code.value)
-    assert observed == _NOTHING_ESTABLISHED_REASONS
+    localized = localize_report(_REPORT)
+    assert localized is not None
+    forced = {
+        **localized,
+        "specifications": [
+            {**spec, "established_nothing": True} for spec in localized["specifications"]
+        ],
+    }
+    text = render_markdown_report(forced, [])
+    assert "0 of 2 specifications were evaluated." in text
+    assert "2 specifications established nothing" in text
 
 
 def test_all_three_counts_are_always_present() -> None:
@@ -470,3 +454,31 @@ def test_an_uploaded_filename_cannot_inject_structure_via_the_disclosure() -> No
     text = render_markdown_report(localized, [])
 
     assert _headings(text).count("## Coverage") == 1
+
+
+def test_report_view_severity_rank_matches_the_engine() -> None:
+    """T-0052: `ReportView.tsx` cannot import `cadgpt_engine.SEVERITY_RANK` the way this
+    module does -- it keeps its own copy for the client-side sort a report from a *newer*
+    engine, read by an *older* frontend, still needs (T-0025 review Q2's
+    `UNKNOWN_STATUS_RANK` fallback has no wire-format equivalent this module could hand
+    down instead). Reading that literal back out of the `.tsx` source and comparing it to
+    the engine's own `SEVERITY_RANK` is the drift test for the one duplicate this task
+    could not eliminate structurally: a rank reordered on one side and not the other fails
+    here rather than silently sorting the file and the screen differently.
+    """
+    tsx_path = (
+        Path(__file__).resolve().parents[6]
+        / "services"
+        / "web"
+        / "src"
+        / "components"
+        / "ReportView.tsx"
+    )
+    source = tsx_path.read_text(encoding="utf-8")
+    match = re.search(r"const SEVERITY_RANK: Record<Status, number> = \{([^}]*)\};", source)
+    assert match is not None, "ReportView.tsx no longer declares SEVERITY_RANK as expected"
+    frontend_rank = {
+        name: int(value) for name, value in re.findall(r"(\w+):\s*(\d+)", match.group(1))
+    }
+    engine_rank = {status.value: rank for status, rank in SEVERITY_RANK.items()}
+    assert frontend_rank == engine_rank

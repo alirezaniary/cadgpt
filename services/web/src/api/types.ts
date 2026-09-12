@@ -214,6 +214,14 @@ export interface SpecificationOutcome {
   matched: number;
   reason_code: string | null;
   reason_label: string | null;
+  /** Whether this specification established no compliance at all -- a schema mismatch, an
+   * applicability that matched zero subjects, or an optional-cardinality specification
+   * that matched real subjects but declared no requirement facets. Computed server-side
+   * (`presentation.localize_report`) from `cadgpt_engine.established_nothing`, the
+   * engine's own predicate over `reason_code` (T-0052) -- read here rather than
+   * re-derived, so the screen can never hand-copy the reason-code list into a second,
+   * driftable definition the way it did before this field existed. */
+  established_nothing: boolean;
   passed: number;
   failed: number;
   indeterminate: number;

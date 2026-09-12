@@ -103,3 +103,58 @@ NOT_EVALUABLE_CODES: frozenset[ReasonCode] = frozenset(
         ReasonCode.REASON_UNRECOGNISED,
     }
 )
+
+#: Reason codes `judge()` (`check.py`) pairs with an INDETERMINATE verdict it reached
+#: without inspecting a single entity: a schema mismatch, an applicability that matched
+#: zero subjects, or an optional-cardinality specification that matched real subjects but
+#: declared no requirement facets. `NO_SUBJECTS_BUT_REQUIRED` (FAIL) and
+#: `NO_SUBJECTS_AND_PROHIBITED` (PASS) are deliberately excluded: matching zero subjects
+#: there is itself a real, established verdict the engine reached by judging the model, not
+#: an absence of evidence.
+#:
+#: T-0052: this was three hand-copied literals -- here, in `report_markdown.py`, and in
+#: `ReportView.tsx` -- and they had already drifted once, in wording if not yet in
+#: substance. The reason codes are decided here, in `judge()`, so the predicate over them
+#: is owned here too. `report_markdown.py` (same language) imports `established_nothing`
+#: below directly; `ReportView.tsx` cannot import Python, so `presentation.localize_report`
+#: computes the one wire field (`SpecificationOutcome.established_nothing`) it reads
+#: instead of restating this set in TypeScript. `test_report_markdown.py`'s
+#: `test_established_nothing_reason_codes_are_total_over_judge` sweeps every combination
+#: `judge()` can reach and fails the build if a future zero-evidence code is added upstream
+#: and not added here -- the single test that now guards both renderers, because neither
+#: restates the set this test is total over.
+NOTHING_ESTABLISHED_REASONS: frozenset[ReasonCode] = frozenset(
+    {
+        ReasonCode.SCHEMA_MISMATCH,
+        ReasonCode.NO_SUBJECTS_NOTHING_CHECKED,
+        ReasonCode.NO_REQUIREMENTS_NOTHING_ASSERTED,
+    }
+)
+
+
+def established_nothing(reason_code: ReasonCode | str | None) -> bool:
+    """Whether a specification-level `reason_code` means nothing was evaluated at all.
+
+    `None` is a specification that genuinely evaluated something: `judge()` only sets a
+    reason code on a branch that returned without inspecting an entity. A code outside
+    `NOTHING_ESTABLISHED_REASONS` is a real verdict `judge()` reached by looking at the
+    model (a required element absent, a prohibited one present), not an absence of
+    evidence, so it is not named here either.
+    """
+    return reason_code is not None and reason_code in NOTHING_ESTABLISHED_REASONS
+
+
+#: FAIL, then INDETERMINATE, then PASS (`docs/decisions.md`, "Severity, for a report built
+#: on IDS, is the three-valued status"). FAIL leads because it is the only pile where the
+#: model carried the datum and broke the rule; INDETERMINATE outranks PASS so an unknown is
+#: never buried under a pass.
+#:
+#: T-0052: the second hand-copied literal this module now owns. `report_markdown.py`
+#: (same language) imports this directly. `ReportView.tsx` keeps its own copy: it needs a
+#: rank for a `status` value this build has never heard of (`UNKNOWN_STATUS_RANK`, T-0025
+#: review Q2 -- a stored report a *newer* engine wrote and an *older* frontend is reading
+#: back), which is a client-side forward-compatibility concern this module has no wire
+#: format to hand down. `test_report_view_severity_rank_matches_the_engine`
+#: (`test_report_markdown.py`) reads that copy back out of the `.tsx` source and fails the
+#: build the moment the two disagree on the three known statuses.
+SEVERITY_RANK: dict[Status, int] = {Status.FAIL: 0, Status.INDETERMINATE: 1, Status.PASS: 2}

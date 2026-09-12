@@ -33,7 +33,17 @@ import type {
 } from "@/api/types";
 import { StatusPill } from "@/components/StatusPill";
 
-/** FAIL first, then INDETERMINATE, then PASS. INDETERMINATE never sorts under PASS. */
+/** FAIL first, then INDETERMINATE, then PASS. INDETERMINATE never sorts under PASS --
+ * `SEVERITY_RANK` in `cadgpt_engine.status` (T-0052), which owns this ordering because it
+ * is an ordering of `Status`, the engine's own vocabulary
+ * (`docs/decisions.md`, "Severity, for a report built on IDS, is the three-valued
+ * status"). `report_markdown.py` imports that constant directly; this module cannot
+ * import Python, so it keeps its own copy for the client-side sort every render needs
+ * (including the `UNKNOWN_STATUS_RANK` fallback just below, a forward-compatibility case
+ * with no wire representation the server could hand down instead).
+ * `test_report_markdown.py`'s `test_report_view_severity_rank_matches_the_engine` reads
+ * this literal back out of this file and fails the build the moment the three known ranks
+ * disagree with the engine's. */
 const SEVERITY_RANK: Record<Status, number> = { FAIL: 0, INDETERMINATE: 1, PASS: 2 };
 
 /** T-0035. A report is a persisted document that a *newer* engine may have written and an
@@ -61,29 +71,22 @@ export function bySeverity<T extends { status: Status }>(items: readonly T[]): T
     .map(({ item }) => item);
 }
 
-/** Reason codes `judge()` (`packages/engine/src/cadgpt_engine/check.py`) assigns only when a
- * specification established no compliance at all — a schema mismatch, an applicability that
- * matched zero subjects, or (T-0038) an optional-cardinality specification that matched real
- * subjects but declared no requirement facets, so nothing was asserted about them.
- *
- * A `matched == 0` specification that came back FAIL (`NO_SUBJECTS_BUT_REQUIRED` — a required
- * element is absent) or PASS (`NO_SUBJECTS_AND_PROHIBITED` — a prohibited element is confirmed
- * absent) is deliberately excluded: those are real, established verdicts the engine reached by
- * judging the model, not an absence of evidence, and naming either here beside "established
- * nothing" would contradict the very verdict rendered a few lines below it. Reading the reason
- * code the engine already assigned, rather than re-deriving `matched`/cardinality logic here,
- * is what keeps this predicate from silently diverging from `judge()` the next time it changes.
- * Mirrors `_NOTHING_ESTABLISHED_REASONS` in `report_markdown.py` exactly -- that module's own
- * comment names the Python-side test that keeps it total; this set has no analogous compiler
- * check and must be kept in sync with it and with `judge()` by hand. */
-const NOTHING_ESTABLISHED_REASONS: ReadonlySet<string> = new Set([
-  "SCHEMA_MISMATCH",
-  "NO_SUBJECTS_NOTHING_CHECKED",
-  "NO_REQUIREMENTS_NOTHING_ASSERTED",
-]);
-
+/** T-0052: whether a specification established no compliance at all is no longer decided
+ * here. It used to be a hand-copied set of reason codes (`judge()`,
+ * `packages/engine/src/cadgpt_engine/check.py`) mirroring `_NOTHING_ESTABLISHED_REASONS`
+ * in `report_markdown.py` -- two independent literals of the same three codes, with no
+ * compiler or test enforcing they agreed, and they had already drifted once in wording
+ * (`docs/tasks/T-0052-one-predicate-not-three-copies.md`). This module cannot import
+ * Python, so it cannot consume `cadgpt_engine.established_nothing` the way
+ * `report_markdown.py` now does directly; instead it reads `established_nothing`, the one
+ * field `presentation.localize_report` computes from that same engine predicate and ships
+ * on every specification (`SpecificationOutcome.established_nothing`, `api/types.ts`) --
+ * the same "server sends the already-decided value, the screen never re-derives it"
+ * pattern `reason_label` and `requirement_text` already established
+ * (`docs/decisions.md`, "Report prose belongs to the server, not to the frontend
+ * catalogue"). There is nothing left here to diverge from the engine. */
 function establishedNothing(spec: SpecificationOutcome): boolean {
-  return spec.reason_code !== null && NOTHING_ESTABLISHED_REASONS.has(spec.reason_code);
+  return spec.established_nothing;
 }
 
 interface EntityFilter {
