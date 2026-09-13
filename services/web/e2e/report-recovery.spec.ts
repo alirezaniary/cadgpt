@@ -123,5 +123,9 @@ test("the recovery button's own POST is what moves a pending report to failed", 
   await expect(failed).toBeVisible();
   await expect(page.getByTestId("report-file-pending")).toHaveCount(0);
   await expect(page.getByTestId("report-file-link")).toHaveCount(0);
-  await expect(page.getByTestId("report-file-generate")).toBeVisible();
+  // T-0058: this state is terminal -- the same "generate" click can only ever repeat
+  // the identical rejection, so the page must not offer it any more once the run has
+  // actually reached "too_large". The button that was visible above (still pending)
+  // is gone now that the run has moved to the terminal shape.
+  await expect(page.getByTestId("report-file-generate")).toHaveCount(0);
 });

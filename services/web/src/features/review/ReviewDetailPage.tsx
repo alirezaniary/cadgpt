@@ -352,17 +352,16 @@ export function ReviewDetailPage() {
           </button>
         </p>
       )}
+      {/* T-0058: this state is terminal -- `MediaService`'s size cap rejected the
+          rendered report and pressing "generate" again re-renders the identical
+          report against the identical cap, which can only ever repeat the identical
+          rejection (`CheckRunQuerySet.missing_report` already excludes these rows
+          from the automatic sweep for the same reason). No retry button belongs
+          here until something has actually changed -- an operator raising the cap,
+          which is a new check run's job (T-0059), not a click on this page. */}
       {reportGenerationError && (
         <p className="error">
-          <span data-testid="report-file-failed">{t("report.generationFailed")}</span>{" "}
-          <button
-            type="button"
-            data-testid="report-file-generate"
-            onClick={() => void onGenerateReportFile()}
-            disabled={generateReportFile.isPending}
-          >
-            {t("report.generate")}
-          </button>
+          <span data-testid="report-file-failed">{t("report.generationFailed")}</span>
         </p>
       )}
       {currentReport && (

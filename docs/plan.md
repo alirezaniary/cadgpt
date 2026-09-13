@@ -932,6 +932,26 @@ after, all three eligible runs were attempted, `done: 2 generated, 1 could not b
 3 runs considered` printed, exit status 1 — then a re-run recovered the failed run and
 exited 0, proving the sweep really is safe to retry.
 
+**T-0058 — the terminal-failure state offered a button that could not change anything. Done
+2026-09-14.** Found by the T-0051 review. `ReviewDetailPage.tsx`'s `reportGenerationError`
+branch (the file this defect actually lives in now — the task's own reference,
+`ReviewsPage.tsx`, was removed by T-0074's redesign) rendered the same retry button as the
+genuine "not generated yet" state, but `report_generation_error` today only ever means
+`ReportGenerationFailure.TOO_LARGE` — a terminal state a retry cannot change, since
+re-rendering an identical run hits the identical size cap every time.
+`CheckRunQuerySet.missing_report` already excludes these rows for exactly that reason; the
+UI offered the retry anyway. The button is now simply absent from that branch — nothing
+added in its place, since a disabled control or a support link would be a new capability
+this task was not asked to build — while the `reportFileMissing` branch's genuine, working
+retry button is untouched.
+
+Not reviewer-gated — no invariant, 13-line diff across two frontend files, fully read.
+Verified against a real run driven into `TOO_LARGE` over the live stack: the button is
+absent from the DOM (count 0), the existing plain-language failure text renders unchanged,
+and `report-recovery.spec.ts`'s updated assertion was mutation-checked. T-0059 — the
+operational half, giving these runs a sweep once an operator raises the cap — remains open
+and unaddressed by this task, deliberately.
+
 **T-0038 — a specification that asserted nothing must not report PASS either. Done
 2026-09-10.** The other half of T-0028's fix, at the level up it was explicitly forbidden to
 touch: `judge()` reported `PASS` for an `optional`-cardinality specification with zero
@@ -1583,7 +1603,8 @@ Added 2026-09-14, from the T-0055 review:
   2026-09-08.** See "What has landed" below.
 - ~~**T-0057** — the backfill must survive one bad run, and count what it did.~~ **Done
   2026-09-14.** See "What has landed" above.
-- **T-0058** — the terminal-failure state offers a button that cannot change anything.
+- ~~**T-0058** — the terminal-failure state offers a button that cannot change anything.~~
+  **Done 2026-09-14.** See "What has landed" above.
 - **T-0059** — a run stranded by the size cap has no way back once the cap is raised.
 - **T-0060** — queuing work needs a role floor; a viewer can flood the check queue.
 - **T-0061** — four loose ends in the report-generation failure record.
