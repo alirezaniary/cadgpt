@@ -12,13 +12,29 @@ extra for a run that already has a file. `CheckRunQuerySet.missing_report` never
 re-selects a run whose generation permanently failed (`report_generation_error` set), so
 this cannot loop forever restating the same rejection -- an operator who wants to retry
 one of those anyway calls `ReportGenerationService.generate` on it directly.
+
+**One run's exception does not abort the sweep (T-0057).** `generate` can raise -- a
+storage outage from `MediaService.store`, a `NotFoundError` for a row deleted since the
+cursor snapshot, the `ValueError` branch -- and until this task, any of those killed the
+whole loop: the command crashed with a traceback, never printed its `done:` summary, and
+left every run after the one that raised unprocessed, including runs with nothing wrong
+with them. `generate`'s own transaction boundary (unchanged, out of scope here -- see
+`report_generation.py`'s module docstring) already makes each run's outcome independent
+of every other run's, so nothing about database coherence required the loop itself to be
+all-or-nothing; only this command's own lack of a per-run `try` did. Each eligible run is
+now attempted regardless of what happened to the run before it, the summary counts a
+raise as a failure alongside a `TOO_LARGE`-style non-exceptional failure -- the old
+`failed` counter could only ever count the latter, which made it structurally unable to
+report the exact failure mode this task is about -- and the command exits non-zero if any
+run failed either way, so a script invoking this does not have to parse `done:`'s prose to
+know whether to retry or alert.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from cadgpt.apps.review.models import CheckRun
 from cadgpt.apps.review.services.report_generation import ReportGenerationService
@@ -35,7 +51,18 @@ class Command(BaseCommand):
 
         for run in CheckRun.objects.missing_report().order_by("created_at").iterator():
             considered += 1
-            result = service.generate(run.uuid)
+            try:
+                result = service.generate(run.uuid)
+            except Exception as exc:  # noqa: BLE001 -- one run's failure must not end the sweep
+                failed += 1
+                self.stdout.write(
+                    self.style.ERROR(
+                        f"could not generate: run {run.uuid} "
+                        f"(raised {exc.__class__.__name__}: {exc})"
+                    )
+                )
+                continue
+
             if result.report_file_id is not None:
                 generated += 1
                 self.stdout.write(f"generated: run {result.uuid}")
@@ -52,3 +79,16 @@ class Command(BaseCommand):
             f"done: {generated} generated, {failed} could not be generated, "
             f"{considered} runs considered"
         )
+
+        if failed:
+            # Non-zero exit, distinct from a clean sweep, so a script invoking this
+            # command can tell "swept, some runs failed" apart from "swept cleanly"
+            # without parsing the prose above. `CommandError` is Django's own signal for
+            # this: `manage.py` catches it and exits 1 after printing the message below;
+            # `call_command` (tests, any in-process caller) lets it propagate as a normal
+            # Python exception instead of killing the interpreter, unlike `sys.exit`.
+            raise CommandError(
+                f"{failed} of {considered} run(s) could not be generated; see output "
+                "above. Safe to re-run: each run's own generation is independent and "
+                "idempotent."
+            )

@@ -912,6 +912,26 @@ upstream `ifctester`'s wording to "the checking engine" (**T-0089**); and the fi
 Gregorian-UTC date format versus the screen's local-calendar format is a real, reasoned
 divergence that was never logged to `docs/decisions.md` per CLAUDE.md's own rule (**T-0090**).
 
+**T-0057 — the backfill aborted the whole sweep on one raising run, and lost its accounting.
+Done 2026-09-14.** Found by the T-0051 review, reproduced live: `backfill_report_files.py`
+had no per-run `try`, so `MediaService.store` raising `OSError` on the second of three
+eligible runs crashed the command with a traceback, printed only one `generated:` line,
+never printed its `done:` summary, and left the third run — with nothing wrong with it —
+unprocessed. Separately, the `failed` counter only ever incremented on a `TOO_LARGE`-style
+return, so it was structurally unable to count a run that raised. Each `generate` call is
+now wrapped in its own `try/except`, the counter covers both failure modes, and the command
+raises `CommandError` (Django's own signal, already used by `seed_rule_packs.py` for its
+own fatal condition) when `failed > 0` — `manage.py` exits 1, `call_command` propagates it
+as an ordinary exception. `ReportGenerationService.generate` and its per-run transaction
+boundary, which is what makes the sweep safe to re-run at all, were untouched.
+
+Not reviewer-gated — no invariant, small diff (42 lines in the command, 72 in the test),
+fully read by the coordinator. Verified against a real Docker reproduction of the reviewer's
+exact scenario: before the fix, the command crashed after one run and never summarized;
+after, all three eligible runs were attempted, `done: 2 generated, 1 could not be generated,
+3 runs considered` printed, exit status 1 — then a re-run recovered the failed run and
+exited 0, proving the sweep really is safe to retry.
+
 **T-0038 — a specification that asserted nothing must not report PASS either. Done
 2026-09-10.** The other half of T-0028's fix, at the level up it was explicitly forbidden to
 touch: `judge()` reported `PASS` for an `optional`-cardinality specification with zero
@@ -1561,7 +1581,8 @@ Added 2026-09-14, from the T-0055 review:
 
 - ~~**T-0056** — a lost check dispatch kills the review, not just the file.~~ **Done
   2026-09-08.** See "What has landed" below.
-- **T-0057** — the backfill must survive one bad run, and count what it did.
+- ~~**T-0057** — the backfill must survive one bad run, and count what it did.~~ **Done
+  2026-09-14.** See "What has landed" above.
 - **T-0058** — the terminal-failure state offers a button that cannot change anything.
 - **T-0059** — a run stranded by the size cap has no way back once the cap is raised.
 - **T-0060** — queuing work needs a role floor; a viewer can flood the check queue.

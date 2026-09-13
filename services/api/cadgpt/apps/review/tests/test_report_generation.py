@@ -362,6 +362,78 @@ def test_backfill_generates_reports_for_runs_that_were_never_dispatched(
     assert "done: 1 generated, 0 could not be generated, 1 runs considered" in output
 
 
+def test_a_run_that_raises_does_not_abort_the_sweep_and_the_summary_counts_it(
+    tenant: Tenant,
+    review: Review,
+    owner: Any,
+    django_capture_on_commit_callbacks: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """T-0057, the reviewer's exact scenario from the T-0051 review: three eligible
+    runs, `MediaService.store` raising `OSError` (standing in for a real storage
+    outage) on the second call. Before this task, that exception propagated out of
+    `Command.handle` uncaught -- the command crashed, printed only the first
+    `generated:` line, never printed its `done:` summary, and left the third run
+    (which had nothing wrong with it) untouched. It must instead: attempt every
+    eligible run regardless of order, count the raise as a failure the old
+    `failed` counter could never express (it only ever counted a `TOO_LARGE`-style
+    return), and signal the partial sweep through its exit status -- `CommandError`
+    propagates through `call_command` here exactly as it would reach a script
+    invoking `manage.py` directly.
+    """
+    import io
+
+    from django.core.management import CommandError, call_command
+
+    from cadgpt.apps.media.services import MediaService
+    from cadgpt.apps.review import tasks as review_tasks
+    from cadgpt.apps.review.services import ReviewService
+
+    monkeypatch.setattr(review_tasks.generate_report_file, "delay", _lost_dispatch)
+    run_uuids = []
+    for _ in range(3):
+        # MAX_IN_FLIGHT_RUNS = 1 -- each call must commit and run to completion
+        # (synchronously, under CELERY_TASK_ALWAYS_EAGER) in its own block before the
+        # next is requested, or it is refused as a review with a check already running.
+        with django_capture_on_commit_callbacks(execute=True):
+            run = ReviewService(tenant=tenant).request_check(
+                review=review, requested_by=owner
+            )
+        run_uuids.append(run.uuid)
+    monkeypatch.undo()
+
+    for run_uuid in run_uuids:
+        assert CheckRun.objects.get(uuid=run_uuid).report_file_id is None
+
+    original_store = MediaService.store
+    calls = {"n": 0}
+
+    def flaky_store(self: MediaService, *args: Any, **kwargs: Any) -> Any:
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise OSError("simulated storage outage")
+        return original_store(self, *args, **kwargs)
+
+    monkeypatch.setattr(MediaService, "store", flaky_store)
+
+    out = io.StringIO()
+    with pytest.raises(CommandError, match=r"1 of 3 run\(s\) could not be generated"):
+        call_command("backfill_report_files", stdout=out)
+
+    output = out.getvalue()
+    assert output.count("generated: run") == 2, "every eligible run must be attempted"
+    assert "raised OSError: simulated storage outage" in output
+    assert "done: 2 generated, 1 could not be generated, 3 runs considered" in output, (
+        "the sweep must finish and print its summary despite the raise"
+    )
+
+    outcomes = [CheckRun.objects.get(uuid=u).report_file_id is not None for u in run_uuids]
+    assert outcomes == [True, False, True], (
+        "the run before and the run after the one that raised must both be generated -- "
+        "one run's exception must not abort the sweep"
+    )
+
+
 # ---------------------------------------------------------------------------- T-0054
 
 
