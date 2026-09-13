@@ -22,6 +22,7 @@
  * because the SPA has no screen for either.
  */
 
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -76,8 +77,18 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
   // the UI), so every check against it selects packs here, per run.
   const picker = page.getByTestId("catalogue-picker");
   await expect(picker).toBeVisible();
+  // This long-lived compose stack accumulates rule packs seeded by earlier tasks' own
+  // e2e runs (nothing resets the Postgres volume between runs, by design -- see this
+  // file's own header comment) -- several of them are also named "Accessible door
+  // width" at "v0.1" (fixture jurisdictions like "fixnow-…" from earlier tasks'
+  // evidence rounds). `jurisdiction: "sample"` is what `manage.py seed_rule_packs`
+  // (idempotent) actually names this fixture, per this file's own header comment, so
+  // filtering on it -- not just the name and version -- is what keeps this selector
+  // pointed at the one real seed row rather than picking whichever stale row sorts
+  // first.
   const doorWidthPack = picker
     .locator("li", { hasText: "Accessible door width" })
+    .filter({ hasText: "sample" })
     .filter({ hasText: "v0.1" });
   await expect(doorWidthPack).toBeVisible({ timeout: 10_000 });
   await doorWidthPack.getByRole("checkbox").check();
@@ -158,6 +169,71 @@ test("a real check run reproduces 1 pass / 1 fail / 1 indeterminate in the brows
   await expect(downloadButton).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId("report-file-pending")).toHaveCount(0);
   await expect(page.getByTestId("report-file-failed")).toHaveCount(0);
+
+  // T-0053: the download half of T-0032 had never actually been driven by anything --
+  // no component test existed under `services/web/src` and this spec never clicked the
+  // real button. Click it for real, in a real chromium, against the real `make up`
+  // stack, and capture both the exact HTTP response `downloadFile` (`src/api/client.ts`)
+  // received for its own request and the file Playwright actually saved to disk, so this
+  // proves the button, the network round trip, and the save all really happened -- not
+  // just that a mocked function was called.
+  const [reportFileResponse, download] = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/report-file/") && response.request().method() === "GET",
+    ),
+    page.waitForEvent("download"),
+    downloadButton.click(),
+  ]);
+
+  // T-0053 defect 2: the frontend used to hardcode "report.md" for every run, discarding
+  // the server's own `Content-Disposition` (`report-{uuid}.md`,
+  // `CheckRunViewSet.report_file`). What the browser actually saved the file as is the
+  // real proof this is fixed -- not the response header alone, which a frontend bug could
+  // still ignore.
+  const savedFilename = download.suggestedFilename();
+  expect(savedFilename).toMatch(/^report-[0-9a-f-]{36}\.md$/);
+  const contentDisposition = reportFileResponse.headers()["content-disposition"] ?? "";
+  expect(contentDisposition).toContain(savedFilename);
+
+  // The bytes the browser wrote to disk must be exactly the bytes the server generated for
+  // this run's report -- not merely "a file appeared". `downloadFile` (`src/api/client.ts`)
+  // reads this exact response's body itself via `response.blob()`, and once the page has
+  // done that, Chromium's own DevTools buffer for a `fetch()`-initiated response can come
+  // back empty for `reportFileResponse.body()` -- a Playwright/CDP quirk with no bearing on
+  // whether the app worked, but it means this response object cannot be trusted as the
+  // *source* of truth to diff against. Re-fetching the identical URL, with the identical
+  // credentials the page itself just used (read straight off the request Chromium actually
+  // sent), as a second, independent request through Playwright's own `APIRequestContext`
+  // sidesteps that: its response body is always fully buffered, no page-side consumption to
+  // race against.
+  const sentHeaders = reportFileResponse.request().headers();
+  const independentFetch = await page.request.get(reportFileResponse.url(), {
+    headers: {
+      authorization: sentHeaders["authorization"] ?? "",
+      "x-tenant": sentHeaders["x-tenant"] ?? "",
+    },
+  });
+  expect(independentFetch.ok()).toBe(true);
+  const serverBytes = await independentFetch.body();
+
+  const savedPath = await download.path();
+  if (savedPath === null) {
+    throw new Error("Playwright did not save the downloaded report to disk");
+  }
+  const savedBytes = await readFile(savedPath);
+  // Not a comparison of two empty buffers: the generated report is a real, non-trivial
+  // Markdown document.
+  expect(serverBytes.length).toBeGreaterThan(0);
+  expect(savedBytes.equals(serverBytes)).toBe(true);
+  expect(savedBytes.toString("utf-8")).toContain("three_doors.ifc");
+
+  // T-0053 defect 1: `downloadFile` used to revoke the blob: URL synchronously, in the
+  // same tick as `link.click()` -- a race the unit test in `src/api/client.test.ts`
+  // catches deterministically with fake timers. Nothing about *that* race is observable
+  // from here (a completed, saved `download` event already implies the browser finished
+  // reading the blob), but this real-path run is still evidence the fix did not break the
+  // download it was protecting: the file above arrived intact.
 
   // Screenshot of the unfiltered report, before the filter control below changes the DOM.
   await page.screenshot({

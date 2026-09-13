@@ -134,6 +134,26 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 }
 
 /**
+ * The filename the server actually named this download, per RFC 6266: the extended,
+ * percent-encoded `filename*=UTF-8''…` parameter first (it is what a non-ASCII name would
+ * use), the plain quoted `filename="…"` second. `null` when the header is absent or
+ * carries neither -- the caller's own fallback applies then, not an empty string.
+ */
+function filenameFromContentDisposition(header: string | null): string | null {
+  if (!header) return null;
+  const extended = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (extended?.[1]) {
+    try {
+      return decodeURIComponent(extended[1]);
+    } catch {
+      // Malformed percent-encoding: fall through to the plain parameter below.
+    }
+  }
+  const plain = /filename="?([^";]+)"?/i.exec(header);
+  return plain?.[1]?.trim() || null;
+}
+
+/**
  * Save an authenticated file to disk -- a generated report, not a JSON body.
  *
  * `path` is the *full* server-rooted path a run's `report_file_url` already carries
@@ -142,14 +162,25 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
  * the "/api" prefix if the two ever disagree. A plain `<a href>` cannot carry the bearer
  * token this API takes instead of a cookie, so this fetches the bytes itself and hands the
  * browser a local blob to save.
+ *
+ * `fallbackFilename` is used only when the response carries no usable `Content-Disposition`
+ * -- the server (`CheckRunViewSet.report_file`) always names this specific download
+ * `report-{uuid}.md`, so two different runs never collide in the browser's downloads
+ * folder and a saved file can always be traced back to the run it came from. A caller
+ * that hardcoded a name here (T-0053) silently discarded that and always saved
+ * "report.md", regardless of which run it was.
  */
-export async function downloadFile(path: string, filename: string): Promise<void> {
+export async function downloadFile(path: string, fallbackFilename: string): Promise<void> {
   const response = await fetch(path, { credentials: "include", headers: headers(undefined) });
 
   if (response.status === 401 && (await refreshAccessToken())) {
-    return downloadFile(path, filename);
+    return downloadFile(path, fallbackFilename);
   }
   if (!response.ok) throw await toError(response);
+
+  const filename =
+    filenameFromContentDisposition(response.headers.get("Content-Disposition")) ??
+    fallbackFilename;
 
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
@@ -161,7 +192,13 @@ export async function downloadFile(path: string, filename: string): Promise<void
     link.click();
     link.remove();
   } finally {
-    URL.revokeObjectURL(url);
+    // `revokeObjectURL` must not run synchronously, in the same tick as `click()`: a
+    // browser that begins reading a blob: URL asynchronously (starting the download on a
+    // later task rather than during the click's own handler) can have the URL freed
+    // before it ever gets there, and the download silently fails with nothing shown to
+    // the user (T-0053). Deferring to a macrotask lets that navigation begin first, no
+    // matter how the browser schedules it.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 }
 

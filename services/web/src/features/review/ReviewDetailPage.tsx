@@ -118,6 +118,10 @@ export function ReviewDetailPage() {
   async function onDownloadReportFile(url: string) {
     setError(null);
     try {
+      // "report.md" is only the fallback `downloadFile` falls back to if the response
+      // ever arrived with no `Content-Disposition` at all -- the server
+      // (`CheckRunViewSet.report_file`) always sends one naming this exact run
+      // (`report-{uuid}.md`), and that name is what actually reaches disk (T-0053).
       await api.download(url, "report.md");
     } catch (caught) {
       report(caught);
