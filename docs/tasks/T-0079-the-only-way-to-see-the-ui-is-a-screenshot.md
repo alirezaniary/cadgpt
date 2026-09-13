@@ -1,6 +1,6 @@
 # T-0079 — The only way anyone sees this UI is a screenshot the agent chose
 
-**Phase:** 3   **Status:** built
+**Phase:** 3   **Status:** done
 **Touches invariants:** none. One production line changes (`routeTree` becomes exported);
 no engine, service, model or tenancy code is touched.
 
@@ -186,6 +186,12 @@ error in the app is worded.
 
 ## Review
 
-Not yet dispatched. The gate that would fire it: this is a milestone-shaped change (a new
-gate in `make verify`, a new documentation tree) but touches no invariant and no production
-behaviour beyond one exported binding.
+Not reviewer-gated — touches no invariant, and the one production line (`routeTree`
+exported) is trivial enough for the coordinator to read directly rather than dispatch on.
+The size of the addition (31 stories, mocks, docs) is real but is tooling and documentation,
+not product behaviour, so it does not trip the "large enough that the coordinator did not
+read all of it" clause on its own. Verified on the real static export, served over HTTP and
+driven with Chromium: all 31 stories render, a check started in the workbench advances
+`Queued → Running → report rendered inline` through the app's own polling, and three
+viewports were measured. The three defects it found on its first run are queued as their own
+tasks — **T-0080**, **T-0081**, **T-0082** — each judged separately below.

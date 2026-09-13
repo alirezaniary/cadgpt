@@ -1,6 +1,6 @@
 # T-0082 — The catalogue filter has no labels
 
-**Phase:** 3   **Status:** built
+**Phase:** 3   **Status:** done
 **Touches invariants:** none.
 
 ## Why
@@ -164,3 +164,11 @@ component, not a unit test of the JSX in isolation.
 Nothing. Three inputs (jurisdiction, region, version) all received the same
 `.field` + `.sr-only` `<label htmlFor>` treatment; the task's scope did not require touching
 `styles.css`, and none was touched.
+
+## Review
+
+Not reviewer-gated — no invariant, single-file diff, fully read by the coordinator. Verified
+against the real workbench with the project's own `axe-core`: zero "label" rule violations
+on the three inputs, and — the part an automated a11y check alone would not catch — after
+typing into the jurisdiction field its label text is still present in the picker's
+`innerText` and its accessible-name association still resolves.

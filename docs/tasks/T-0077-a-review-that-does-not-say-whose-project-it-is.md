@@ -1,6 +1,6 @@
 # T-0077 — a review that doesn't say whose project it is
 
-**Phase:** 3   **Status:** built
+**Phase:** 3   **Status:** done
 **Touches invariants:** none.
 
 ## Why
@@ -138,3 +138,11 @@ the existing shape rather than invent a new one). Flagging it for the coordinato
 rather than deciding it here.
 
 ## Review
+
+Not reviewer-gated — no invariant touched, two-file diff, fully read by the coordinator.
+Verified live against the compose stack: `GET /api/v1/reviews/<uuid>/` returns the nested
+`project`, and the `uuid` read off that response round-trips through `?project=<uuid>` back
+to the same review. The `ProjectSerializer.review_count` per-row query cost the evidence
+flagged on list endpoints is a real but separate concern, not blocking this task; left as an
+observation rather than queued, since a `Project` has few `Review`s per tenant in practice
+and nothing currently paginates reviews at a scale where it would be felt.

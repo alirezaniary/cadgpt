@@ -1,6 +1,6 @@
 # T-0081 — A failed run never says why
 
-**Phase:** 3   **Status:** built
+**Phase:** 3   **Status:** done
 **Touches invariants:** "Never assert compliance we did not establish", indirectly. A run
 that failed established nothing, and the screen currently says only that it ended — which
 is the thinnest possible version of saying what was not checked.
@@ -253,3 +253,13 @@ to drive the proof (`e2e/_t0081_adhoc_proof.spec.ts`, `e2e/_t0081_storybook_proo
 were throwaway evidence-capture scripts, not committed — deleted after their output was
 copied into this section, per their own docstrings. No permanent e2e spec was added; the
 task's Scope did not call for one and this evidence stands without it.
+
+## Review
+
+Not reviewer-gated — no invariant directly touched (the "never assert compliance we did not
+establish" note in the header is indirect), and the diff was fully read by the coordinator:
+263 lines across 6 files, the code change itself 19/-8 in one component. Verified against
+the live stack rather than the workbench alone: a real 47MB IFC forced a genuine
+`RESOURCE_EXHAUSTED` (`WORKER_MEM_LIMIT=280m`, three real SIGKILLs, `claim_count` tripping at
+3), and the rendered screen's text matched the API's `failure_reason`/`failure_detail`
+byte-for-byte. Both the non-blank and blank-detail storybook states rendered correctly.

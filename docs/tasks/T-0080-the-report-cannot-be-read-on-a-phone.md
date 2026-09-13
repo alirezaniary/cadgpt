@@ -1,6 +1,6 @@
 # T-0080 — The report cannot be read on a phone
 
-**Phase:** 3   **Status:** built
+**Phase:** 3   **Status:** done
 **Touches invariants:** none directly. But see "What must not change" — the fix must not
 reach for `display: none` on a column, because hiding a finding's status or reason is a
 three-valued problem wearing a layout costume.
@@ -234,3 +234,11 @@ Nothing in this task's scope is left undone. `.counts` was investigated and left
 unchanged — it was never a source of overflow at any measured width (see above), and the
 task made touching it conditional ("only if it can be done without ever rendering fewer
 than three tiles"); since it needed no change, none was made.
+
+## Review
+
+Not reviewer-gated — no invariant, small fully-read diff (two files, CSS/markup only).
+Verified by repeating the exact measurement that found the bug against the real built
+workbench in Chromium: `scrollWidth - clientWidth` is `0` at 390/768/1280px in both
+`dir=ltr` and `dir=rtl` (was `+318` at 390px before), all three count tiles present at every
+width, and the entities table scrolls internally only where it needs to.
