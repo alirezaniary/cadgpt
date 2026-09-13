@@ -121,6 +121,17 @@ class CheckRunViewSet(
             return cast(
                 "QuerySet[CheckRun]", runs.without_report().select_related("review")
             )
+        if self.action == "report_file":
+            # T-0054: streaming the file needs `report_file_id`, tenant scoping, and the
+            # `Media` row's own columns (`file`, `original_name`, `content_type`) --
+            # never the `report` JSON `with_inputs()` pulls in below for `retrieve`,
+            # which is documented elsewhere as potentially megabytes and this action
+            # never reads. `select_related("report_file")` also keeps this action at one
+            # query instead of the two `run.report_file.file...` below would otherwise
+            # cost on every single download.
+            return cast(
+                "QuerySet[CheckRun]", runs.without_report().select_related("report_file")
+            )
         return cast("QuerySet[CheckRun]", runs.with_inputs())
 
     @extend_schema(responses={200: OpenApiTypes.BINARY})

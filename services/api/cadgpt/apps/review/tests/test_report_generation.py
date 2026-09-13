@@ -6,6 +6,8 @@ same way `execute_check_run` is -- on commit, chained from the check's own succe
 
 from __future__ import annotations
 
+import json
+import uuid as uuid_lib
 from typing import Any
 
 import pytest
@@ -14,6 +16,7 @@ from rest_framework.test import APIClient
 from cadgpt.apps.media.models import Media
 from cadgpt.apps.review.choices import CheckRunStatus
 from cadgpt.apps.review.models import CheckRun, Review
+from cadgpt.apps.review.services import report_generation as report_generation_module
 from cadgpt.apps.review.services.report_generation import ReportGenerationService
 from cadgpt.apps.tenancy.models import Tenant
 
@@ -345,3 +348,130 @@ def test_backfill_generates_reports_for_runs_that_were_never_dispatched(
     output = out.getvalue()
     assert f"generated: run {run.uuid}" in output
     assert "done: 1 generated, 0 could not be generated, 1 runs considered" in output
+
+
+# ---------------------------------------------------------------------------- T-0054
+
+
+def _events(raw_stdout: str) -> list[dict[str, Any]]:
+    """Parse the structured-log lines `capsys` captured. `configure(json_output=True)`
+    (`cadgpt.apps.base.logging`) renders one JSON object per line; anything else on
+    stdout (a stray `print`, a warning) is not one of our events and is skipped."""
+    events = []
+    for line in raw_stdout.splitlines():
+        try:
+            events.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return events
+
+
+def test_the_two_log_lines_from_one_generation_agree_on_media_id(
+    tenant: Tenant,
+    review: Review,
+    owner: Any,
+    commit: Any,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """T-0054: `report_generation.py` used to log `media_id` as the `Media` primary key
+    in one place and its uuid in another. Both lines must now name the same thing --
+    the uuid `MediaService.store` itself logs and the storage path embeds -- and it must
+    parse as an actual uuid, not a small integer."""
+    from cadgpt.apps.review.services import ReviewService
+
+    capsys.readouterr()  # clear whatever fixture setup already printed
+    with commit():
+        run = ReviewService(tenant=tenant).request_check(review=review, requested_by=owner)
+    run.refresh_from_db()
+    assert run.report_file_id is not None
+    assert run.report_file is not None
+    media_uuid = str(run.report_file.uuid)
+
+    generated = next(
+        e
+        for e in _events(capsys.readouterr().out)
+        if e.get("event") == "report_file_generated"
+    )
+
+    replayed = ReportGenerationService().generate(run.uuid)
+    already_generated = next(
+        e
+        for e in _events(capsys.readouterr().out)
+        if e.get("event") == "report_file_already_generated"
+    )
+
+    assert generated["media_id"] == media_uuid
+    assert already_generated["media_id"] == media_uuid
+    uuid_lib.UUID(media_uuid)  # a real uuid -- the T-0054 bug logged an integer pk here
+    assert replayed.report_file_id == run.report_file_id
+
+
+def test_a_crash_between_storing_and_attaching_leaves_nothing_orphaned(
+    tenant: Tenant,
+    review: Review,
+    owner: Any,
+    django_capture_on_commit_callbacks: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Reproduces the exact crash window T-0054 closes: a worker dies after
+    `MediaService.store` has already written the file and committed the `Media` row, but
+    before `_attach` commits `report_file` onto the run. `_attach` is patched to raise
+    once, called directly against a real succeeded run (never through Celery, whose eager
+    test mode swallows a task exception rather than propagating it -- the point here is
+    the crash itself, not the dispatch machinery around it).
+
+    Proof this is not the original bug: the file and its `Media` row are NOT rolled back
+    by the later crash -- nothing rolls back a write with no enclosing transaction -- and
+    a real redelivery afterward reuses that exact row by content checksum rather than
+    piling up a second one beside it.
+    """
+    from cadgpt.apps.review import tasks as review_tasks
+    from cadgpt.apps.review.services import ReviewService
+
+    # A succeeded run with a real report but no file yet -- the same lost-dispatch setup
+    # `test_a_lost_report_dispatch_leaves_a_run_stuck_and_the_recovery_route_fixes_it` uses.
+    monkeypatch.setattr(review_tasks.generate_report_file, "delay", _lost_dispatch)
+    with django_capture_on_commit_callbacks(execute=True):
+        run = ReviewService(tenant=tenant).request_check(review=review, requested_by=owner)
+    monkeypatch.undo()
+
+    run.refresh_from_db()
+    assert run.status == CheckRunStatus.SUCCEEDED
+    assert run.report_file_id is None
+    assert Media.objects.for_tenant(tenant).filter(kind="report").count() == 0
+
+    real_attach = report_generation_module.ReportGenerationService._attach
+    calls = {"count": 0}
+
+    def _dying_attach(self: Any, run: CheckRun, media: Media) -> CheckRun:
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise RuntimeError("simulated worker death between store() and _attach()")
+        return real_attach(self, run, media)
+
+    monkeypatch.setattr(
+        report_generation_module.ReportGenerationService, "_attach", _dying_attach
+    )
+
+    with pytest.raises(RuntimeError, match="simulated worker death"):
+        ReportGenerationService().generate(run.uuid)
+
+    monkeypatch.undo()  # restore the real _attach before the recovery call below
+
+    run.refresh_from_db()
+    assert run.report_file_id is None, "the crash landed before attaching"
+
+    orphaned = Media.objects.for_tenant(tenant).get(kind="report")
+    assert orphaned.file.storage.exists(orphaned.file.name), (
+        "the file MediaService.store wrote is not rolled back by the later crash -- "
+        "this is what 'no transaction spans the storage write' means in practice"
+    )
+
+    recovered = ReportGenerationService().generate(run.uuid)
+
+    assert recovered.report_file_id == orphaned.pk, (
+        "recovery reuses the row the crashed attempt already wrote, by content checksum"
+    )
+    assert Media.objects.for_tenant(tenant).filter(kind="report").count() == 1, (
+        "no second file was stored -- the checksum match found and reused the first one"
+    )

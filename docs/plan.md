@@ -1410,6 +1410,34 @@ picker locator (`{ hasText: "Restricted attribute name" }`) now matches two seed
 ("Restricted attribute name" and "…with a value bound") and fails Playwright's strict-mode
 check. Observation for the judge.
 
+**T-0054 — four loose ends in the report-generation path, all closed. Done 2026-09-13.**
+(1) **Orphaned blob on rollback:** `ReportGenerationService.generate` no longer holds one
+`atomic()` block across `MediaService.store`'s write — it renders and claims the run in a
+short transaction, calls `store` with no transaction open at all (so a later crash has
+nothing left to roll back through), then attaches the result in a second short
+transaction that re-checks `report_file_id` under a fresh lock. The narrower residual this
+leaves (a worker dying between `store` returning and the attach committing) is closed by
+`_find_reusable_media`, which reuses an unattached `Media` row by content checksum instead
+of storing a duplicate — proven with a real crash injected between the two steps, showing
+one real orphaned-but-committed row survives, gets reused on redelivery, and the count
+never exceeds one. (2) **`MediaKind.REPORT` is now actually unuploadable:**
+`UPLOADABLE_KINDS` excludes it and `MediaUploadSerializer.kind` validates against that set
+— `POST /api/v1/media/` with `kind=report` now 400s before `MediaService` is ever called,
+confirmed with a real curl against the real stack. (3) **`media_id` means one thing:** the
+`Media` uuid, everywhere in `report_generation.py` and in `generate_report_file`'s return
+value — confirmed by pulling both log lines from one real generation and its redelivery,
+identical uuid in both. (4) **The download route no longer over-fetches:**
+`CheckRunViewSet.get_queryset()` gives the `report_file` action its own
+`without_report().select_related("report_file")` branch instead of falling through to
+`with_inputs()` — measured via `CaptureQueriesContext` against the real dockerized
+Postgres, 4 queries → 3, with the multi-megabyte `report` JSON column no longer selected
+at all.
+
+Not reviewer-gated (no invariant; the coordinator read the full diff — the
+two-transaction restructuring of `generate` is the one non-trivial part, and its
+correctness is exactly what the crash-injection test exercises). All four fixes are
+unit-tested and each has separate real-path proof beyond the tests, per the task file.
+
 ### Queued
 
 Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were written before
@@ -1487,7 +1515,8 @@ the first of them:
   **Done 2026-09-12.** See "What has landed" above.
 - ~~**T-0053** — the download button has never executed, and two defects are visible in it.~~
   **Done 2026-09-13.** See "What has landed" above.
-- **T-0054** — four loose ends in the generation path.
+- ~~**T-0054** — four loose ends in the generation path.~~ **Done 2026-09-13.** See "What
+  has landed" above.
 - **T-0055** — the report file must stand on its own once it leaves the building.
 
 - ~~**T-0056** — a lost check dispatch kills the review, not just the file.~~ **Done

@@ -49,9 +49,17 @@ def generate_report_file(run_uuid: str) -> str:
     `ReviewService.request_check` documents for `execute_check_run`: enqueuing before the
     row is visible to another connection would let a worker pick the message up and find
     a run that is not SUCCEEDED yet.
+
+    Returns the generated file's `Media` **uuid** -- never the primary key (T-0054) --
+    the same identifier `ReportGenerationService.generate`'s own log lines name
+    `media_id`. Empty string when generation did not produce a file this call round
+    (`report_generation_error` set instead; see `ReportGenerationService._record_failure`).
     """
     run = ReportGenerationService().generate(run_uuid)
-    return str(run.report_file_id)
+    if run.report_file_id is None:
+        return ""
+    assert run.report_file is not None  # report_file_id set, checked above
+    return str(run.report_file.uuid)
 
 
 @shared_task(
