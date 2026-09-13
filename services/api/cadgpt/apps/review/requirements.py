@@ -37,6 +37,7 @@ from __future__ import annotations
 from typing import Any
 
 from django.utils.translation import gettext_lazy as _
+from django.utils.translation import pgettext_lazy
 
 #: Sentence fragment for each XSD restriction facet name this module knows how to render.
 #: `"literal"` is a bare value with no `Restriction` at all. A comparison whose operator is
@@ -79,6 +80,38 @@ _JOINER = _(" and ")
 #: must not be told apart by counting, and an enumeration with several members must not be
 #: told apart from a range by counting either.
 _ENUMERATION_JOINER = _(" or ")
+
+#: T-0055: `spec["cardinality"]` (`SpecificationOutcome.cardinality`, `check.py`'s
+#: `str(spec.get_usage())`) is `ifctester`'s own closed vocabulary -- `"required"` |
+#: `"optional"` | `"prohibited"`, `ifctester.ids.Cardinality` -- carried on the report as a
+#: bare machine token, not prose. `ReportView.tsx` already turns the same token into words
+#: through its own `report.cardinality.<token>` i18n keys (T-0036); this is that same fix
+#: for the one renderer that cannot reach a frontend i18n catalogue at all --
+#: `report_markdown.py`, the file that leaves the building. `pgettext_lazy` rather than a
+#: bare `_(...)`: "required", "optional" and "prohibited" are common enough words that a
+#: future, unrelated string (a form field's own "required") must not collide with this
+#: msgid and inherit its translation by accident -- the same reasoning `report_markdown.py`
+#: already gives `pgettext("report coverage table: count of failing findings", "Failed")`.
+#: The Persian msgstr for each entry is kept word-for-word identical to
+#: `services/web/src/i18n/fa.json`'s `report.cardinality.<token>` -- the same run must name
+#: the same cardinality the same way whether it is read on screen or in the file.
+_CARDINALITY_LABELS: dict[str, Any] = {
+    "required": pgettext_lazy("specification cardinality", "required"),
+    "optional": pgettext_lazy("specification cardinality", "optional"),
+    "prohibited": pgettext_lazy("specification cardinality", "prohibited"),
+}
+
+
+def cardinality_label(cardinality: str) -> str:
+    """`cardinality`, in the reader's language, or the token itself when unrecognised.
+
+    Total the same way `requirement_text` and `reasons.label_for` are total: a document
+    from a newer engine whose cardinality vocabulary grew degrades to the raw token,
+    readable but untranslated, rather than raising or silently mistranslating a value this
+    table does not know.
+    """
+    label = _CARDINALITY_LABELS.get(cardinality)
+    return str(label) if label is not None else cardinality
 
 
 def _as_list(value: Any) -> list[Any]:

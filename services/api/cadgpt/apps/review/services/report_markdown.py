@@ -45,16 +45,50 @@ asserting a compliance result nobody established: exactly the claim I5 and I7 ex
 forbid, in the one artifact that leaves the building. `test_report_markdown.py`
 (`test_a_specification_name_cannot_inject_a_second_coverage_section`) uses this literal
 string.
+
+**The file identifies itself (T-0055).** `report["engine_version"]` already named which
+engine judged this run; `run_uuid` and `checked_at` are new required, keyword-only
+parameters carrying the two facts the file's own body was missing until this task: the run
+this document is a record of, and when it was judged. Both come from `CheckRun` itself
+(`run.uuid`, `run.finished_at`), never from the stored `report` document -- the same split
+`rule_pack_selection` already makes, for the same reason: a fact that lives on the row, not
+in the JSON blob a redelivery re-renders unchanged. This is the fact `docs/decisions.md`
+("A verdict-changing engine release bumps the engine version") says an old, archived report
+needs to answer "would this be judged the same way today" -- unreachable once the file is
+renamed or moved out of this system, which is the whole premise of a document meant to leave
+the building. `checked_at` is rendered as an explicit UTC timestamp, never a
+locale-formatted date: the reader of an archived file may be in any timezone, and an
+unlabelled local time is exactly the kind of ambiguity a traceability fact must not carry.
+
+**The Persian file no longer carries English where the wording is ours to supply
+(T-0055).** `spec["cardinality"]` was `ifctester`'s own machine token
+(`"required"`/`"optional"`/`"prohibited"`) printed as-is; `requirements.cardinality_label`
+is the same fix `ReportView.tsx` already has for the screen (T-0036), reused here rather
+than reinvented, with the Persian wording kept identical to
+`services/web/src/i18n/fa.json`'s `report.cardinality.<token>`. `entity.detail`, by
+contrast, is *not* ours to translate: it is `ifctester`'s own `Result.to_string()`
+sentence (`facet.py`), and that library carries no translated or translatable form of it
+anywhere -- no `.po`/`.mo`, no locale hook, no i18n-aware subclass; every `to_string()`
+override is a hardcoded English f-string (checked by reading `ifctester` 0.8.5's source
+directly, the installed version pinned in this workspace). Machine-translating a sentence
+whose precision is the point would be worse than leaving it in English, so this module does
+the honest thing instead: it states plainly, once, that the Detail column is the checking
+engine's own English wording, rather than silently leaving a reader to wonder whether the
+untranslated fragment beside it is a bug or an editorial choice.
 """
 
 from __future__ import annotations
 
+import uuid as uuid_lib
+from datetime import datetime
+from datetime import timezone as dt_timezone
 from typing import Any, TypeVar
 
 from cadgpt_engine import SEVERITY_RANK
 from django.utils.translation import gettext, ngettext, pgettext
 
 from cadgpt.apps.review.choices import OutcomeStatus
+from cadgpt.apps.review.requirements import cardinality_label
 
 #: A markdown block (heading, blockquote, list item, table row, thematic break) can only
 #: ever start at the true beginning of a line. A sanitized field is single-line by
@@ -163,7 +197,11 @@ def _pack_attribution_lines(
 
 
 def render_markdown_report(
-    report: dict[str, Any], rule_pack_selection: list[dict[str, Any]] | None = None
+    report: dict[str, Any],
+    rule_pack_selection: list[dict[str, Any]] | None = None,
+    *,
+    run_uuid: uuid_lib.UUID | str,
+    checked_at: datetime,
 ) -> str:
     """The localized `report` (`presentation.localize_report`'s output), as Markdown.
 
@@ -172,6 +210,12 @@ def render_markdown_report(
     non-empty, exactly as `ReportView.tsx`'s own selection section is. T-0049 additionally
     keys it by uuid for `_pack_attribution_lines`, below, to resolve each specification's
     own `rule_pack` against.
+
+    `run_uuid` and `checked_at` (T-0055) are `CheckRun.uuid` and `CheckRun.finished_at` --
+    facts the row carries, not the stored `report` document -- required and keyword-only so
+    a caller cannot forget to pass the one thing this task exists to add. See the module
+    docstring's "The file identifies itself" for why they are not read from `report` and why
+    `checked_at` is always rendered in UTC.
     """
     citation_by_uuid: dict[str, dict[str, Any]] = {
         pack["uuid"]: pack for pack in (rule_pack_selection or [])
@@ -190,6 +234,17 @@ def render_markdown_report(
     )
     lines.append("")
     lines.append(f"**{gettext('Status')}:** {_status_label(report['status'])}")
+    lines.append("")
+
+    # T-0055: the file's own identity -- the run this document is a record of, and when it
+    # was judged, in the body rather than only the filename (which a rename or an archive
+    # step discards). UTC, not a locale-formatted date: whoever reads this file later may be
+    # in any timezone, and this line exists specifically so that question has one answer.
+    checked_at_utc = checked_at.astimezone(dt_timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    lines.append(
+        gettext("Run %(run_id)s · Checked %(date)s")
+        % {"run_id": str(run_uuid), "date": checked_at_utc}
+    )
     lines.append("")
 
     # I7: the disclosure precedes coverage, which precedes findings. Rendered as given --
@@ -264,6 +319,16 @@ def render_markdown_report(
 
     lines.append(f"## {gettext('Specifications')}")
     lines.append("")
+    # T-0055: `entity.detail` (the "Detail" column below) is `ifctester`'s own English
+    # sentence -- not ours to translate, and not machine-translatable without risking the
+    # precision that sentence exists for. Stated once, plainly, here, rather than leaving a
+    # reader of the Persian file to guess whether the untranslated fragment beside a finding
+    # is a bug or a deliberate choice.
+    detail_note = gettext(
+        "Where shown, the Detail column is the checking engine's own wording, in English."
+    )
+    lines.append(f"> {detail_note}")
+    lines.append("")
     for spec in _by_severity(specifications):
         name = _sanitize_text(spec.get("name") or "") or gettext("Nothing was checked")
         lines.append(f"### {name} — {_status_label(spec['status'])}")
@@ -279,7 +344,10 @@ def render_markdown_report(
         matched_line = ngettext(
             "%(count)s element matched", "%(count)s elements matched", spec["matched"]
         ) % {"count": spec["matched"]}
-        cardinality = _sanitize_text(spec["cardinality"])
+        # T-0055: `spec["cardinality"]` is `ifctester`'s own machine token, not prose --
+        # `cardinality_label` is the same fix `ReportView.tsx` already applies on screen
+        # (T-0036), so the Persian file no longer prints the raw English word here.
+        cardinality = cardinality_label(spec["cardinality"])
         lines.append(f"{matched_line} · {cardinality}")
         lines.append("")
         if spec.get("applicability_text"):

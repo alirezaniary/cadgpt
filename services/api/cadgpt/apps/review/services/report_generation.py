@@ -133,7 +133,17 @@ class ReportGenerationService(BaseService):
             with translation.override(run.tenant.language):
                 localized = localize_report(run.report)
                 assert localized is not None  # report is not None, checked above
-                markdown = render_markdown_report(localized, run.rule_pack_selection)
+                # T-0055: the file identifies its own run and judgement time in its body.
+                # `run.finished_at` is set in the same transaction as `run.status =
+                # SUCCEEDED` (`CheckRunExecutor._succeed`), so a run reaching this branch
+                # (status already checked as SUCCEEDED, above) always has one.
+                assert run.finished_at is not None  # set with SUCCEEDED, in the same commit
+                markdown = render_markdown_report(
+                    localized,
+                    run.rule_pack_selection,
+                    run_uuid=run.uuid,
+                    checked_at=run.finished_at,
+                )
         # The transaction above has committed and the row lock is released by the time
         # this line runs -- see the module docstring's "No transaction spans the storage
         # write" for why that is deliberate, not an oversight.

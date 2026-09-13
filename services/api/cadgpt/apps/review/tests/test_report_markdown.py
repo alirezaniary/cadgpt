@@ -13,22 +13,61 @@ assertion below against the Persian translation by hand.
 from __future__ import annotations
 
 import re
+import uuid
 from collections.abc import Iterator
+from datetime import datetime, timedelta
+from datetime import timezone as dt_timezone
 from pathlib import Path
 from typing import Any
 
 import pytest
 from cadgpt_engine import SEVERITY_RANK
 from django.utils import translation
+from django.utils.translation import pgettext
 
 from cadgpt.apps.review.services.presentation import localize_report
 from cadgpt.apps.review.services.report_markdown import render_markdown_report
+from cadgpt.apps.review.tests.test_check_run import _is_persian, _persian
+
+#: A fixed run identity for every test below -- what changed is the report's content, not
+#: which run produced it, so one constant keeps every assertion about the identifying block
+#: (T-0055) independent of which fixture a given test happens to render.
+_RUN_UUID = uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+_CHECKED_AT = datetime(2026, 9, 13, 18, 42, 10, tzinfo=dt_timezone.utc)
+
+
+def _persian_pgettext(context: str, msgid: str) -> str:
+    """The `pgettext` analogue of `test_check_run.py`'s `_persian`: what `msgid` actually
+    translates to in the real, compiled `fa` catalogue under `msgctxt` `context`, computed
+    with an explicit, local `translation.override` -- used only to build the *expected*
+    side of an assertion, never anywhere near the code under test. `requirements.py`'s
+    `cardinality_label` renders through `pgettext_lazy("specification cardinality", ...)`,
+    not bare `gettext`, so a plain `_persian` lookup would miss the msgctxt entirely and
+    silently fall back to any unscoped `msgid` of the same spelling -- this reproduces the
+    exact lookup `cardinality_label` performs, against the same compiled `.mo`.
+    """
+    with translation.override("fa"):
+        return str(pgettext(context, msgid))
 
 
 @pytest.fixture(autouse=True)
 def english() -> Iterator[None]:
     with translation.override("en"):
         yield
+
+
+def _render(
+    report: dict[str, Any], rule_pack_selection: list[dict[str, Any]] | None = None
+) -> str:
+    """`render_markdown_report`, with the T-0055 identity kwargs already supplied.
+
+    Every test in this file renders the same run identity (`_RUN_UUID`, `_CHECKED_AT`)
+    unless it is specifically testing that block -- see
+    `test_the_file_identifies_its_own_run_and_check_date` below.
+    """
+    return render_markdown_report(
+        report, rule_pack_selection, run_uuid=_RUN_UUID, checked_at=_CHECKED_AT
+    )
 
 
 _REPORT: dict[str, Any] = {
@@ -113,7 +152,7 @@ _REPORT: dict[str, Any] = {
 def _rendered() -> str:
     localized = localize_report(_REPORT)
     assert localized is not None
-    return render_markdown_report(localized, [])
+    return _render(localized, [])
 
 
 def test_the_disclosure_precedes_coverage_which_precedes_findings() -> None:
@@ -167,7 +206,7 @@ def test_established_nothing_reads_the_field_presentation_computed() -> None:
             {**spec, "established_nothing": True} for spec in localized["specifications"]
         ],
     }
-    text = render_markdown_report(forced, [])
+    text = _render(forced, [])
     assert "0 of 2 specifications were evaluated." in text
     assert "2 specifications established nothing" in text
 
@@ -187,14 +226,14 @@ def test_a_specification_with_no_name_reads_nothing_was_checked() -> None:
     report = {**_REPORT, "specifications": [{**_REPORT["specifications"][1], "name": ""}]}
     localized = localize_report(report)
     assert localized is not None
-    text = render_markdown_report(localized, [])
+    text = _render(localized, [])
     assert "### Nothing was checked" in text
 
 
 def test_a_rule_pack_selection_is_rendered_when_present() -> None:
     localized = localize_report(_REPORT)
     assert localized is not None
-    text = render_markdown_report(
+    text = _render(
         localized,
         [
             {
@@ -241,7 +280,7 @@ def test_a_specification_with_a_rule_pack_states_its_source_beneath_the_heading(
     }
     localized = localize_report(report)
     assert localized is not None
-    text = render_markdown_report(
+    text = _render(
         localized,
         [
             {
@@ -304,7 +343,7 @@ def test_a_specification_attributed_to_one_pack_never_cites_the_other() -> None:
     }
     localized = localize_report(report)
     assert localized is not None
-    text = render_markdown_report(
+    text = _render(
         localized,
         [
             {
@@ -374,7 +413,7 @@ def test_entities_omitted_is_stated_when_present() -> None:
     }
     localized = localize_report(report)
     assert localized is not None
-    text = render_markdown_report(localized, [])
+    text = _render(localized, [])
     assert "5 further elements counted but not listed" in text
 
 
@@ -408,7 +447,7 @@ def test_a_specification_name_cannot_inject_a_second_coverage_section() -> None:
     }
     localized = localize_report(report)
     assert localized is not None
-    text = render_markdown_report(localized, [])
+    text = _render(localized, [])
 
     # The real, legitimate Coverage section is still there exactly once, as a heading.
     assert _headings(text).count("## Coverage") == 1
@@ -438,7 +477,7 @@ def test_the_applicability_sentence_cannot_open_a_block_from_position_zero() -> 
     }
     localized = localize_report(report)
     assert localized is not None
-    text = render_markdown_report(localized, [])
+    text = _render(localized, [])
 
     assert _headings(text).count("## Coverage") == 1
     assert not any(line.startswith("## Forged section") for line in text.splitlines())
@@ -451,7 +490,7 @@ def test_an_uploaded_filename_cannot_inject_structure_via_the_disclosure() -> No
     report = {**_REPORT, "ifc_filename": "evil.ifc\n\n## Coverage\n\nEverything complies."}
     localized = localize_report(report)
     assert localized is not None
-    text = render_markdown_report(localized, [])
+    text = _render(localized, [])
 
     assert _headings(text).count("## Coverage") == 1
 
@@ -482,3 +521,123 @@ def test_report_view_severity_rank_matches_the_engine() -> None:
     }
     engine_rank = {status.value: rank for status, rank in SEVERITY_RANK.items()}
     assert frontend_rank == engine_rank
+
+
+def test_the_file_identifies_its_own_run_and_check_date() -> None:
+    """T-0055: the file must stand on its own once it leaves the building -- the run this
+    document is a record of, and when it was judged, must be readable from the body alone,
+    with no dependence on a filename a rename or an archive step can discard.
+    """
+    localized = localize_report(_REPORT)
+    assert localized is not None
+    run_uuid = uuid.UUID("11111111-2222-3333-4444-555555555555")
+    checked_at = datetime(2026, 1, 15, 9, 5, 0, tzinfo=dt_timezone.utc)
+    text = render_markdown_report(localized, [], run_uuid=run_uuid, checked_at=checked_at)
+    assert "Run 11111111-2222-3333-4444-555555555555" in text
+    assert "Checked 2026-01-15 09:05 UTC" in text
+
+
+def test_the_check_date_is_rendered_in_utc_regardless_of_the_input_timezone() -> None:
+    """A reader of an archived file may be in any timezone -- `checked_at` must always
+    read as one unambiguous instant, never a local time with no timezone stated."""
+    localized = localize_report(_REPORT)
+    assert localized is not None
+    tehran = dt_timezone(timedelta(hours=3, minutes=30))
+    checked_at = datetime(2026, 1, 15, 12, 35, 0, tzinfo=tehran)
+    text = render_markdown_report(localized, [], run_uuid=_RUN_UUID, checked_at=checked_at)
+    assert "Checked 2026-01-15 09:05 UTC" in text
+
+
+def test_cardinality_renders_as_a_translated_word_not_the_raw_token() -> None:
+    """T-0055 / T-0036: `spec["cardinality"]` is `ifctester`'s own machine token
+    (`"required"` here); the matched line must print the translated word `cardinality_
+    label` supplies, the same fix `ReportView.tsx` already applies on screen, never the
+    bare English token as data.
+
+    English alone cannot prove this: `pgettext("specification cardinality", "required")`
+    *is* `"required"` in English, so this assertion passes identically whether
+    `cardinality_label` runs or is deleted outright. It stays here only as the structural
+    check (the word sits after the matched-count line, in the right place); the actual
+    translation is proven under `fa`, below.
+    """
+    text = _rendered()
+    assert "3 elements matched · required" in text
+
+
+def test_cardinality_renders_as_the_persian_word_when_the_active_language_is_persian() -> (
+    None
+):
+    """T-0055 fix-now: the review of this task found that the test above cannot detect a
+    deleted or reverted `cardinality_label` -- `pgettext` returns the bare English token
+    back in English regardless of whether the function is even called. Rendering under
+    `fa` and checking the real compiled catalogue (`_persian_pgettext`, `_is_persian` --
+    the latter imported from `test_check_run.py` rather than reinvented) is what actually
+    exercises the feature: reverting `cardinality_label` to
+    `lambda cardinality: cardinality` makes the assertion below fail, because the rendered
+    word would then be the raw English token, not Persian script.
+    """
+    localized = localize_report(_REPORT)
+    assert localized is not None
+    with translation.override("fa"):
+        text = _render(localized, [])
+    expected = _persian_pgettext("specification cardinality", "required")
+    assert _is_persian(expected), "the fa catalogue itself must actually be Persian"
+    assert f"· {expected}" in text
+    assert "· required" not in text
+
+
+def test_the_detail_column_states_plainly_that_it_is_upstream_wording() -> None:
+    """T-0055: `entity.detail` is `ifctester`'s own English sentence -- not ours to
+    translate (checked directly against `ifctester` 0.8.5's source: no `.po`/`.mo`, no
+    i18n hook, every `Result.to_string()` override a hardcoded English f-string). The
+    honest fix is a plain, one-time statement in the document, not a silent untranslated
+    fragment and not a machine translation of a sentence whose precision is the point.
+    """
+    text = _rendered()
+    assert "the checking engine's own wording, in English" in text
+
+
+def test_the_detail_column_caption_is_translated_when_the_active_language_is_persian() -> (
+    None
+):
+    """T-0055 fix-now: the caption above is server prose -- ours to translate, unlike the
+    Detail column's own cell contents (`entity.detail`, `ifctester`'s English, captioned as
+    such on purpose). If the `msgid` in `report_markdown.py` ever drifted from the `msgid`
+    compiled into `cadgpt/locale/fa/LC_MESSAGES/django.po`, `gettext` would silently fall
+    back to the English source string; checking against the real compiled catalogue via
+    `_persian` (imported from `test_check_run.py`), and confirming the result is actually
+    Persian script via `_is_persian`, is what catches that silent fallback rather than a
+    hand-typed Persian string that could drift right along with a bug.
+    """
+    with translation.override("fa"):
+        text = _rendered()
+    expected = _persian(
+        "Where shown, the Detail column is the checking engine's own wording, in English."
+    )
+    assert _is_persian(expected), "the fa catalogue itself must actually be Persian"
+    assert expected in text
+
+
+def test_the_file_identifies_its_run_and_check_date_when_language_is_persian() -> None:
+    """T-0055 fix-now: the run-identifying line is composed by the server, not by
+    `ifctester`, so -- unlike `entity.detail` -- it must render in the reader's language
+    the same as every other server-composed sentence in this file. Checked against the
+    real compiled `fa` catalogue via `_persian` (imported from `test_check_run.py`) rather
+    than a hand-typed Persian guess, so a deleted or drifted `msgid`/`msgstr` in
+    `django.po` fails this test instead of silently reverting the line to English.
+    """
+    localized = localize_report(_REPORT)
+    assert localized is not None
+    run_uuid = uuid.UUID("11111111-2222-3333-4444-555555555555")
+    checked_at = datetime(2026, 1, 15, 9, 5, 0, tzinfo=dt_timezone.utc)
+    with translation.override("fa"):
+        text = render_markdown_report(
+            localized, [], run_uuid=run_uuid, checked_at=checked_at
+        )
+    expected_template = _persian("Run %(run_id)s · Checked %(date)s")
+    assert _is_persian(expected_template), "the fa catalogue must actually be Persian"
+    expected_line = expected_template % {
+        "run_id": str(run_uuid),
+        "date": "2026-01-15 09:05 UTC",
+    }
+    assert expected_line in text

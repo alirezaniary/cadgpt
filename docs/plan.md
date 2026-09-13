@@ -877,6 +877,41 @@ query per row for that one field. Harmless for the single-object real path prove
 fixed here because the fix is either a subquery annotation or a different (narrower) project
 shape for this one caller, both wider than "add a project field."
 
+**T-0055 — the report file must stand on its own once it leaves the building. Done
+2026-09-14.** The generated Markdown file carried no run identifier or check date in its own
+body — only in the filename, which the frontend discards (T-0053) — so an archived or
+forwarded copy could not be traced back to the run that produced it. The file's header now
+carries `Run <uuid> · Checked <date> UTC` right after `**Status:**`, sourced from
+`CheckRun.uuid`/`finished_at`, populated in the same transaction as `SUCCEEDED`. Separately,
+the Persian file still carried raw English in two places: `cardinality` printed the English
+token (`required`) instead of translating it, and `entity.detail` is upstream `ifctester`'s
+own English sentence. `cardinality` is now translated via a new `cardinality_label()`
+(`requirements.py`), word-for-word matching `ReportView.tsx`'s existing on-screen wording
+(T-0036) rather than reinventing it. `entity.detail` was checked directly against the
+installed `ifctester` 0.8.5 — no gettext, no `.po`/`.mo`, every `Result.to_string()` override a
+hardcoded English f-string — so nothing exists to inherit; the honest fix is a one-time caption
+stating plainly that the Detail column is upstream's own English wording, not a machine
+translation of a sentence whose precision is the point.
+
+**Reviewer-gated on I7, one fix-now round.** The reviewer independently re-derived the real
+path (own script, both languages), re-ran `make verify` rather than trusting the paste, and
+confirmed the `ifctester` no-i18n claim and the `cardinality_label`/`fa.json` wording match
+directly. One fix-now finding: the evidence block's claim of a test proving the *translated*
+cardinality word was false — the test asserted an English string that reads identically
+whether the translation function is even called, proven by the reviewer via a
+monkeypatch-to-identity mutation that still passed, and no test anywhere asserted the Persian
+output of any of this task's new rendering. Closed same task: three new fa-locale tests reusing
+T-0083's `_is_persian`/`_persian` helpers, mutation-verified against the same identity-function
+reversion. `make verify` re-run clean, 321 passed. Five further findings queued rather than
+fixed: the cardinality wording's duplication with `services/web/src/i18n/fa.json` has no drift
+test (**T-0086**); `cardinality_label()`'s interpolation dropped the `_sanitize_text()` call
+the field used to go through — unreachable today, a closed vocabulary, but a real narrowing of
+a defensive property (**T-0087**); the new `finished_at is not None` assert is backed by
+convention, not a database constraint (**T-0088**); the Detail-column caption misattributes
+upstream `ifctester`'s wording to "the checking engine" (**T-0089**); and the file's
+Gregorian-UTC date format versus the screen's local-calendar format is a real, reasoned
+divergence that was never logged to `docs/decisions.md` per CLAUDE.md's own rule (**T-0090**).
+
 **T-0038 — a specification that asserted nothing must not report PASS either. Done
 2026-09-10.** The other half of T-0028's fix, at the level up it was explicitly forbidden to
 touch: `judge()` reported `PASS` for an `optional`-cardinality specification with zero
@@ -1508,7 +1543,21 @@ the first of them:
   **Done 2026-09-13.** See "What has landed" above.
 - ~~**T-0054** — four loose ends in the generation path.~~ **Done 2026-09-13.** See "What
   has landed" above.
-- **T-0055** — the report file must stand on its own once it leaves the building.
+- ~~**T-0055** — the report file must stand on its own once it leaves the building.~~ **Done
+  2026-09-14.** See "What has landed" above.
+
+Added 2026-09-14, from the T-0055 review:
+
+- **T-0086** — cardinality wording is duplicated between `requirements.py` and
+  `services/web/src/i18n/fa.json`, with no drift test.
+- **T-0087** — `cardinality_label()`'s output reaches the report unsanitized; not reachable
+  today, but a real narrowing of `_sanitize_text`'s coverage.
+- **T-0088** — the report generator's `finished_at is not None` assumption is a convention,
+  not a database constraint, and sits outside `generate()`'s own error handling.
+- **T-0089** — the Detail-column caption attributes upstream `ifctester`'s wording to "the
+  checking engine."
+- **T-0090** — the file's Gregorian-UTC date format versus the screen's local-calendar format
+  is a real, undocumented divergence — no entry in `docs/decisions.md`.
 
 - ~~**T-0056** — a lost check dispatch kills the review, not just the file.~~ **Done
   2026-09-08.** See "What has landed" below.

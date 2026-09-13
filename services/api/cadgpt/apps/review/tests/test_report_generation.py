@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import uuid as uuid_lib
+from datetime import timezone as dt_timezone
 from typing import Any
 
 import pytest
@@ -70,6 +71,17 @@ def test_the_downloaded_file_is_the_real_generated_markdown(
     assert "## Coverage" in body
     assert "## Specifications" in body
     assert body.index("## Coverage") < body.index("## Specifications")
+
+    # T-0055: the file identifies its own run and judgement time in its body, from a real
+    # end-to-end run -- never only in the filename, which a rename or an archive step
+    # discards.
+    run = CheckRun.objects.get(uuid=run_uuid)
+    assert f"Run {run.uuid}" in body
+    assert run.finished_at is not None
+    checked_at_utc = run.finished_at.astimezone(dt_timezone.utc).strftime(
+        "%Y-%m-%d %H:%M UTC"
+    )
+    assert f"Checked {checked_at_utc}" in body
 
 
 def test_a_second_tenant_cannot_reach_the_first_tenants_report_file(

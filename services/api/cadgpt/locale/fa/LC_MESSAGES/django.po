@@ -438,6 +438,12 @@ msgstr "موتور %(version)s"
 msgid "Status"
 msgstr "وضعیت"
 
+#: cadgpt/apps/review/services/report_markdown.py (T-0055: the file's own identifying
+#: line -- the run this document is a record of, and the UTC instant it was judged. The
+#: only line in this file naming the run outside its filename.)
+msgid "Run %(run_id)s · Checked %(date)s"
+msgstr "اجرا %(run_id)s · بررسی‌شده در %(date)s"
+
 #: cadgpt/apps/review/services/report_markdown.py (rule pack selection heading -- T-0052:
 #: kept word-for-word identical to services/web/src/i18n/fa.json's report.selection.title;
 #: it previously read "بسته‌های قاعدهٔ بررسی‌شده", a different Persian phrase for the same
@@ -490,6 +496,32 @@ msgstr "چیزی بررسی نشد"
 #: cadgpt/apps/review/services/report_markdown.py (specifications heading)
 msgid "Specifications"
 msgstr "مشخصه‌ها"
+
+#: cadgpt/apps/review/services/report_markdown.py (T-0055: the Detail column's own
+#: caveat -- entity.detail is ifctester's own English sentence, not translated, stated
+#: plainly once rather than left as a silent untranslated fragment)
+msgid "Where shown, the Detail column is the checking engine's own wording, in English."
+msgstr "در صورت نمایش، ستون «جزئیات» متن اصلی موتور بررسی به زبان انگلیسی است."
+
+#: cadgpt/apps/review/requirements.py (T-0055: spec["cardinality"] on the matched-elements
+#: line -- ifctester's own machine token, the same fix ReportView.tsx already applies on
+#: screen through report.cardinality.required (T-0036). msgstr kept word-for-word identical
+#: to services/web/src/i18n/fa.json's report.cardinality.required.)
+msgctxt "specification cardinality"
+msgid "required"
+msgstr "الزامی"
+
+#: cadgpt/apps/review/requirements.py (T-0055: see "required" above -- msgstr kept
+#: word-for-word identical to services/web/src/i18n/fa.json's report.cardinality.optional)
+msgctxt "specification cardinality"
+msgid "optional"
+msgstr "اختیاری"
+
+#: cadgpt/apps/review/requirements.py (T-0055: see "required" above -- msgstr kept
+#: word-for-word identical to services/web/src/i18n/fa.json's report.cardinality.prohibited)
+msgctxt "specification cardinality"
+msgid "prohibited"
+msgstr "ممنوع"
 
 #: cadgpt/apps/review/services/report_markdown.py (T-0049, per-finding pack attribution:
 #: pack name, jurisdiction/region and version)
