@@ -76,6 +76,27 @@ class CheckRunQuerySet(TenantScopedQuerySet["CheckRun"]):
             report_generation_error="",
         )
 
+    def generation_failed(self) -> Self:
+        """Succeeded, no report file, and the last attempt failed terminally --
+        `report_generation_error` set (currently only ever `TOO_LARGE`).
+
+        The complement of `missing_report`, not a superset of it: together the two
+        partition every succeeded run with no report file into "never tried, or tried
+        and lost" and "tried and was terminally rejected". Deliberately excluded from
+        `missing_report`'s own default sweep -- see that method's docstring -- because
+        retrying an unchanged cause only restates the same rejection. This is the
+        opt-in set for an operator who *has* changed the cause (raised
+        `MAX_BYTES[MediaKind.REPORT]`, shipped a fix that shrinks the render) and wants
+        to sweep what the old cause stranded. `ReportGenerationService.generate`
+        clears `report_generation_error` on a successful retry, so a row leaves this
+        set the moment that retry lands. See `docs/tasks/
+        T-0059-a-too-large-run-needs-a-way-back.md`.
+        """
+        return self.filter(
+            status=CheckRunStatus.SUCCEEDED,
+            report_file_id__isnull=True,
+        ).exclude(report_generation_error="")
+
     def stalled(self, older_than_seconds: int) -> Self:
         """Started, never finished, and past the point where a live worker would have.
 

@@ -434,6 +434,140 @@ def test_a_run_that_raises_does_not_abort_the_sweep_and_the_summary_counts_it(
     )
 
 
+# ---------------------------------------------------------------------------- T-0059
+
+
+def test_the_default_sweep_still_ignores_a_run_the_cap_stranded(
+    tenant: Tenant,
+    review: Review,
+    owner: Any,
+    commit: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The exact case `missing_report`'s own docstring exists to protect: a run whose
+    generation was terminally rejected (`TOO_LARGE`) must not be restated by the
+    default, no-flag sweep -- only the opt-in `--include-failed` path may touch it.
+    """
+    import io
+
+    from django.core.management import call_command
+
+    from cadgpt.apps.media.choices import MediaKind
+    from cadgpt.apps.media.constants import MAX_BYTES
+    from cadgpt.apps.review.choices import ReportGenerationFailure
+    from cadgpt.apps.review.services import ReviewService
+
+    monkeypatch.setitem(MAX_BYTES, MediaKind.REPORT, 10)
+    with commit():
+        run = ReviewService(tenant=tenant).request_check(review=review, requested_by=owner)
+    monkeypatch.undo()
+
+    run.refresh_from_db()
+    assert run.report_generation_error == ReportGenerationFailure.TOO_LARGE
+    assert CheckRun.objects.generation_failed().filter(pk=run.pk).exists()
+
+    out = io.StringIO()
+    call_command("backfill_report_files", stdout=out)
+
+    run.refresh_from_db()
+    assert run.report_file_id is None, (
+        "an unchanged cause must not be retried automatically"
+    )
+    assert run.report_generation_error == ReportGenerationFailure.TOO_LARGE
+    output = out.getvalue()
+    assert "1 previously-failed run(s) not swept" in output
+    assert "done: 0 generated, 0 could not be generated, 0 runs considered" in output
+
+
+def test_include_failed_retries_a_run_once_the_cause_has_changed(
+    tenant: Tenant,
+    review: Review,
+    owner: Any,
+    commit: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The opt-in sweep this task adds: a run the old cap stranded is retried once an
+    operator raises `MAX_BYTES[MediaKind.REPORT]` back up, and only when `--include-failed`
+    is passed -- exactly the recovery `ReportGenerationService._attach`'s own comment
+    anticipates ("an operator raising the cap") but that, until this task, had no
+    supported command to invoke.
+    """
+    import io
+
+    from django.core.management import call_command
+
+    from cadgpt.apps.media.choices import MediaKind
+    from cadgpt.apps.media.constants import MAX_BYTES
+    from cadgpt.apps.review.choices import ReportGenerationFailure
+    from cadgpt.apps.review.services import ReviewService
+
+    monkeypatch.setitem(MAX_BYTES, MediaKind.REPORT, 10)
+    with commit():
+        run = ReviewService(tenant=tenant).request_check(review=review, requested_by=owner)
+    monkeypatch.undo()
+
+    run.refresh_from_db()
+    assert run.report_generation_error == ReportGenerationFailure.TOO_LARGE
+    assert run.report_file_id is None
+
+    # The cause changes: the cap is raised back to its real value for the retry.
+    out = io.StringIO()
+    call_command("backfill_report_files", "--include-failed", stdout=out)
+
+    run.refresh_from_db()
+    assert run.report_file_id is not None, "the retry must succeed once the cause changed"
+    assert run.report_file.kind == "report"
+    assert run.report_generation_error == "", "cleared on a successful retry"
+    output = out.getvalue()
+    assert "1 previously-failed run(s) included in this sweep" in output
+    assert f"generated: run {run.uuid}" in output
+    assert "done: 1 generated, 0 could not be generated, 1 runs considered" in output
+
+    # Idempotent: the run left `generation_failed` the moment it got a file, so a second
+    # `--include-failed` sweep finds nothing left to retry and does not touch it again.
+    first_media_id = run.report_file_id
+    out2 = io.StringIO()
+    call_command("backfill_report_files", "--include-failed", stdout=out2)
+    run.refresh_from_db()
+    assert run.report_file_id == first_media_id
+    assert "0 previously-failed run(s) included in this sweep" in out2.getvalue()
+    assert (
+        "done: 0 generated, 0 could not be generated, 0 runs considered" in out2.getvalue()
+    )
+
+
+def test_include_failed_does_not_disturb_a_run_that_already_has_a_report(
+    tenant: Tenant,
+    review: Review,
+    owner: Any,
+    commit: Any,
+) -> None:
+    """`generation_failed` excludes any run with a `report_file` by construction (its
+    own `report_file_id__isnull=True` filter), the same way `missing_report` does --
+    the opt-in sweep cannot re-render or re-store a run that already succeeded."""
+    import io
+
+    from django.core.management import call_command
+
+    from cadgpt.apps.review.services import ReviewService
+
+    with commit():
+        run = ReviewService(tenant=tenant).request_check(review=review, requested_by=owner)
+    run.refresh_from_db()
+    assert run.report_file_id is not None
+    first_media_id = run.report_file_id
+
+    out = io.StringIO()
+    call_command("backfill_report_files", "--include-failed", stdout=out)
+
+    run.refresh_from_db()
+    assert run.report_file_id == first_media_id
+    assert "0 previously-failed run(s) included in this sweep" in out.getvalue()
+    assert (
+        "done: 0 generated, 0 could not be generated, 0 runs considered" in out.getvalue()
+    )
+
+
 # ---------------------------------------------------------------------------- T-0054
 
 

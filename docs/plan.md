@@ -948,9 +948,30 @@ retry button is untouched.
 Not reviewer-gated — no invariant, 13-line diff across two frontend files, fully read.
 Verified against a real run driven into `TOO_LARGE` over the live stack: the button is
 absent from the DOM (count 0), the existing plain-language failure text renders unchanged,
-and `report-recovery.spec.ts`'s updated assertion was mutation-checked. T-0059 — the
-operational half, giving these runs a sweep once an operator raises the cap — remains open
-and unaddressed by this task, deliberately.
+and `report-recovery.spec.ts`'s updated assertion was mutation-checked. T-0059, the
+operational half, closes the remaining gap next.
+
+**T-0059 — a run stranded by the size cap had no way back once the cap was raised. Done
+2026-09-14.** `ReportGenerationService._attach` already anticipated a later attempt
+succeeding once the cause changed — an operator raising `MAX_BYTES[MediaKind.REPORT]`, or a
+code change shrinking the render — and cleared `report_generation_error` on success. But
+`missing_report` permanently excludes any run with that error set from the default sweep
+(correctly, since retrying an unchanged cause would only restate the rejection), and there
+was no supported way to sweep those rows once the cause genuinely had changed — an operator's
+only option was `manage.py shell`, one uuid at a time, with no listing of which runs were
+stranded. `CheckRunQuerySet.generation_failed()` is now the exact complement of
+`missing_report` (partitioning "never tried" from "tried and terminally rejected"), and
+`backfill_report_files --include-failed` is the opt-in sweep over it — always printing the
+stranded count first, regardless of the flag, so an operator can see the number before
+deciding. Idempotence is reused, not reimplemented: both querysets already exclude a run
+with a report file, and `generate` itself no-ops on one.
+
+Not reviewer-gated — no invariant, small diff (48 lines in the command, 21 in the queryset),
+fully read, and checked for composition against T-0057's per-run try/except and T-0058's
+removed frontend button before landing. Verified against the live stack: a run driven to
+`TOO_LARGE`, the default sweep in a fresh process still ignoring it, `--include-failed`
+recovering it with a real, fetchable report file over authenticated HTTP, and a second
+`--include-failed` run confirmed as a genuine no-op.
 
 **T-0038 — a specification that asserted nothing must not report PASS either. Done
 2026-09-10.** The other half of T-0028's fix, at the level up it was explicitly forbidden to
@@ -1605,7 +1626,8 @@ Added 2026-09-14, from the T-0055 review:
   2026-09-14.** See "What has landed" above.
 - ~~**T-0058** — the terminal-failure state offers a button that cannot change anything.~~
   **Done 2026-09-14.** See "What has landed" above.
-- **T-0059** — a run stranded by the size cap has no way back once the cap is raised.
+- ~~**T-0059** — a run stranded by the size cap has no way back once the cap is raised.~~
+  **Done 2026-09-14.** See "What has landed" above.
 - **T-0060** — queuing work needs a role floor; a viewer can flood the check queue.
 - **T-0061** — four loose ends in the report-generation failure record.
 

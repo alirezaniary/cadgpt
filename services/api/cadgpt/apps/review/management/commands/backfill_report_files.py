@@ -28,6 +28,24 @@ raise as a failure alongside a `TOO_LARGE`-style non-exceptional failure -- the 
 report the exact failure mode this task is about -- and the command exits non-zero if any
 run failed either way, so a script invoking this does not have to parse `done:`'s prose to
 know whether to retry or alert.
+
+**`--include-failed` (T-0059).** `missing_report` permanently excludes a run whose
+`report_generation_error` is set -- correctly, for the default sweep above: retrying an
+unchanged cause (the size cap) would just restate the same `TOO_LARGE` rejection forever.
+But `ReportGenerationService._attach` already anticipates a later attempt succeeding once
+the cause changes -- an operator raising `MAX_BYTES[MediaKind.REPORT]`, or a code change
+that shrinks the render -- and clears the error on success. Until this flag existed, there
+was no supported way to actually make that later attempt: an operator had to call
+`ReportGenerationService.generate` by hand, one uuid at a time, via `manage.py shell`, with
+no listing of which runs were even stranded. This command now always prints how many runs
+are in that state before doing anything -- visible on every invocation, not gated behind a
+separate listing mode, so an operator sees the number and decides whether `--include-failed`
+is warranted without having to opt in just to look. Passing the flag adds
+`CheckRunQuerySet.generation_failed()` to the sweep, alongside `missing_report()`,
+unchanged. Both querysets already exclude any run with a `report_file`, and `generate`
+itself is a no-op for one, so the opt-in path is exactly as idempotent as the default
+sweep -- no separate check was added here to duplicate what `generate` already
+guarantees.
 """
 
 from __future__ import annotations
@@ -43,13 +61,41 @@ from cadgpt.apps.review.services.report_generation import ReportGenerationServic
 class Command(BaseCommand):
     help = "Generate the report file for every succeeded check run that has none."
 
+    def add_arguments(self, parser: Any) -> None:
+        parser.add_argument(
+            "--include-failed",
+            action="store_true",
+            help=(
+                "Also retry runs whose report generation failed terminally "
+                "(report_generation_error is set, e.g. too_large) -- opt-in, "
+                "for after the cause has changed (MAX_BYTES[MediaKind.REPORT] "
+                "raised, or a fix shipped that shrinks the render). Not part of "
+                "the default sweep: retrying an unchanged cause would only "
+                "restate the same rejection."
+            ),
+        )
+
     def handle(self, *args: Any, **options: Any) -> None:  # noqa: ARG002
         service = ReportGenerationService()
         generated = 0
         failed = 0
         considered = 0
+        include_failed = bool(options["include_failed"])
 
-        for run in CheckRun.objects.missing_report().order_by("created_at").iterator():
+        stranded = CheckRun.objects.generation_failed().count()
+        if include_failed:
+            self.stdout.write(f"{stranded} previously-failed run(s) included in this sweep")
+        else:
+            self.stdout.write(
+                f"{stranded} previously-failed run(s) not swept -- "
+                "rerun with --include-failed once the cause has changed"
+            )
+
+        queryset = CheckRun.objects.missing_report()
+        if include_failed:
+            queryset = queryset | CheckRun.objects.generation_failed()
+
+        for run in queryset.order_by("created_at").iterator():
             considered += 1
             try:
                 result = service.generate(run.uuid)
