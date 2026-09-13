@@ -1,6 +1,6 @@
 # T-0036 — The Persian report: prove RTL, and stop rendering a raw payload value
 
-**Phase:** 3 — What the first real user needs   **Status:** open
+**Phase:** 3 — What the first real user needs   **Status:** done
 **Touches invariants:** none. **Every user-facing string goes through `gettext`** is a rule in
 `CLAUDE.md`, and this task closes the last place the report view breaks it.
 

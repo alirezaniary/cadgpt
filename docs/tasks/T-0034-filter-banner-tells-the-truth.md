@@ -1,6 +1,6 @@
 # T-0034 — The filter banner must not claim credit for what the engine capped
 
-**Phase:** 3 — What the first real user needs   **Status:** open
+**Phase:** 3 — What the first real user needs   **Status:** done
 **Touches invariants:** three-valued results, I7. **Reviewer-gated** — every line of this task
 is a change to how a limitation is stated.
 

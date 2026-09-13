@@ -1,6 +1,6 @@
 # T-0039 — The subject of a citation: structured in the engine, worded in the service
 
-**Phase:** 3 — What the first real user needs   **Status:** open
+**Phase:** 3 — What the first real user needs   **Status:** done
 **Touches invariants:** I5, and `CLAUDE.md`'s gettext rule. **Reviewer-gated.**
 
 ## Why

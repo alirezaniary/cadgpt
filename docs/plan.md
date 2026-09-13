@@ -1444,20 +1444,11 @@ Re-ordered 2026-09-02 against the settled scope above. T-0027 and T-0028 were wr
 the scope was settled and both survive it — they are defects in the report's honesty, and the
 report is now the whole product.
 
-- **T-0027** — the requirement as structured data the service localizes. T-0026 replaced an
-  object address with upstream's English sentence, which made the gettext gap load-bearing:
-  the line an architect reads first is now the one line that cannot be translated, against
-  `presentation.py`'s stated design that the document holds codes and the service supplies
-  wording. Carries two more I5 gaps with the same root — the bound renders as
-  `{'minInclusive': '900'}` with no unit while the failing row reports a bare `800.0`, and the
-  report never states what a rule applies to, because we drop the applicability facets
-  ifctester does render. Now doubly load-bearing: the Markdown file inherits whatever this
-  produces. Reviewer-gated.
-- **T-0028** — a requirement that evaluated nothing reports `PASS`. `_aggregate(0, 0)` returns
-  `PASS`, so a prohibited specification carries a green requirement over zero evaluations.
-  `judge()` already applies this reasoning at the specification level and it was never pushed
-  down to requirements — which is the row the architect actually reads. Pre-existing, found by
-  the T-0026 reviewer. This is I7 inside the engine and it outranks new surface. Reviewer-gated.
+- ~~**T-0027** — the requirement as structured data the service localizes.~~ **Done
+  2026-09-02.** See "What has landed" above. (Stale bullet, never struck through when it
+  landed — corrected 2026-09-14.)
+- ~~**T-0028** — a requirement that evaluated nothing reports `PASS`.~~ **Done 2026-09-02.**
+  See "What has landed" above. (Same stale-bullet gap, corrected 2026-09-14.)
 - **T-0029** — say what was checked. The I7 disclosure copy, in the view and in the file.
 - **T-0030** — the rule catalogue: a global `RulePack` beside the tenant-owned `RuleSet`, with
   jurisdiction, region, version and source citation, and a seeding path. No rule content.

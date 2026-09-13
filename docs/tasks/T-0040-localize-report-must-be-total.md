@@ -1,6 +1,6 @@
 # T-0040 — `localize_report` must degrade, not 500
 
-**Phase:** 3 — What the first real user needs   **Status:** open
+**Phase:** 3 — What the first real user needs   **Status:** done
 **Touches invariants:** none directly, but it is on the run-detail response path.
 
 ## Why

@@ -1,6 +1,6 @@
 # T-0028 — A requirement that evaluated nothing must not report PASS
 
-**Phase:** 3 — What the first real user needs   **Status:** open
+**Phase:** 3 — What the first real user needs   **Status:** done
 **Touches invariants:** three-valued results, I7. **The reviewer will be dispatched on this
 task.**
 

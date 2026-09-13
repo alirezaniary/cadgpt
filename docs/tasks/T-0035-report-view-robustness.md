@@ -1,6 +1,6 @@
 # T-0035 — Two latent defects in the report view: an unsortable list and a colliding key
 
-**Phase:** 3 — What the first real user needs   **Status:** open
+**Phase:** 3 — What the first real user needs   **Status:** done
 **Touches invariants:** none directly. Not reviewer-gated unless it grows.
 
 ## Why
