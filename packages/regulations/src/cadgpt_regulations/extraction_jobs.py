@@ -1,4 +1,8 @@
-"""Deterministic blind-pass job accounting for semantic extraction."""
+"""Legacy structural-evidence blind-pass job accounting.
+
+The current transcript-to-rule path starts from the completed Luna JSON and does not
+need these source-span-bound jobs.
+"""
 
 from __future__ import annotations
 

@@ -199,7 +199,7 @@
         "source_kind": {"enum": ["native", "ocr"]},
         "source_span_ids": {"$ref": "#/$defs/spanIds"},
         "bbox": {"$ref": "#/$defs/bbox"},
-        "crop": {"$ref": "#/$defs/crop"},
+        "crop": {"anyOf": [{"$ref": "#/$defs/crop"}, {"type": "null"}]},
         "raw_transcription": {"type": "string"},
         "unicode": {"type": "string"},
         "latex": {"type": ["string", "null"]},

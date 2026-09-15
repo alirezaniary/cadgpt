@@ -5,6 +5,10 @@
 
 ## Why
 
+This task describes the earlier structural-evidence validation path. It is optional for the
+current transcript-to-rule workflow, which starts from the completed Luna transcript JSON and
+its PDF/document and page metadata.
+
 Blind model agreement is useful evidence, not proof. Before any candidate can be published, every
 anchor, reference, table value, unit, comparison, and formula link must be checked deterministically,
 and the cohort must be compared with versioned official INBR web metadata. The live site already

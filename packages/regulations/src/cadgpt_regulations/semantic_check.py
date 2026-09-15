@@ -1,4 +1,8 @@
-"""Deterministic checks for externally produced semantic candidates."""
+"""Legacy checks for externally produced structural semantic candidates.
+
+Transcript-backed rule translation uses the finalized Luna JSON directly; these checks
+apply only when the optional T-0027 structural extraction path is used.
+"""
 
 from __future__ import annotations
 

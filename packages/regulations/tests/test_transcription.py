@@ -35,11 +35,11 @@ def test_normalization_preserves_mathematics_identifiers_and_source_digits() -> 
 
 
 @pytest.mark.integration
-def test_page_worker_runs_real_parser_and_renderer_in_a_subprocess(
+def test_page_worker_runs_native_parser_without_rendering_native_text(
     tmp_path: Path,
 ) -> None:
     source = tmp_path / "native.pdf"
-    source.write_bytes(_native_pdf(b"Hello LRFD 2+2=4"))
+    source.write_bytes(_native_pdf(b"Hello native PDF text with LRFD 2+2=4"))
     source.chmod(0o600)
     output = tmp_path / "output"
     output.mkdir(mode=0o700)
@@ -53,8 +53,8 @@ def test_page_worker_runs_real_parser_and_renderer_in_a_subprocess(
         timeout_seconds=30,
     )
 
-    assert result.render.startswith(b"\x89PNG\r\n\x1a\n")
-    assert result.render_metrics["width_pixels"] == 1224
+    assert result.render is None
+    assert result.render_metrics is None
     assert "LRFD" in str(result.native["raw_glyph_text"])
     assert stat.S_IMODE((output / "native.json").stat().st_mode) == 0o600
 

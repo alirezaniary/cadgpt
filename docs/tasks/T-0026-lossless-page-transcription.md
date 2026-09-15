@@ -47,8 +47,8 @@ stable spans, and ten-page bundles are bounded transport conveniences rather tha
   `degraded_photo`. Route each page to `none`, `native`, `ocr`, or `native_plus_ocr`; thresholds
   and their version are part of the configuration identity.
 - Pin the production stack and its model data. Preferred implementation baseline:
-  `docling-parse==7.16.0`, `pypdfium2==5.13.0`, Pillow, OpenCV headless, and Tesseract 5 with
-  pinned `tessdata_best` `fas`, `eng`, and `osd` hashes. Add a non-root regulations Docker image
+  `docling-parse==7.16.0`, `pypdfium2==5.13.0`, Pillow, OpenCV headless, and PaddleOCR `3.7.0` with CUDA-enabled `paddlepaddle-gpu==3.3.1`,
+  PP-OCRv5 mobile detection, and `arabic_PP-OCRv5_mobile_rec` recognition models. Add a non-root regulations Docker image
   with no runtime model downloads. A different pinned stack is acceptable only with equivalent
   positioning, rendering, reproducibility, and offline behavior proved by the real path.
 - Run OCR at a resolution appropriate for small Persian digits and clause identifiers; retain a
@@ -141,7 +141,7 @@ $ uv run cadgpt-regulations page-probe \
     --root /tmp/cadgpt-inbr-acquisition.GzxDl0 \
     --output-root /tmp/cadgpt-inbr-transcription.hwIllI \
     --render-dpi 400 \
-    --tessdata /tmp/cadgpt-tessdata-best \
+    --paddle-device gpu:0 \
     --workers 8 \
     --page-timeout 300
 wrote deterministic page probe:
@@ -152,7 +152,7 @@ pages 4492 ready, 1400 need review, 0 failed; packages 5892 created, 0 reused
 $ uv run cadgpt-regulations transcribe \
     --probe /tmp/cadgpt-inbr-transcription.hwIllI/manifests/page-probe/b7ea22694d62999e840d5ca06203bcc8a255cbc9a3cfa44133aeaac16e94ac5b.json \
     --root /tmp/cadgpt-inbr-transcription.hwIllI \
-    --tessdata /tmp/cadgpt-tessdata-best \
+    --paddle-device gpu:0 \
     --workers 8 \
     --ocr-timeout 300
 wrote deterministic transcription:
@@ -179,11 +179,13 @@ an explicit eligibility state rather than a missing or guessed transcription. Th
 re-attested the T-0025 acquisition, every probe package, transcription artifact, bundle,
 manifest, and index with zero blockers, so the 43 source PDFs remain unchanged.
 
-The production OCR identity is Tesseract 5.3.4 with `tessdata_best` commit
-`e12c65a915945e4c28e237a9b52bc4a8f39a0cec`. Model SHA-256 values are
-`99e420969b5ddd2cb135b416316a7ed417c59c4faf9e0d28941348f6448114df` for `fas`,
-`8280aed0782fe27257a68ea10fe7ef324ca0f8d85bd2fd145d1c2b560bcb66ba` for `eng`, and
-`9cf5d576fcc47564f11265841e5ca839001e7e6f38ff7f7aacf46d15a96b00ff` for `osd`.
+The replacement OCR identity is PaddleOCR `3.7.0` with CUDA-enabled
+`paddlepaddle-gpu==3.3.1`, device `gpu:0`, PP-OCRv5 mobile detection, and
+`arabic_PP-OCRv5_mobile_rec` recognition. The tested GPU benchmark completed 100/100
+pages with mean runtime about 0.417 seconds/page and mean confidence about 0.898.
+Those benchmark files are evidence only; production transcription stores the same raw
+Paddle result, ordered RTL lines, boxes, confidence, and model/device identity in each
+immutable page package.
 
 Volume 1 PDF pages 11-20 are all `ready` native pages. Excluding the repeated running
 header, their native positioned lines contain exactly 30 observed printed heading IDs and
@@ -223,7 +225,7 @@ No evidence artifact was rewritten.
 The non-root offline Docker image is
 `sha256:2d37e733104fb9ce7c565a961dc7185a6ca6d28b88d0942bd79b7dd36c7724f0`.
 It starts with network disabled as UID/GID 10001, exposes the regulations CLI, reports
-Tesseract 5.3.4, and lists only the pinned `eng`, `fas`, and `osd` data. No PDF, render,
+PaddleOCR `3.7.0` GPU runtime and the pinned PP-OCRv5 mobile models. No PDF, render,
 OCR output, model bundle, manifest, check report, or Luna response is tracked in Git.
 
 ## Review

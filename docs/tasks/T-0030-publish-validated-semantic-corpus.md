@@ -5,6 +5,10 @@
 
 ## Why
 
+This task describes the earlier structural semantic-corpus publication path. It is optional for
+the current transcript-to-rule workflow, which starts from the completed Luna transcript JSON
+and its PDF/document and page metadata.
+
 Validated source evidence and semantic candidates are not useful to downstream tools until they
 are released through one deterministic, versioned contract. Publish a machine-consumable corpus
 that preserves Persian source semantics, English glosses, formulas, tables, document relationships,
@@ -26,11 +30,13 @@ compliance knowledge.
   appendix, explanatory, supersession, and edition relationships. Web contradictions and newly
   discovered official publications remain versioned findings; the release identifies the exact
   43-document cohort and never calls it the current complete INBR corpus.
-- Publish only semantic records whose source anchors, structure, quantities, references, units,
-  tables, formulas, blind-pass reconciliation, independent validation, and applicable official-web
-  checks have terminal accepted results. Any blocking unknown, contradiction, unsupported field,
-  OCR ambiguity, formula mismatch, or legal-relationship uncertainty excludes the affected record.
-- Keep source Persian derived from spans, not copied from model responses. Store English semantic
+- Publish only semantic records whose transcript document/page/record identity, quantities,
+  references, units, tables, formulas, blind-pass reconciliation, independent validation, and
+  applicable official-web checks have terminal accepted results. Any blocking unknown,
+  contradiction, unsupported field, formula mismatch, or legal-relationship uncertainty excludes
+  the affected record.
+- Keep source Persian derived from the immutable transcript record, not copied from unrelated
+  model responses. Store English semantic
   glosses separately with model/pass/validator provenance and explicit translation status. A
   translation conflict cannot change or hide the Persian record.
 - Publish formula records with anchored source/crop references, raw and Unicode display forms,
@@ -41,8 +47,9 @@ compliance knowledge.
   value/range/set, unit, applicability conditions, exceptions, dependencies, internal/external
   references, table/formula links, and source hierarchy. Preserve `unknown` rather than omitting a
   required field in a way that looks known.
-- Emit stable release-local IDs and complete backreferences to source document/page/span/region
-  identities. The release must support resolving any published field to primary PDF evidence and
+- Emit stable release-local IDs and complete backreferences to source document/page/record
+  identities. Optional source spans/regions may be included when available. The release must
+  support resolving any published field to primary PDF evidence and
   every model/validator/web decision that affected it without shipping the PDF itself.
 - Produce a coverage manifest by document, page, structural node, semantic kind, and validation
   outcome. Distinguish `published`, `source_only`, `needs_review`, `rejected`, `failed`, and
@@ -65,10 +72,10 @@ compliance knowledge.
 
 - Schema fixtures cover all document relationships, structural/semantic kinds, quantities, units,
   tables, formulas, translations, evidence backreferences, coverage states, and review reasons.
-- Publication rejects any record with unresolved blocking validation, missing or invalid anchors,
-  model-authored verbatim evidence, unverified Content MathML, ambiguous unit mapping, mixed cohort
+- Publication rejects any record with unresolved blocking validation, missing or invalid
+  document/page/record identity, model-authored verbatim evidence, unverified Content MathML, ambiguous unit mapping, mixed cohort
   identity, unaccounted upstream record, duplicate ID, unknown field, or inconsistent count.
-- Referential-integrity tests resolve every published relation, source anchor, formula/table link,
+- Referential-integrity tests resolve every published relation, source citation, formula/table link,
   variable definition, provenance record, file hash, and deferred-review target.
 - Coverage tests prove all 43 documents and 5,892 pages reconcile across source-only, published,
   review, rejected, failed, and not-machine-actionable states without overstating completeness.
@@ -95,7 +102,8 @@ The evidence must show:
 - the release identifies and accounts for exactly the requested 43 PDFs and all 5,892 pages while
   explicitly reporting that newer/unmapped official documents prevent a current-complete claim;
 - every published semantic/formula/table/relation field resolves through validation and model/web
-  provenance to exact source spans or regions, with no model-authored verbatim text;
+  provenance to an immutable transcript document/page/record and exact text hash, with no
+  model-authored verbatim text;
 - every blocking uncertainty is absent from `semantics.jsonl` and present in
   `deferred-review.jsonl`; no failure or review item disappears from coverage totals;
 - formulas use the layered raw/Unicode/LaTeX/Presentation MathML/verified Content MathML contract,

@@ -88,7 +88,7 @@ uv run cadgpt-regulations page-probe \
   --root "$acquisition_root" \
   --output-root "$transcription_root" \
   --render-dpi 400 \
-  --tessdata /path/to/tessdata-best \
+  --paddle-device gpu:0 \
   --workers 8 \
   --page-timeout 300
 
@@ -97,7 +97,7 @@ page_probe_manifest=<exact-path-printed-by-page-probe>
 uv run cadgpt-regulations transcribe \
   --probe "$page_probe_manifest" \
   --root "$transcription_root" \
-  --tessdata /path/to/tessdata-best \
+  --paddle-device gpu:0 \
   --workers 8 \
   --ocr-timeout 300
 
@@ -112,7 +112,58 @@ uv run cadgpt-regulations transcription-check \
 
 The immutable packages, manifests, checks, and bundles remain below `transcription_root`.
 
-### 3. Build and check source structure
+The probe extracts native PDF structure first. It renders only pages that need visual evidence
+or OCR: textless pages, mixed pages, suspect native pages, and scan/photo pages. It does not
+replace the PDF or native text. PaddleOCR runs only for `ocr` and `native_plus_ocr` routes;
+clean native pages keep their native PDF text as the authoritative source view and have no
+render artifact.
+
+### 3. Refine into a Persian structured transcript
+
+Queue one independent Luna chunk for each bounded transcription bundle. Each chunk binds the original
+PDF hash and page range, page-render hashes, native-text hashes, Paddle result hashes, and the
+exact prompt/response-schema hashes. The coordinator leases chunks in stable order to up to three
+parallel workers. Each worker returns one Persian structured transcript; no English rules, IDS, or
+publication stage is part of this flow.
+
+```sh
+transcript_root=$inbr_root/transcription/$cohort_id
+transcript_output=$inbr_root/extraction/$cohort_id
+mkdir -m 700 -p "$transcript_output"
+
+uv run cadgpt-regulations transcript-jobs \
+  --transcription "$transcription_manifest" \
+  --transcription-root "$transcript_root" \
+  --acquisition-root "$acquisition_root" \
+  --output-root "$transcript_output" \
+  --model gpt-5.6-luna
+
+jobs=$transcript_output/jobs.json
+```
+
+Initialize and lease the resumable ledger. The lease command is safe for concurrent workers and
+always selects the lowest pending `chunk_order` first:
+
+```sh
+uv run cadgpt-regulations transcript-jobs \
+  --jobs "$jobs" \
+  --output-root "$transcript_output"
+
+uv run cadgpt-regulations mark-started \
+  --jobs "$jobs" \
+  --output-root "$transcript_output" \
+  --worker-id luna-1 \
+  --max-workers 1
+```
+
+Workers can inspect pending chunks with `get-next`, then submit one response with its lease token
+through `mark-finished`. The ledger records
+the worker, attempts, response hash/path, and final Persian structured-transcript hash/path. A
+failed work is recorded with `mark-failed` and made pending again with `mark-started`; an
+interrupted lease can be returned with `reclaim`. English rule projection, IDS compilation, web
+validation, and publication are intentionally outside this stage.
+
+### 4. Build and check source structure
 
 ```sh
 uv run cadgpt-regulations structure \
@@ -129,16 +180,18 @@ uv run cadgpt-regulations structure-check \
   --transcription-root "$transcription_root"
 ```
 
-### 4. Prepare, ingest, and inspect blind semantic work
+### 5. Prepare, ingest, and inspect blind semantic work
+
+This section documents the earlier T-0028 semantic-evidence importer. It is not the downstream
+transcript-to-rule path. After the transcript checkpoint, use `provisional-batch` below; do not
+run this importer again for the completed corpus.
 
 `extract-jobs` only writes an immutable job manifest; it does not call an inference service. An
 external coordinator must store raw responses under `extraction_root` and submit each one through
 `extract-ingest` or `validator-ingest`.
 
-Each structured job carries both the original T-0026 transcription bundle hash and the exact
-T-0027 structural-bundle hash/path. A worker response must preserve both identities; candidates
-must cite at least one structural source node, and formula/table references are checked against the
-attested structural bundle before ingestion.
+These legacy jobs carry T-0027 structure identities and are retained only for historical reruns of
+that upstream stage.
 
 ```sh
 uv run cadgpt-regulations extract-jobs \
@@ -171,7 +224,12 @@ uv run cadgpt-regulations extraction-status \
   --output-root "$extraction_root"
 ```
 
-### 5. Publish only accepted structured semantic evidence
+### 6. Publish only accepted structured semantic evidence
+
+This is also a legacy T-0030 command for rebuilding the earlier semantic-evidence publication.
+It is not required for the current transcript-to-rule run and should not be used as a reason to
+reopen the PDF. The current downstream entry point is the transcript JSON plus
+`provisional-batch`.
 
 The current implementation provides `semantic-publish` and `semantic-publish-check`. It remains
 a semantic-evidence boundary—not IDS compilation and not a compliance verdict.
@@ -201,6 +259,72 @@ counts; any `complete: false`, pending bundle, or bundle needing validation rema
 must not advance an automated release. The planned official-web validation and final corpus-release
 stages have their own task contracts; do not invent paths or claim their commands are available until
 those tasks land.
+
+### 7. Keep OCR-tolerant rule candidates
+
+OCR damage does not need to stop rule generation. The completed Luna JSON is the source
+checkpoint. Its PDF/document name, page number, transcript record, and text hash are enough
+to cite a rule; no source-span re-anchoring or second OCR pass is required. Store the complete
+Luna JSON as an immutable transcript revision, then create a page/table-level sandbox candidate
+with `provisional-rule`:
+
+```sh
+uv run cadgpt-regulations provisional-rule \
+  --transcript path/to/assembled-transcript.json \
+  --rule path/to/rule-payload.json \
+  --output-root "$inbr_root/candidates/$cohort_id" \
+  --revision luna-<chunk-or-table-revision> \
+  --edition 'ویرایش ۱۴۰۱' \
+  --table-index 0 \
+  --state needs_review
+```
+
+This writes a content-addressed transcript revision, including the full Luna payload and hash,
+and a candidate rule. Candidates may be used for sandbox analysis and prioritization, but are
+never official engine releases. A correction creates a new revision with `supersedes`; it never
+mutates the original Luna result. Transcript revision/hash verification, review, and deterministic
+compilation promote a candidate into an official IDS release.
+
+For a structured transcript with several sections, tables, or clauses, use the batch boundary.
+The extraction response is produced by the replaceable rule-extraction worker and must contain
+one item for each source `record_id`, with either a rule or an explicit `no_assertion` reason:
+
+```sh
+uv run cadgpt-regulations provisional-batch \
+  --transcript path/to/assembled-transcript.json \
+  --extraction path/to/rule-extraction.json \
+  --output-root "$inbr_root/candidates/$cohort_id" \
+  --revision luna-<revision> \
+  --edition 'ویرایش ۱۴۰۱'
+```
+
+The batch writes one immutable transcript revision per source record, candidate files, and a
+content-addressed batch manifest. Missing records are counted as `unprocessed`; records with no
+machine-actionable rule are retained as `no_assertion`. Repeated semantic proposals are grouped
+by fingerprint while every candidate and citation remains available for review. If two record
+types reuse a `record_id`, the extraction item uses the qualified key `tables:<record_id>` (or
+the corresponding source collection) so the mapping remains unambiguous.
+
+### 8. Import the transcript projection into Django/PostgreSQL
+
+The assembled JSON remains the immutable source of truth. Django stores a queryable projection:
+one `pdf_document` row per PDF and one `pdf_page` row per physical page, including blank pages.
+Apply the normal Django schema migration, then run the explicit idempotent import command:
+
+```sh
+cd services/api
+uv run --project ../.. python manage.py migrate
+uv run --project ../.. python manage.py import_inbr_projection \
+  --transcription-manifest ../../.cadgpt/inbr/transcription/revision-2026-09-09-paddle/manifests/transcription/eefa90439f34920f139f6a1cedb6f96de49613549a9f4937857b948fccd680dc.json \
+  --transcription-root ../../.cadgpt/inbr/transcription/revision-2026-09-09-paddle \
+  --assembled-manifest ../../.cadgpt/inbr/extraction/revision-2026-09-09-paddle/assembled/manifests/699e7122e9ea8e073bfb2dbd03a020b05eeeef17211566cbb636808926f2c1a6.json \
+  --assembled-root ../../.cadgpt/inbr/extraction/revision-2026-09-09-paddle \
+  --extraction-root ../../.cadgpt/inbr/extraction/revision-2026-09-09-paddle
+```
+
+The command verifies source identities, page continuity, completed Luna responses, and hashes
+before writing. Re-running it updates the same natural-key rows without duplicating data. Use
+`--dry-run` to validate the complete cohort without writing to PostgreSQL.
 
 ## Restart and interruption behavior
 

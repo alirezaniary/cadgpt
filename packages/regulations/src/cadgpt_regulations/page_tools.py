@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 import hashlib
 import os
 import subprocess
@@ -18,34 +17,19 @@ from docling_parse.pdf_parser import ContentConfig, DoclingPdfParser
 
 from cadgpt_regulations.errors import TranscriptionError
 from cadgpt_regulations.jsonio import JsonObject, load_object
+from cadgpt_regulations.paddle_ocr import paddle_runtime
 from cadgpt_regulations.storage import read_regular_snapshot
 
-_TOOL_TIMEOUT_SECONDS = 30
 _READ_CHUNK_SIZE = 1024 * 1024
-_PINNED_TESSERACT_VERSION = "tesseract 5.3.4"
-_PINNED_TESSDATA_BEST = {
-    "eng": "8280aed0782fe27257a68ea10fe7ef324ca0f8d85bd2fd145d1c2b560bcb66ba",
-    "fas": "99e420969b5ddd2cb135b416316a7ed417c59c4faf9e0d28941348f6448114df",
-    "osd": "9cf5d576fcc47564f11265841e5ca839001e7e6f38ff7f7aacf46d15a96b00ff",
-}
 
 
 @dataclass(frozen=True)
 class ProbeWorkerOutput:
-    """Native layout and pixels returned by one crash-isolated page worker."""
+    """Native layout and optional pixels returned by one page worker."""
 
     native: JsonObject
-    render: bytes
-    render_metrics: JsonObject
-
-
-@dataclass(frozen=True)
-class OcrOutput:
-    """Deterministic token and line records from pinned Tesseract TSV output."""
-
-    tokens: list[JsonObject]
-    lines: list[JsonObject]
-    raw_text: str
+    render: bytes | None
+    render_metrics: JsonObject | None
 
 
 def run_probe_worker(
@@ -99,109 +83,46 @@ def run_probe_worker(
         raise TranscriptionError(f"page worker exited {completed.returncode}: {diagnostic}")
     result_path = output_directory / "result.json"
     native_path = output_directory / "native.json"
-    render_path = output_directory / "render.png"
-    for path in (result_path, native_path, render_path):
+    for path in (result_path, native_path):
         read_regular_snapshot(path)
     result = load_object(result_path, description="page worker result")
     native = load_object(native_path, description="native page layout")
-    try:
-        render = render_path.read_bytes()
-    except OSError as exc:
-        raise TranscriptionError(
-            f"cannot read page worker render: {type(exc).__name__}"
-        ) from exc
+    render_path = output_directory / "render.png"
+    render: bytes | None = None
+    if render_path.exists():
+        try:
+            render = render_path.read_bytes()
+        except OSError as exc:
+            raise TranscriptionError(
+                f"cannot read page worker render: {type(exc).__name__}"
+            ) from exc
     metrics = result.get("render_metrics")
-    if not isinstance(metrics, dict):
+    if metrics is not None and not isinstance(metrics, dict):
         raise TranscriptionError("page worker result lacks render metrics")
     return ProbeWorkerOutput(
         native=native,
         render=render,
-        render_metrics=cast(JsonObject, metrics),
+        render_metrics=None if metrics is None else cast(JsonObject, metrics),
     )
 
 
 def runtime_toolchain(
-    tessdata_directory: Path | None = None, *, require_ocr: bool = False
+    *,
+    require_paddle: bool = False,
+    paddle_device: str = "gpu:0",
 ) -> JsonObject:
-    """Describe the exact parser, renderer, image, and optional OCR runtime."""
-    tesseract_version = _command_version(["tesseract", "--version"])
-    models: list[JsonObject] = []
-    if tessdata_directory is not None:
-        for language in ("fas", "eng", "osd"):
-            model = tessdata_directory / f"{language}.traineddata"
-            if model.is_file() and not model.is_symlink():
-                digest, byte_size = hash_regular_file(model)
-                models.append(
-                    {
-                        "language": language,
-                        "sha256": digest,
-                        "bytes": byte_size,
-                    }
-                )
-    if require_ocr:
-        if tesseract_version != _PINNED_TESSERACT_VERSION:
-            raise TranscriptionError(f"OCR requires exactly {_PINNED_TESSERACT_VERSION}")
-        actual = {
-            cast(str, model["language"]): cast(str, model["sha256"]) for model in models
-        }
-        if actual != _PINNED_TESSDATA_BEST:
-            raise TranscriptionError(
-                "OCR requires pinned tessdata_best fas, eng, and osd models"
-            )
+    """Describe the exact parser, renderer, and optional Paddle runtime.
+
+    Paddle is checked only when ``require_paddle`` is true; native-only probing
+    remains usable without the optional GPU environment.
+    """
+    paddle = paddle_runtime(device=paddle_device, require_gpu=require_paddle)
     return {
         "docling_parse": _package_version("docling-parse"),
         "pypdfium2": _package_version("pypdfium2"),
         "pillow": _package_version("Pillow"),
-        "tesseract": tesseract_version,
-        "tessdata_models": models,
+        **paddle,
     }
-
-
-def run_tesseract_tsv(
-    image: Path,
-    *,
-    page_id: str,
-    tessdata_directory: Path,
-    dpi: int,
-    page_segmentation_mode: int,
-    timeout_seconds: int,
-) -> OcrOutput:
-    """Run pinned Persian/English OCR and parse its TSV without shell mediation."""
-    read_regular_snapshot(image)
-    command = [
-        "tesseract",
-        str(image),
-        "stdout",
-        "--tessdata-dir",
-        str(tessdata_directory),
-        "-l",
-        "fas+eng",
-        "--dpi",
-        str(dpi),
-        "--psm",
-        str(page_segmentation_mode),
-        "-c",
-        "tessedit_create_tsv=1",
-    ]
-    try:
-        completed = subprocess.run(  # noqa: S603
-            command,
-            check=False,
-            capture_output=True,
-            timeout=timeout_seconds,
-            env=_worker_environment(),
-        )
-    except subprocess.TimeoutExpired as exc:
-        raise TranscriptionError(f"OCR timed out after {timeout_seconds} seconds") from exc
-    except OSError as exc:
-        raise TranscriptionError(f"OCR could not start: {type(exc).__name__}") from exc
-    if completed.returncode != 0:
-        raise TranscriptionError(
-            f"OCR exited {completed.returncode}: {_bounded_diagnostic(completed.stderr)}"
-        )
-    return _parse_tesseract_tsv(
-        completed.stdout.decode("utf-8", errors="strict"), page_id=page_id
-    )
 
 
 def hash_regular_file(path: Path) -> tuple[str, int]:
@@ -239,6 +160,7 @@ class PageSource:
 
     def __init__(self, path: Path) -> None:
         self._path = path
+        self._pdfium_document: Any | None = None
         try:
             self._docling_parser = DoclingPdfParser(loglevel="fatal")
             self._docling_document = self._docling_parser.load(
@@ -246,7 +168,6 @@ class PageSource:
                 lazy=True,
                 content_config=ContentConfig(include_bitmap_bytes=False),
             )
-            self._pdfium_document = pdfium.PdfDocument(path)
         except Exception as exc:
             raise TranscriptionError(
                 f"cannot open PDF {path}: {type(exc).__name__}"
@@ -254,7 +175,8 @@ class PageSource:
 
     def close(self) -> None:
         self._docling_document.unload()
-        self._pdfium_document.close()
+        if self._pdfium_document is not None:
+            self._pdfium_document.close()
 
     def __enter__(self) -> PageSource:
         return self
@@ -328,6 +250,8 @@ class PageSource:
     def render_png(self, page_number: int, *, dpi: int) -> tuple[bytes, JsonObject]:
         """Render one page to deterministic RGB PNG bytes and integer pixel metrics."""
         try:
+            if self._pdfium_document is None:
+                self._pdfium_document = pdfium.PdfDocument(self._path)
             page = self._pdfium_document[page_number - 1]
             bitmap = page.render(scale=dpi / 72, may_draw_forms=False)
             image = bitmap.to_pil().convert("RGB")
@@ -406,24 +330,6 @@ def _package_version(name: str) -> str:
         raise TranscriptionError(f"required package is not installed: {name}") from exc
 
 
-def _command_version(command: list[str]) -> str | None:
-    try:
-        completed = subprocess.run(  # noqa: S603
-            command,
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=_TOOL_TIMEOUT_SECONDS,
-            env={"LC_ALL": "C", "LANG": "C", "PATH": os.environ.get("PATH", "")},
-        )
-    except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
-        return None
-    if completed.returncode != 0:
-        return None
-    first_line = completed.stdout.splitlines()[0] if completed.stdout else ""
-    return first_line.strip() or None
-
-
 def _worker_environment() -> dict[str, str]:
     return {
         "LC_ALL": "C.UTF-8",
@@ -438,75 +344,3 @@ def _bounded_diagnostic(value: bytes, *, limit: int = 600) -> str:
     if not text:
         return "no diagnostic"
     return " ".join(text.split())[:limit]
-
-
-def _parse_tesseract_tsv(value: str, *, page_id: str) -> OcrOutput:
-    reader = csv.DictReader(value.splitlines(), delimiter="\t")
-    expected = {
-        "level",
-        "page_num",
-        "block_num",
-        "par_num",
-        "line_num",
-        "word_num",
-        "left",
-        "top",
-        "width",
-        "height",
-        "conf",
-        "text",
-    }
-    if reader.fieldnames is None or set(reader.fieldnames) != expected:
-        raise TranscriptionError("OCR returned an unexpected TSV header")
-    tokens: list[JsonObject] = []
-    grouped: dict[tuple[int, int, int], list[JsonObject]] = {}
-    for row in reader:
-        text = row["text"]
-        if row["level"] != "5" or not text.strip():
-            continue
-        try:
-            left = int(row["left"])
-            top = int(row["top"])
-            width = int(row["width"])
-            height = int(row["height"])
-            confidence = float(row["conf"])
-            key = (int(row["block_num"]), int(row["par_num"]), int(row["line_num"]))
-        except (TypeError, ValueError) as exc:
-            raise TranscriptionError("OCR returned a malformed TSV row") from exc
-        token: JsonObject = {
-            "span_id": f"{page_id}:ocr:word:{len(tokens):06d}",
-            "raw_text": text,
-            "bbox": [left, top, left + width, top + height],
-            "confidence_permyriad": max(0, min(10_000, round(confidence * 100))),
-            "block": key[0],
-            "paragraph": key[1],
-            "line": key[2],
-        }
-        tokens.append(token)
-        grouped.setdefault(key, []).append(token)
-    lines: list[JsonObject] = []
-    for line_tokens in grouped.values():
-        boxes = [cast(list[int], token["bbox"]) for token in line_tokens]
-        text = " ".join(cast(str, token["raw_text"]) for token in line_tokens)
-        lines.append(
-            {
-                "span_id": f"{page_id}:ocr:line:{len(lines):06d}",
-                "raw_text": text,
-                "bbox": [
-                    min(box[0] for box in boxes),
-                    min(box[1] for box in boxes),
-                    max(box[2] for box in boxes),
-                    max(box[3] for box in boxes),
-                ],
-                "confidence_permyriad": sum(
-                    cast(int, token["confidence_permyriad"]) for token in line_tokens
-                )
-                // len(line_tokens),
-                "token_span_ids": [token["span_id"] for token in line_tokens],
-            }
-        )
-    return OcrOutput(
-        tokens=tokens,
-        lines=lines,
-        raw_text="\n".join(cast(str, line["raw_text"]) for line in lines),
-    )

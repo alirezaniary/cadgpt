@@ -28,3 +28,6 @@ dist/
 
 # Editor
 .idea/
+
+# Temporary Claude collaboration worktrees.
+.claude/worktrees/

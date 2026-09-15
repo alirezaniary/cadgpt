@@ -24,8 +24,9 @@ from cadgpt_regulations.jsonio import (
     sha256_json,
     validate_schema,
 )
+from cadgpt_regulations.paddle_ocr import PaddleGpuWorker, PaddleOutput
 from cadgpt_regulations.page_probe import validate_page_probe
-from cadgpt_regulations.page_tools import OcrOutput, run_tesseract_tsv, runtime_toolchain
+from cadgpt_regulations.page_tools import runtime_toolchain
 from cadgpt_regulations.resources import load_packaged_json
 from cadgpt_regulations.storage import (
     InstallStatus,
@@ -141,7 +142,7 @@ def build_transcription(
     probe: JsonObject,
     *,
     root: Path,
-    tessdata_directory: Path | None,
+    paddle_device: str = "gpu:0",
     workers: int = 1,
     ocr_timeout_seconds: int = DEFAULT_OCR_TIMEOUT_SECONDS,
     bundle_max_pages: int = DEFAULT_BUNDLE_MAX_PAGES,
@@ -171,15 +172,19 @@ def build_transcription(
     )
     ocr_toolchain_error: str | None = None
     ocr_toolchain: JsonObject | None = None
+    paddle_worker: PaddleGpuWorker | None = None
     if ocr_required:
         try:
-            if tessdata_directory is None:
-                raise TranscriptionError("OCR pages require an explicit tessdata directory")
-            ocr_toolchain = runtime_toolchain(tessdata_directory, require_ocr=True)
+            ocr_toolchain = runtime_toolchain(
+                require_paddle=True,
+                paddle_device=paddle_device,
+            )
             if ocr_toolchain != probe["toolchain"]:
                 raise TranscriptionError(
-                    "OCR runtime differs from the page probe toolchain identity"
+                    "Paddle runtime differs from the page probe toolchain identity; "
+                    "rerun page-probe with the same Paddle environment"
                 )
+            paddle_worker = PaddleGpuWorker(device=paddle_device)
         except TranscriptionError as exc:
             ocr_toolchain_error = str(exc)
 
@@ -187,7 +192,13 @@ def build_transcription(
         "schema_version": "1.0.0",
         "normalization_version": NORMALIZATION_VERSION,
         "ocr_timeout_seconds": ocr_timeout_seconds,
+        "ocr_engine": "paddleocr",
         "ocr_languages": ["fas", "eng"],
+        "paddle_device": paddle_device,
+        "paddle_det_model": "PP-OCRv5_mobile_det",
+        "paddle_rec_model": "arabic_PP-OCRv5_mobile_rec",
+        "paddle_text_recognition_batch_size": 8,
+        "paddle_text_det_limit_side_len": 1536,
         "ocr_primary_psm": 3,
         "ocr_dense_fallback_psm": 6,
         "ocr_general_review_confidence_permyriad": 6000,
@@ -212,9 +223,9 @@ def build_transcription(
             root=root,
             probe=probe,
             configuration=configuration,
-            tessdata_directory=tessdata_directory,
             ocr_toolchain=ocr_toolchain,
             ocr_toolchain_error=ocr_toolchain_error,
+            paddle_worker=paddle_worker,
             workers=workers,
         )
         bundles, bundle_created, bundle_reused = _build_bundles(
@@ -297,9 +308,9 @@ def _transcribe_document(
     root: Path,
     probe: JsonObject,
     configuration: JsonObject,
-    tessdata_directory: Path | None,
     ocr_toolchain: JsonObject | None,
     ocr_toolchain_error: str | None,
+    paddle_worker: PaddleGpuWorker | None,
     workers: int,
 ) -> tuple[JsonObject, int, int]:
     probe_pages = cast(list[JsonObject], document["pages"])
@@ -318,9 +329,9 @@ def _transcribe_document(
                     root=root,
                     probe=probe,
                     configuration=configuration,
-                    tessdata_directory=tessdata_directory,
                     ocr_toolchain=ocr_toolchain,
                     ocr_toolchain_error=ocr_toolchain_error,
+                    paddle_worker=paddle_worker,
                 )
             except Exception as exc:  # noqa: BLE001 - every page must become terminal
                 prepared.append(_failed_prepared(page, "TRANSCRIPTION_SUBMIT_FAILED", exc))
@@ -361,9 +372,9 @@ def _transcribe_page(
     root: Path,
     probe: JsonObject,
     configuration: JsonObject,
-    tessdata_directory: Path | None,
     ocr_toolchain: JsonObject | None,
     ocr_toolchain_error: str | None,
+    paddle_worker: PaddleGpuWorker | None,
 ) -> tuple[_PreparedPage, bool]:
     page_number = cast(int, page["pdf_page"])
     page_id = cast(str, page["page_id"])
@@ -399,17 +410,19 @@ def _transcribe_page(
         for artifact in cast(list[JsonObject], package_record["artifacts"])
     }
     native_artifact = artifact_by_role["native_layout"]
-    render_artifact = artifact_by_role["source_render"]
     native_payload, _ = read_attested_bytes(
         safe_path(root, cast(str, native_artifact["path"])),
         expected_sha256=cast(str, native_artifact["sha256"]),
         expected_bytes=cast(int, native_artifact["bytes"]),
     )
-    render_payload, _ = read_attested_bytes(
-        safe_path(root, cast(str, render_artifact["path"])),
-        expected_sha256=cast(str, render_artifact["sha256"]),
-        expected_bytes=cast(int, render_artifact["bytes"]),
-    )
+    render_artifact = artifact_by_role.get("source_render")
+    render_payload: bytes | None = None
+    if render_artifact is not None:
+        render_payload, _ = read_attested_bytes(
+            safe_path(root, cast(str, render_artifact["path"])),
+            expected_sha256=cast(str, render_artifact["sha256"]),
+            expected_bytes=cast(int, render_artifact["bytes"]),
+        )
     native = loads_object(native_payload.decode("utf-8"), description="native layout")
     raw_native = cast(str, native["raw_glyph_text"])
     native_search = "\n".join(cast(list[str], native["raw_line_text"]))
@@ -421,10 +434,12 @@ def _transcribe_page(
     ocr_log: JsonObject | None = None
     review_flags: list[str] = []
     if route in {"ocr", "native_plus_ocr"}:
+        if render_payload is None or render_artifact is None:
+            raise TranscriptionError("OCR route lacks its source render")
         if ocr_toolchain_error is not None:
             raise TranscriptionError(ocr_toolchain_error)
-        if tessdata_directory is None or ocr_toolchain is None:
-            raise TranscriptionError("OCR toolchain is unavailable")
+        if ocr_toolchain is None:
+            raise TranscriptionError("Paddle GPU toolchain is unavailable")
         preprocessing = _ocr_preprocessing(
             render_payload,
             catalog_key=cast(str, document["catalog_key"]),
@@ -436,33 +451,13 @@ def _transcribe_page(
         try:
             ocr_input_path = ocr_work / "input.png"
             install_immutable_bytes(ocr_input_path, ocr_input)
-            primary = run_tesseract_tsv(
+            if paddle_worker is None:
+                raise TranscriptionError("Paddle GPU worker is unavailable")
+            ocr_output = paddle_worker.run(
                 ocr_input_path,
                 page_id=page_id,
-                tessdata_directory=tessdata_directory,
-                dpi=cast(int, cast(JsonObject, probe["configuration"])["render_dpi"]),
-                page_segmentation_mode=3,
                 timeout_seconds=cast(int, configuration["ocr_timeout_seconds"]),
             )
-            attempts = [_ocr_attempt(primary, page_segmentation_mode=3)]
-            ocr_output = primary
-            selected_psm = 3
-            if _needs_dense_fallback(primary):
-                fallback = run_tesseract_tsv(
-                    ocr_input_path,
-                    page_id=page_id,
-                    tessdata_directory=tessdata_directory,
-                    dpi=cast(
-                        int,
-                        cast(JsonObject, probe["configuration"])["render_dpi"],
-                    ),
-                    page_segmentation_mode=6,
-                    timeout_seconds=cast(int, configuration["ocr_timeout_seconds"]),
-                )
-                attempts.append(_ocr_attempt(fallback, page_segmentation_mode=6))
-                if _ocr_score(fallback) > _ocr_score(primary):
-                    ocr_output = fallback
-                    selected_psm = 6
         finally:
             try:
                 shutil.rmtree(ocr_work)
@@ -480,13 +475,17 @@ def _transcribe_page(
                 "height": cast(JsonObject, page["metrics"])["render_height_pixels"],
             },
             "engine": {
-                "name": "tesseract",
-                "version": ocr_toolchain["tesseract"],
+                "name": "paddleocr",
+                "version": ocr_toolchain["paddleocr"],
                 "languages": ["fas", "eng"],
-                "page_segmentation_mode": selected_psm,
+                "page_segmentation_mode": 3,
                 "dpi": cast(int, cast(JsonObject, probe["configuration"])["render_dpi"]),
-                "models": ocr_toolchain["tessdata_models"],
-                "attempts": attempts,
+                "models": [],
+                "attempts": [_ocr_attempt(ocr_output, page_segmentation_mode=3)],
+                "device": ocr_toolchain["paddle_device"],
+                "det_model": ocr_toolchain["paddle_det_model"],
+                "rec_model": ocr_toolchain["paddle_rec_model"],
+                "raw_result": ocr_output.raw_result,
             },
             "preprocessing": {
                 "source_render_sha256": render_artifact["sha256"],
@@ -533,10 +532,14 @@ def _transcribe_page(
     else:
         normalized = normalized_native
     digit_view = ascii_digit_view(normalized)
-    model_render = _model_render(
-        render_payload,
-        max_edge=cast(int, configuration["model_max_edge"]),
-        quality=cast(int, configuration["model_jpeg_quality"]),
+    model_render = (
+        None
+        if render_payload is None
+        else _model_render(
+            render_payload,
+            max_edge=cast(int, configuration["model_max_edge"]),
+            quality=cast(int, configuration["model_jpeg_quality"]),
+        )
     )
     symbol_candidates, crop_files = _symbol_candidates(
         native,
@@ -552,8 +555,9 @@ def _transcribe_page(
         "raw-native.txt": raw_native.encode("utf-8"),
         "normalized.txt": normalized.encode("utf-8"),
         "digits-ascii.txt": digit_view.encode("utf-8"),
-        "model.jpg": model_render,
     }
+    if model_render is not None:
+        files["model.jpg"] = model_render
     if ocr is not None:
         files["ocr.json"] = canonical_bytes(ocr)
         assert ocr_input is not None
@@ -629,7 +633,8 @@ def _transcribe_page(
         "package_sha256": hashlib.sha256(evidence_payload).hexdigest(),
         "normalized_sha256": hashlib.sha256(files["normalized.txt"]).hexdigest(),
         "normalized_chars": len(normalized),
-        "model_input_bytes": len(model_render) + len(files["normalized.txt"]),
+        "model_input_bytes": (0 if model_render is None else len(model_render))
+        + len(files["normalized.txt"]),
         "error": None,
     }
     return _PreparedPage(terminal_record, normalized), was_created
@@ -656,7 +661,7 @@ def _existing_transcription_record(
     artifacts = cast(list[JsonObject], evidence["artifacts"])
     by_role = {cast(str, artifact["role"]): artifact for artifact in artifacts}
     normalized_artifact = by_role["normalized_search_text"]
-    model_artifact = by_role["model_input_render"]
+    model_artifact = by_role.get("model_input_render")
     normalized_payload, _ = read_attested_bytes(
         safe_path(root, cast(str, normalized_artifact["path"])),
         expected_sha256=cast(str, normalized_artifact["sha256"]),
@@ -675,7 +680,7 @@ def _existing_transcription_record(
         "normalized_sha256": normalized_artifact["sha256"],
         "normalized_chars": len(normalized_payload.decode("utf-8")),
         "model_input_bytes": cast(int, normalized_artifact["bytes"])
-        + cast(int, model_artifact["bytes"]),
+        + (0 if model_artifact is None else cast(int, model_artifact["bytes"])),
         "error": None,
     }
     if record["page_id"] != page_id:
@@ -778,7 +783,7 @@ def _otsu_threshold(histogram: list[int]) -> int:
     return threshold
 
 
-def _ocr_attempt(output: OcrOutput, *, page_segmentation_mode: int) -> JsonObject:
+def _ocr_attempt(output: PaddleOutput, *, page_segmentation_mode: int) -> JsonObject:
     confidences = [cast(int, token["confidence_permyriad"]) for token in output.tokens]
     return {
         "page_segmentation_mode": page_segmentation_mode,
@@ -790,13 +795,13 @@ def _ocr_attempt(output: OcrOutput, *, page_segmentation_mode: int) -> JsonObjec
     }
 
 
-def _ocr_score(output: OcrOutput) -> tuple[int, int]:
+def _ocr_score(output: PaddleOutput) -> tuple[int, int]:
     confidences = [cast(int, token["confidence_permyriad"]) for token in output.tokens]
     mean = sum(confidences) // len(confidences) if confidences else 0
     return len(output.tokens), mean
 
 
-def _needs_dense_fallback(output: OcrOutput) -> bool:
+def _needs_dense_fallback(output: PaddleOutput) -> bool:
     token_count, mean = _ocr_score(output)
     return token_count < 20 or mean < 6000
 
@@ -810,7 +815,7 @@ def _critical_ocr_token(value: str) -> bool:
 def _symbol_candidates(
     native: JsonObject,
     ocr: JsonObject | None,
-    render_payload: bytes,
+    render_payload: bytes | None,
     *,
     page_id: str,
 ) -> tuple[list[JsonObject], dict[str, bytes]]:
@@ -828,12 +833,14 @@ def _symbol_candidates(
         if _EQUATION_MARKERS.search(raw_text):
             candidate_id = f"{page_id}:equation:{equation_index:04d}"
             crop_name = f"formula-crops/{equation_index:04d}.png"
-            crop_files[crop_name] = _crop_line(
-                render_payload,
-                bbox,
-                source_kind=source_kind,
-                native=native,
-            )
+            crop_file: str | None = crop_name if render_payload is not None else None
+            if render_payload is not None:
+                crop_files[crop_name] = _crop_line(
+                    render_payload,
+                    bbox,
+                    source_kind=source_kind,
+                    native=native,
+                )
             candidates.append(
                 {
                     "candidate_id": candidate_id,
@@ -842,7 +849,7 @@ def _symbol_candidates(
                     "span_id": line["span_id"],
                     "raw_text": raw_text,
                     "bbox": bbox,
-                    "crop_file": crop_name,
+                    "crop_file": crop_file,
                 }
             )
             equation_index += 1
@@ -1129,7 +1136,6 @@ def _bundle_page_ref(page: JsonObject, *, root: Path) -> JsonObject:
     package = Path(cast(str, page["package_path"]))
     raw_native = (package / "raw-native.txt").as_posix()
     normalized = (package / "normalized.txt").as_posix()
-    model = (package / "model.jpg").as_posix()
     evidence_payload, _ = read_attested_bytes(
         safe_path(root, (package / "evidence.json").as_posix())
     )
@@ -1152,7 +1158,11 @@ def _bundle_page_ref(page: JsonObject, *, root: Path) -> JsonObject:
         )
     read_attested_bytes(safe_path(root, raw_native))
     read_attested_bytes(safe_path(root, normalized))
-    read_attested_bytes(safe_path(root, model))
+    model: str | None = None
+    model_candidate = package / "model.jpg"
+    if model_candidate.exists():
+        model = model_candidate.as_posix()
+        read_attested_bytes(safe_path(root, model))
     return {
         "page_id": page["page_id"],
         "pdf_page": page["pdf_page"],
@@ -1324,13 +1334,14 @@ def _validate_transcription_package(page: JsonObject, *, root: Path) -> None:
             "raw_native_text",
             "normalized_search_text",
             "ascii_digit_view",
-            "model_input_render",
         ):
             if roles.count(required_role) != 1:
                 raise TranscriptionError(
                     f"page evidence requires exactly one {required_role} artifact"
                 )
         route = cast(str, cast(JsonObject, evidence["probe"])["route"])
+        if roles.count("model_input_render") > 1:
+            raise TranscriptionError("page evidence contains duplicate model renders")
         expected_ocr = route in {"ocr", "native_plus_ocr"}
         if roles.count("ocr_layout") != int(expected_ocr) or roles.count(
             "ocr_input_render"

@@ -493,3 +493,14 @@ payload is overwritten or reinterpreted as evidence for this revision.
 
 **Reopens if:** INBR replaces either pinned endpoint again, or the user selects an expansion beyond
 this 43-artifact cohort.
+
+## 2026-09-13 - Final Luna transcripts are the rule-translation source
+
+The INBR workflow is PDF slices of ten pages, PaddleOCR first-pass text, and the PDF plus OCR
+text supplied to Luna. The completed Luna JSON is the downstream source checkpoint. It carries
+the source PDF/document identity, page number, transcript record, and exact text, so rule
+translation and IDS compilation consume it directly. Structural source spans are optional audit
+metadata; re-OCR, source-graph re-anchoring, and span closure are not compilation gates.
+
+**Reopens if:** the user changes the transcript production workflow or requires a separate
+pixel/line-level audit of a rule.

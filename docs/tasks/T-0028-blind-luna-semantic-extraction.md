@@ -1,9 +1,13 @@
-# T-0028 - Extract source-anchored semantics with blind Luna workers
+# T-0028 - Extract source-anchored semantics with blind Luna workers (legacy path)
 
 **Phase:** Regulation corpus 5   **Status:** open
 **Touches invariants:** I1, import contracts
 
 ## Why
+
+This is the earlier structural-evidence extraction path. It is not required for the current
+transcript-to-rule workflow, which starts from the completed Luna transcript JSON and its PDF/page
+metadata.
 
 The page and structure layers make every source character, region, table, and formula addressable,
 but they do not state what a provision requires, permits, prohibits, defines, qualifies, or refers

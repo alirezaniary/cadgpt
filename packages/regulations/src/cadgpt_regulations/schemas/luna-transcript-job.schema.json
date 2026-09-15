@@ -1,0 +1,288 @@
+{
+  "$id": "https://cadgpt.local/schemas/luna-transcript-job-1.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "bundle_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "bundle_path": {
+      "minLength": 1,
+      "not": {
+        "pattern": "(^/|(^|/)\\.\\.?(/|$)|\\\\)"
+      },
+      "type": "string"
+    },
+    "bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "catalog_key": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "catalog_order": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "chunk_order": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "end_pdf_page": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "job_id": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "model": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "original_pdf": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "path": {
+          "minLength": 1,
+          "not": {
+            "pattern": "(^/|(^|/)\\.\\.?(/|$)|\\\\)"
+          },
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "bytes"
+      ],
+      "type": "object"
+    },
+    "overlap_page_ids": {
+      "items": {"type": "string", "minLength": 1},
+      "type": "array",
+      "uniqueItems": true
+    },
+    "pages": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "classification": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence_path": {
+            "minLength": 1,
+            "not": {
+              "pattern": "(^/|(^|/)\\.\\.?(/|$)|\\\\)"
+            },
+            "type": "string"
+          },
+          "evidence_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "native_layout_path": {
+            "minLength": 1,
+            "not": {
+              "pattern": "(^/|(^|/)\\.\\.?(/|$)|\\\\)"
+            },
+            "type": "string"
+          },
+          "native_layout_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "native_text_path": {
+            "oneOf": [
+              {
+                "minLength": 1,
+                "not": {
+                  "pattern": "(^/|(^|/)\\.\\.?(/|$)|\\\\)"
+                },
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "native_text_sha256": {
+            "oneOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "normalized_text_path": {
+            "minLength": 1,
+            "not": {
+              "pattern": "(^/|(^|/)\\.\\.?(/|$)|\\\\)"
+            },
+            "type": "string"
+          },
+          "normalized_text_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "paddle_result_path": {
+            "oneOf": [
+              {
+                "minLength": 1,
+                "not": {
+                  "pattern": "(^/|(^|/)\\.\\.?(/|$)|\\\\)"
+                },
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "paddle_result_sha256": {
+            "oneOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "page_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+    "page_render_path": {
+      "oneOf": [
+        {
+          "minLength": 1,
+          "not": {
+            "pattern": "(^/|(^|/)\\.\\.?(/|$)|\\\\)"
+          },
+          "type": "string"
+        },
+        {"type": "null"}
+      ]
+    },
+    "page_render_sha256": {
+      "oneOf": [
+        {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+        {"type": "null"}
+      ]
+          },
+          "pdf_page": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "route": {
+            "enum": [
+              "none",
+              "native",
+              "ocr",
+              "native_plus_ocr"
+            ]
+          },
+          "state": {
+            "enum": [
+              "ready",
+              "needs_review"
+            ]
+          }
+        },
+        "required": [
+          "page_id",
+          "pdf_page",
+          "state",
+          "classification",
+          "route",
+          "evidence_path",
+          "evidence_sha256",
+          "native_layout_path",
+          "native_layout_sha256",
+          "native_text_path",
+          "native_text_sha256",
+          "paddle_result_path",
+          "paddle_result_sha256",
+          "page_render_path",
+          "page_render_sha256",
+          "normalized_text_path",
+          "normalized_text_sha256"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "passes": {
+      "const": [
+        "structured_transcript"
+      ]
+    },
+    "prompt_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "prompt_version": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "response_schema_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "source_bytes": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "source_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "start_pdf_page": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "state": {
+      "const": "pending"
+    }
+  },
+  "required": [
+    "job_id",
+    "state",
+    "model",
+    "passes",
+    "prompt_version",
+    "prompt_sha256",
+    "response_schema_sha256",
+    "catalog_key",
+    "catalog_order",
+    "source_sha256",
+    "source_bytes",
+    "original_pdf",
+    "bundle_id",
+    "bundle_path",
+    "bundle_sha256",
+    "start_pdf_page",
+    "end_pdf_page",
+    "pages"
+  ],
+  "type": "object"
+}

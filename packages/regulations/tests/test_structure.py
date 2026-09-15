@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 
+import cadgpt_regulations.structure as structure_module
 import pytest
 from cadgpt_regulations.errors import StructureError
 from cadgpt_regulations.jsonio import sha256_json
@@ -110,6 +111,35 @@ def test_formula_record_preserves_source_and_defers_semantic_math() -> None:
     assert record["content_mathml"] is None
     assert record["parse_status"] == "needs_review"
     assert "<mtext>F = ma</mtext>" in record["presentation_mathml"]
+
+
+def test_cropless_live_transcription_equation_is_deferred_without_fake_artifact() -> None:
+    """The live Paddle evidence contains equations with no rendered crop."""
+    record = _formula_record(
+        {
+            "candidate_id": (
+                "sha256:0947a7066398b348ea5c2aab2fc1b3c3c0e69ead5438c62b69409c941e4efd5f:"
+                "page:000102:equation:0000"
+            ),
+            "crop_file": None,
+            "raw_text": " 22/5 \u00d7 16/5",
+            "span_id": (
+                "sha256:0947a7066398b348ea5c2aab2fc1b3c3c0e69ead5438c62b69409c941e4efd5f:"
+                "page:000102:native:line:000160"
+            ),
+            "source_kind": "native",
+            "bbox": [181444, 595480, 237650, 608487],
+        },
+        crop_artifacts={},
+    )
+
+    assert record["crop"] is None
+    assert record["raw_transcription"] == " 22/5 \u00d7 16/5"
+    assert record["parse_status"] == "needs_review"
+    assert record["diagnostics"] == [
+        "FORMULA_CROP_UNAVAILABLE",
+        "FORMULA_SEMANTIC_PARSE_DEFERRED",
+    ]
 
 
 def test_unit_record_maps_only_known_printed_units() -> None:
@@ -577,3 +607,35 @@ def test_build_structure_anchors_method_abbreviation_candidates(tmp_path: Path) 
     span_id = f"{page_id}:native:line:000000"
     assert record["source_span_ids"] == [span_id]
     assert graph["pages"][0]["abbreviation_ids"] == [record["abbreviation_id"]]
+
+
+def test_build_structure_reuses_installed_graph_and_bundle_payloads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The final pass must not reread/decode generated graph or bundle files.
+
+    ``install_immutable_bytes`` has already hashed and attested these exact
+    payloads.  The build-local cache reuses their decoded objects while the
+    validator still checks the installed snapshot identity.  Source evidence
+    reads remain expected and are intentionally not suppressed here.
+    """
+    transcription_root = tmp_path / "transcription"
+    transcription_root.mkdir(mode=0o700)
+    transcription = _real_transcription_with_abbreviation(transcription_root)
+    output_root = tmp_path / "structure"
+    output_root.mkdir(mode=0o700)
+    reads: list[Path] = []
+    original = structure_module.read_attested_bytes
+
+    def recording_read(path: Path, **kwargs: object):
+        reads.append(path)
+        return original(path, **kwargs)
+
+    monkeypatch.setattr(structure_module, "read_attested_bytes", recording_read)
+    build_structure(
+        transcription,
+        transcription_root=transcription_root,
+        output_root=output_root,
+    )
+
+    assert not any(path.is_relative_to(output_root) for path in reads)

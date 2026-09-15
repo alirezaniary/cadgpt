@@ -1,0 +1,28 @@
+{
+  "$id": "https://cadgpt.local/schemas/transcript-revision-1.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "revision_id", "document_key", "revision", "transcript_fa", "transcript_sha256",
+    "pdf_page", "printed_page_label", "table_label", "source_document_sha256", "page_id",
+    "transcript_payload", "transcript_payload_sha256", "supersedes", "state"
+  ],
+  "properties": {
+    "record_key": {"type": "string", "minLength": 1},
+    "revision_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "document_key": {"type": "string", "minLength": 1},
+    "revision": {"type": "string", "minLength": 1},
+    "transcript_fa": {"type": "string", "minLength": 1},
+    "transcript_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "pdf_page": {"type": "integer", "minimum": 1},
+    "printed_page_label": {"type": ["string", "null"]},
+    "table_label": {"type": ["string", "null"]},
+    "source_document_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "page_id": {"type": ["string", "null"]},
+    "transcript_payload": {"type": ["object", "null"]},
+    "transcript_payload_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "supersedes": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "state": {"enum": ["extracted", "corrected", "superseded"]}
+  }
+}

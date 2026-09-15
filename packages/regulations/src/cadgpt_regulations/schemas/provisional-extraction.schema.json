@@ -1,0 +1,32 @@
+{
+  "$id": "https://cadgpt.local/schemas/provisional-extraction-1.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": ["schema_version", "items"],
+  "properties": {
+    "schema_version": {"const": "provisional-extraction-1.0.0"},
+    "worker_id": {"type": ["string", "null"]},
+    "prompt_version": {"type": ["string", "null"]},
+    "items": {
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["record_id", "outcome"],
+        "properties": {
+          "record_id": {"type": "string", "minLength": 1},
+          "outcome": {"enum": ["candidate", "no_assertion"]},
+          "rule": {"type": "object", "minProperties": 1},
+          "state": {"enum": ["candidate", "needs_review"]},
+          "reason": {"type": "string", "minLength": 1},
+          "review_flags": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+            "uniqueItems": true
+          }
+        }
+      }
+    }
+  }
+}

@@ -91,7 +91,7 @@ def build_page_probe(
     catalog_keys: tuple[str, ...] = (),
     page_ranges: tuple[tuple[int, int], ...] = (),
     render_dpi: int = DEFAULT_RENDER_DPI,
-    tessdata_directory: Path | None = None,
+    paddle_device: str = "gpu:0",
     workers: int = 1,
     page_timeout_seconds: int = DEFAULT_PAGE_TIMEOUT_SECONDS,
 ) -> ProbeRun:
@@ -116,6 +116,7 @@ def build_page_probe(
         "schema_version": "1.0.0",
         "render_dpi": render_dpi,
         "page_timeout_seconds": page_timeout_seconds,
+        "paddle_device": paddle_device,
         "parser_boundary": "crop_box",
         "thresholds": {
             "minimum_native_nonspace_chars": _MIN_NATIVE_NONSPACE_CHARS,
@@ -125,7 +126,10 @@ def build_page_probe(
         },
     }
     configuration = {**configuration_values, "sha256": sha256_json(configuration_values)}
-    toolchain = runtime_toolchain(tessdata_directory)
+    toolchain = runtime_toolchain(
+        require_paddle=False,
+        paddle_device=paddle_device,
+    )
     toolchain_sha256 = sha256_json(toolchain)
 
     documents: list[JsonObject] = []
@@ -381,12 +385,15 @@ def _probe_page(
     _validate_native(native, page_id=page_id)
     metrics = _metrics(native, render_metrics)
     classification, route, state, reason_codes = _classify(metrics)
+    # A blank page may need a transient visual check, but it is not an OCR input.
+    if classification == "blank":
+        render = None
 
     native_relative = package_relative / "native.json"
     render_relative = package_relative / "render.png"
     native_bytes = canonical_bytes(native)
     native_digest = hashlib.sha256(native_bytes).hexdigest()
-    render_digest = hashlib.sha256(render).hexdigest()
+    render_digest = None if render is None else hashlib.sha256(render).hexdigest()
     page_package: JsonObject = {
         "schema_version": "1.0.0",
         "page_id": page_id,
@@ -414,22 +421,26 @@ def _probe_page(
                 "bytes": len(native_bytes),
                 "media_type": "application/json",
             },
+        ],
+        "error": None,
+    }
+    if render is not None:
+        cast(list[JsonObject], page_package["artifacts"]).append(
             {
                 "role": "source_render",
                 "path": render_relative.as_posix(),
                 "sha256": render_digest,
                 "bytes": len(render),
                 "media_type": "image/png",
-            },
-        ],
-        "error": None,
-    }
+            }
+        )
     page_bytes = canonical_bytes(page_package)
-    package_files = {
+    package_files: dict[str, bytes] = {
         "native.json": native_bytes,
-        "render.png": render,
         "page.json": page_bytes,
     }
+    if render is not None:
+        package_files["render.png"] = render
     was_created = _install_package(output_root, package_relative, package_files)
     return {
         "page_id": page_id,
@@ -502,7 +513,7 @@ def _existing_probe_record(
         raise TranscriptionError(str(exc)) from exc
 
 
-def _metrics(native: JsonObject, render: JsonObject) -> JsonObject:
+def _metrics(native: JsonObject, render: JsonObject | None) -> JsonObject:
     raw_text = cast(str, native["raw_glyph_text"])
     resources = cast(JsonObject, native["resource_counts"])
     return {
@@ -513,21 +524,26 @@ def _metrics(native: JsonObject, render: JsonObject) -> JsonObject:
         "bitmap_count": resources["bitmaps"],
         "shape_count": resources["shapes"],
         "bitmap_coverage_permyriad": native["bitmap_coverage_permyriad"],
-        "ink_coverage_permyriad": render["ink_coverage_permyriad"],
-        "render_width_pixels": render["width_pixels"],
-        "render_height_pixels": render["height_pixels"],
+        "ink_coverage_permyriad": (
+            None if render is None else render["ink_coverage_permyriad"]
+        ),
+        "render_width_pixels": None if render is None else render["width_pixels"],
+        "render_height_pixels": None if render is None else render["height_pixels"],
     }
 
 
 def _classify(metrics: JsonObject) -> tuple[str, str, str, list[str]]:
     chars = cast(int, metrics["native_nonspace_chars"])
     bitmap = cast(int, metrics["bitmap_coverage_permyriad"])
-    ink = cast(int, metrics["ink_coverage_permyriad"])
+    ink_value = metrics["ink_coverage_permyriad"]
+    ink = None if ink_value is None else cast(int, ink_value)
     if chars == 0 and bitmap >= _SCAN_BITMAP_COVERAGE_PERMYRIAD:
         return "image_scan", "ocr", "ready", ["FULL_PAGE_BITMAP_WITHOUT_NATIVE_TEXT"]
-    if chars == 0 and ink <= _BLANK_INK_COVERAGE_PERMYRIAD:
+    if chars == 0 and ink is not None and ink <= _BLANK_INK_COVERAGE_PERMYRIAD:
         return "blank", "none", "ready", ["NO_NATIVE_TEXT_AND_LOW_INK"]
     if chars == 0:
+        if ink is None:
+            raise TranscriptionError("visual metrics are required for textless pages")
         return (
             "degraded_photo",
             "ocr",
@@ -542,6 +558,8 @@ def _classify(metrics: JsonObject) -> tuple[str, str, str, list[str]]:
             ["LOW_NATIVE_TEXT_COUNT"],
         )
     if bitmap >= _MIXED_BITMAP_COVERAGE_PERMYRIAD:
+        if ink is None:
+            raise TranscriptionError("visual metrics are required for mixed pages")
         return "mixed", "native_plus_ocr", "ready", ["NATIVE_TEXT_AND_LARGE_BITMAP"]
     return "native_text", "native", "ready", ["SUFFICIENT_NATIVE_TEXT"]
 
@@ -787,10 +805,12 @@ def _validate_stored_package(
     try:
         package = safe_path(root, cast(str, page["package_path"]))
         snapshot = snapshot_directory(package)
-        if tuple(entry.path for entry in snapshot.entries) != (
-            "native.json",
-            "page.json",
-            "render.png",
+        expected_entries = ["native.json", "page.json"]
+        render_required = page["route"] in {"ocr", "native_plus_ocr"}
+        if render_required:
+            expected_entries.append("render.png")
+        if tuple(entry.path for entry in snapshot.entries) != tuple(
+            sorted(expected_entries)
         ):
             raise TranscriptionError("page package contains unexpected entries")
         page_path = safe_path(package, "page.json")
@@ -831,12 +851,12 @@ def _validate_stored_package(
                 raise TranscriptionError("stored page artifact failed re-attestation")
         artifacts = cast(list[JsonObject], package_record["artifacts"])
         roles = [cast(str, artifact["role"]) for artifact in artifacts]
-        if roles != ["native_layout", "source_render"]:
+        expected_roles = ["native_layout"] + (["source_render"] if render_required else [])
+        if roles != expected_roles:
             raise TranscriptionError("page package artifact roles are not exact and unique")
-        expected_artifact_paths = [
-            f"{page['package_path']}/native.json",
-            f"{page['package_path']}/render.png",
-        ]
+        expected_artifact_paths = [f"{page['package_path']}/native.json"]
+        if render_required:
+            expected_artifact_paths.append(f"{page['package_path']}/render.png")
         if [artifact["path"] for artifact in artifacts] != expected_artifact_paths:
             raise TranscriptionError("page package artifact paths are false")
         native_payload, _ = read_attested_bytes(

@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0.0",
+  "source": {
+    "catalog_key": "volume-10-edition-1401",
+    "source_sha256": "01d7fd2055f323cc59ed910a4b982f0feb40f39e35fc513f5f6d7840d4b357bc",
+    "bundle_id": "sha256:01d7fd2055f323cc59ed910a4b982f0feb40f39e35fc513f5f6d7840d4b357bc:bundle:000586-000590:0a2c9082f9dae56d",
+    "start_pdf_page": 586,
+    "end_pdf_page": 590
+  },
+  "transcript_fa": "جدول ۱۰-۶-۵: مشخصات پیج‌های بر مقاومت در دماهای بالا",
+  "title_fa": "مبحث دهم - حفاظت در برابر آتش",
+  "sections": [],
+  "clauses": [],
+  "definitions": [],
+  "requirements": [],
+  "prohibitions": [],
+  "permissions": [],
+  "procedures": [],
+  "tables": [
+    {
+      "record_id": "chunk-300-page-586-table",
+      "kind": "table",
+      "text_fa": "جدول ۱۰-۶-۵: مشخصات پیج‌های بر مقاومت در دماهای بالا\nدمای پیج (°C) | F_nt(T) / F_nt | F_nv(T) / F_nv\n20 | 1\n93 | 0.97\n150 | 0.95\n200 | 0.93\n320 | 0.88\n430 | 0.71\n480 | 0.59\n540 | 0.42\n650 | 0.16\n760 | 0.08\n870 | 0.04\n980 | 0.01\n1100 | 0",
+      "source_page_ids": [
+        "sha256:01d7fd2055f323cc59ed910a4b982f0feb40f39e35fc513f5f6d7840d4b357bc:page:000586"
+      ],
+      "source_span_ids": [],
+      "subject_fa": null,
+      "predicate_fa": null,
+      "modality": null,
+      "value_fa": null,
+      "conditions_fa": [],
+      "exceptions_fa": [],
+      "references_fa": [],
+      "uncertainty": null
+    }
+  ],
+  "formulas": [],
+  "references": [],
+  "uncertainties": []
+}
