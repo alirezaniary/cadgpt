@@ -80,7 +80,7 @@
     "summary": "Summary",
     "downloadFile": "Download report (Markdown)",
     "notGeneratedYet": "The report file has not been generated yet.",
-    "generationFailed": "The report file could not be generated: it was too large to store.",
+    "generationFailedNoDetail": "The report file could not be generated, and no further detail was recorded.",
     "generate": "Generate report",
     "passed": "Passed",
     "failed": "Failed",

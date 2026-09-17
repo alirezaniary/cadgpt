@@ -55,6 +55,10 @@ class CheckRunSummarySerializer(serializers.ModelSerializer[CheckRun]):
             # re-derived from `report_file_url` being null alone: both states share
             # that, and this is what tells them apart.
             "report_generation_error",
+            # The wording behind the code above, in the reader's language -- alongside
+            # `failure_detail`, not new shape (T-0061). The frontend renders this as
+            # given; `report_generation_error` is the switch, never the sentence.
+            "report_generation_detail",
             "created_at",
         )
         read_only_fields = fields

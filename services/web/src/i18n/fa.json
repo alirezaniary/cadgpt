@@ -80,7 +80,7 @@
     "summary": "خلاصه",
     "downloadFile": "دریافت گزارش (Markdown)",
     "notGeneratedYet": "فایل گزارش هنوز تولید نشده است.",
-    "generationFailed": "فایل گزارش تولید نشد: حجم آن بیش از ظرفیت ذخیره‌سازی بود.",
+    "generationFailedNoDetail": "فایل گزارش تولید نشد و جزئیات بیشتری برای آن ثبت نشد.",
     "generate": "تولید گزارش",
     "passed": "قبول",
     "failed": "مردود",

@@ -273,6 +273,7 @@ export function scenario(options: ScenarioOptions = {}): AnyHandler[] {
         ...target,
         report_file_url: `${API}/reviews/${reviewUuid}/runs/${runUuid}/report-file/`,
         report_generation_error: "",
+        report_generation_detail: "",
       };
       list[index] = regenerated;
       return HttpResponse.json(regenerated);
@@ -321,7 +322,11 @@ export function reportFileMissing(): AnyHandler {
 }
 
 /** A run whose report file failed permanently -- too large to store, the one reason a
- * retry cannot change (T-0051). */
+ * retry cannot change (T-0051). `report_generation_error` is the code
+ * (`ReportGenerationFailure.TOO_LARGE`'s wire value); `report_generation_detail` is the
+ * real sentence `MediaService._validate` raised, word-for-word the Persian
+ * `django.po` carries for it (T-0061) -- the page renders this detail as given, never a
+ * frontend lookup keyed on the code. */
 export function reportFileFailed(): AnyHandler {
   return http.get(`${API}/reviews/:uuid/runs/:runUuid/`, () =>
     HttpResponse.json(
@@ -329,7 +334,30 @@ export function reportFileFailed(): AnyHandler {
         {
           ...fx.succeededRun,
           report_file_url: null,
-          report_generation_error: "گزارش برای ذخیره‌سازی بیش از حد بزرگ بود.",
+          report_generation_error: "too_large",
+          report_generation_detail: "حجم این پرونده بیش از سقف 8.0 مگابایت است.",
+        },
+        fx.report,
+      ),
+    ),
+  );
+}
+
+/** A run whose report file failed for a cause that is not its size -- unreachable
+ * through the real generator today (`ReportGenerationService.generate` always stores a
+ * non-empty `.md` file as `MediaKind.REPORT`), but real code all the same
+ * (`ReportGenerationFailure.OTHER`, T-0061): this proves the page renders whatever
+ * sentence the server sends rather than the one sentence it used to hardcode for every
+ * non-blank `report_generation_error`. */
+export function reportFileFailedOther(): AnyHandler {
+  return http.get(`${API}/reviews/:uuid/runs/:runUuid/`, () =>
+    HttpResponse.json(
+      fx.detail(
+        {
+          ...fx.succeededRun,
+          report_file_url: null,
+          report_generation_error: "other",
+          report_generation_detail: "پروندهٔ بارگذاری‌شده خالی است.",
         },
         fx.report,
       ),

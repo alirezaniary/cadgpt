@@ -204,9 +204,15 @@ class CheckRun(TenantOwnedModel, UuidBaseModel):
         choices=ReportGenerationFailure.choices,
         blank=True,
     )
-    #: The raw exception text behind `report_generation_error`, for an operator reading
-    #: logs or the admin -- not translated, not sent to a client, exactly like
-    #: `failure_detail` below.
+    #: The prose behind `report_generation_error`, in the tenant's own language
+    #: (`ReportGenerationService._record_failure` writes it under `translation.override
+    #: (run.tenant.language)`, the same activation `generate` uses for the report body
+    #: itself) and sent to the client -- `CheckRunSummarySerializer` exposes it exactly
+    #: like `failure_detail` below, which it deliberately matches: both are genuine
+    #: server-composed prose for a terminal, per-run outcome, per `docs/decisions.md`,
+    #: "Report prose belongs to the server, not to the frontend catalogue". The frontend
+    #: renders this as given; it never maps `report_generation_error` through a lookup
+    #: table of its own (T-0061).
     report_generation_detail = models.TextField(_("report generation detail"), blank=True)
 
     failure_reason = models.CharField(

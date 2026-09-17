@@ -81,6 +81,15 @@ class ReportGenerationFailure(models.TextChoices):
     #: `docs/tasks/T-0051-a-report-that-failed-to-generate-can-be-recovered.md`.
     TOO_LARGE = "too_large", _("The rendered report is larger than this system can store")
 
+    #: Every other `MediaService._validate` cause -- unrecognised kind, wrong extension,
+    #: an empty render. None is reachable today (`ReportGenerationService.generate`
+    #: always stores a non-empty `.md` file as `MediaKind.REPORT`), but `_record_failure`
+    #: still maps to this rather than to `TOO_LARGE` for anything it does not recognise
+    #: as the size cause -- the same "degrade visibly, never guess" rule
+    #: `reasons.label_for` already applies to an unrecognised `ReasonCode`
+    #: (`docs/tasks/T-0061-report-generation-loose-ends.md`).
+    OTHER = "other", _("The rendered report could not be stored")
+
 
 class OutcomeStatus(models.TextChoices):
     """The three-valued result, mirrored from the engine for filtering and for the schema.

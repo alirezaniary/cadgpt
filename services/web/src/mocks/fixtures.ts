@@ -467,6 +467,7 @@ function run(overrides: Partial<CheckRunSummary> & { uuid: string }): CheckRunSu
     duration_seconds: null,
     report_file_url: null,
     report_generation_error: "",
+    report_generation_detail: "",
     created_at: "2026-09-05T12:00:00Z",
     ...overrides,
   };

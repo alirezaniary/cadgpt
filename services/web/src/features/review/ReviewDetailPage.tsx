@@ -72,6 +72,15 @@ export function ReviewDetailPage() {
   const currentReport = run.data?.report ?? null;
   const reportFileUrl = run.data?.report_file_url ?? null;
   const reportGenerationError = run.data?.report_generation_error ?? "";
+  // Server-composed prose, in the reader's language, exactly like `failureDetail` below
+  // (`docs/decisions.md`, "Report prose belongs to the server, not to the frontend
+  // catalogue") -- rendered as given, never mapped from `reportGenerationError` through
+  // a frontend lookup table (T-0061: a second `ReportGenerationFailure` member must not
+  // silently render the wrong sentence). Blank is not expected whenever
+  // `reportGenerationError` is set (`_record_failure` always records the real exception
+  // text), but the fallback matches `failureDetail`'s own guard rather than assuming it.
+  const reportGenerationDetail =
+    run.data?.report_generation_detail || t("report.generationFailedNoDetail");
   const reportFileMissing =
     run.data?.status === "succeeded" && !reportFileUrl && !reportGenerationError;
   // `failure_detail` is server-composed prose in the reader's language, exactly like
@@ -360,8 +369,8 @@ export function ReviewDetailPage() {
           here until something has actually changed -- an operator raising the cap,
           which is a new check run's job (T-0059), not a click on this page. */}
       {reportGenerationError && (
-        <p className="error">
-          <span data-testid="report-file-failed">{t("report.generationFailed")}</span>
+        <p className="error" data-testid="report-file-failed" data-report-generation-error={reportGenerationError}>
+          {reportGenerationDetail}
         </p>
       )}
       {currentReport && (

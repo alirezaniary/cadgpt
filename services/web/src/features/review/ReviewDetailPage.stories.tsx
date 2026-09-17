@@ -9,6 +9,7 @@ import {
   paths,
   pending,
   reportFileFailed,
+  reportFileFailedOther,
   reportFileMissing,
   scenario,
   session,
@@ -201,12 +202,44 @@ export const ReportFileNotGenerated: Story = {
 
 /**
  * Generation failed for a reason a retry will not change -- the rendered report was too
- * large to store. Said in the server's own words, in `.error`, with the retry still
- * offered rather than hidden.
+ * large to store. Said in the server's own words, in `.error` -- `report_generation_detail`
+ * rendered exactly as `fx.reportFileFailed` sent it, never a frontend sentence keyed on
+ * `report_generation_error` (T-0061). No retry button belongs here (T-0058): re-rendering
+ * the identical report against the identical cap can only repeat the identical rejection.
  */
 export const ReportFileFailed: Story = {
   parameters: { msw: [reportFileFailed(), ...session(), ...scenario()] },
   render: at(fx.checkedReview.uuid),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const banner = await waitFor(() => canvas.getByTestId("report-file-failed"));
+
+    // The real sentence `MediaService._validate` raised for the size cause, sent by the
+    // server as `report_generation_detail` -- not the old hardcoded catalogue sentence.
+    await expect(banner).toHaveTextContent("حجم این پرونده بیش از سقف 8.0 مگابایت است.");
+    await expect(banner).toHaveAttribute("data-report-generation-error", "too_large");
+  },
+};
+
+/**
+ * Generation failed for a cause that is not the size cap -- `ReportGenerationFailure.OTHER`
+ * (T-0061), unreachable through the real generator today but real code, not a comment's
+ * promise. Proves the page has no lookup table from `report_generation_error` to wording:
+ * a second code renders a completely different sentence, sourced from the same
+ * `report_generation_detail` field, with nothing in `ReviewDetailPage.tsx` that knows
+ * "other" exists.
+ */
+export const ReportFileFailedOtherCause: Story = {
+  parameters: { msw: [reportFileFailedOther(), ...session(), ...scenario()] },
+  render: at(fx.checkedReview.uuid),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const banner = await waitFor(() => canvas.getByTestId("report-file-failed"));
+
+    await expect(banner).toHaveTextContent("پروندهٔ بارگذاری‌شده خالی است.");
+    await expect(banner).toHaveAttribute("data-report-generation-error", "other");
+    await expect(banner).not.toHaveTextContent("سقف");
+  },
 };
 
 /** The review and its runs still loading. The heading falls back to an ellipsis; nothing

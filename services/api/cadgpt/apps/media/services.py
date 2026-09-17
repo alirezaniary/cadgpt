@@ -63,8 +63,17 @@ class MediaService(BaseTenantAwareService):
             yield path
 
     def _validate(self, upload: UploadedFile[Any], kind: str) -> None:
+        # Each raise below carries its own `code` (`ValidationError`/`DomainError`'s own
+        # contract, per `base/exceptions.py`: "`code` is not [translated]: it is the
+        # stable identifier a client switches on, and it must survive translation") --
+        # a caller that needs to know *which* of these four causes fired, rather than
+        # only that validation failed, switches on `exc.code`, never on `exc.message`
+        # (translated prose, unstable and locale-dependent) or on `isinstance`, since
+        # they all share this one exception class.
         if kind not in ALLOWED_EXTENSIONS:
-            raise ValidationError(_("That kind of file is not accepted."))
+            raise ValidationError(
+                _("That kind of file is not accepted."), code="unsupported_kind"
+            )
 
         suffix = PurePosixPath(upload.name or "").suffix.lower()
         if suffix not in ALLOWED_EXTENSIONS[kind]:
@@ -72,6 +81,7 @@ class MediaService(BaseTenantAwareService):
             raise ValidationError(
                 _("This file type is not accepted here. Expected one of: %(allowed)s.")
                 % {"allowed": allowed},
+                code="unsupported_extension",
                 details={"file": [f"unexpected extension {suffix!r}"]},
             )
 
@@ -83,10 +93,11 @@ class MediaService(BaseTenantAwareService):
             raise ValidationError(
                 _("This file is larger than the %(limit)s limit.")
                 % {"limit": filesizeformat(limit)},
+                code="file_too_large",
                 details={"file": ["too large"]},
             )
         if upload.size == 0:
-            raise ValidationError(_("The uploaded file is empty."))
+            raise ValidationError(_("The uploaded file is empty."), code="file_empty")
 
     def _digest(self, upload: UploadedFile[Any]) -> tuple[str, int]:
         """SHA-256 and byte count, read in chunks so a large model never sits in memory."""

@@ -290,6 +290,12 @@ export interface CheckRunSummary {
    * from "cannot be generated", which `report_file_url` alone cannot: both are null for
    * it. */
   report_generation_error: string;
+  /** The wording behind `report_generation_error`, server-composed in the reader's
+   * language -- exactly like `failure_detail` above, which it deliberately matches
+   * (`docs/decisions.md`, "Report prose belongs to the server, not to the frontend
+   * catalogue"). Render this as given; never map `report_generation_error` through a
+   * frontend lookup table (T-0061). Blank whenever `report_generation_error` is. */
+  report_generation_detail: string;
   created_at: string;
 }
 

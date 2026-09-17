@@ -87,6 +87,18 @@ from cadgpt.apps.review.models import CheckRun
 from cadgpt.apps.review.services.presentation import localize_report
 from cadgpt.apps.review.services.report_markdown import render_markdown_report
 
+#: `MediaService._validate`'s `ValidationError.code` for its one cause a retry cannot
+#: fix -- everything else it can raise (`unsupported_kind`, `unsupported_extension`,
+#: `file_empty`) is unreachable here today (`generate` always stores a non-empty `.md`
+#: file as `MediaKind.REPORT`) but is still real code, not a comment's promise, so a
+#: cause this map does not name degrades to `ReportGenerationFailure.OTHER` in
+#: `_record_failure` below rather than being mislabelled `TOO_LARGE` -- the same
+#: "unrecognised degrades visibly, never guessed" rule `reasons.label_for` already
+#: applies to an unrecognised `ReasonCode` (T-0061).
+_FAILURE_BY_VALIDATION_CODE: dict[str, ReportGenerationFailure] = {
+    "file_too_large": ReportGenerationFailure.TOO_LARGE,
+}
+
 
 class ReportGenerationService(BaseService):
     """Renders a succeeded run's stored report to Markdown. Safe to call twice."""
@@ -208,7 +220,16 @@ class ReportGenerationService(BaseService):
                 # the size cap -- the run already has a file; this delivery's failure is
                 # moot, not news.
                 return locked
-            locked.report_generation_error = ReportGenerationFailure.TOO_LARGE
+            locked.report_generation_error = _FAILURE_BY_VALIDATION_CODE.get(
+                exc.code, ReportGenerationFailure.OTHER
+            )
+            # Genuinely translated (the tenant's own language is active here -- see the
+            # module docstring's "language decision", extended to this failure case) and,
+            # since T-0061, client-facing: `report_generation_detail` follows
+            # `CheckRun.failure_detail`'s already-established shape (`docs/decisions.md`,
+            # "Report prose belongs to the server, not to the frontend catalogue") --
+            # real, per-run prose the frontend renders as given, never a code it looks up
+            # in its own table.
             locked.report_generation_detail = str(exc.message)[:4000]
             locked.save(
                 update_fields=[

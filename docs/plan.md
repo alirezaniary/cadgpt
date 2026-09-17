@@ -1006,6 +1006,31 @@ that never actually applies on this hand-wired route (**T-0093**); and nothing p
 VIEWER's continued ability to download a report against a future widening of the permission
 branch (**T-0094**).
 
+**T-0061 — four loose ends in the report-generation failure record. Done 2026-09-17.** All
+found by the T-0051 review; one (an orphaned blob on rollback) was already closed by T-0054,
+confirmed still true here and left untouched. The remaining three: `_record_failure` recorded
+every `MediaService._validate` cause as `TOO_LARGE`, including three causes unreachable today
+but permanently mislabelled the moment they ever fire, since setting
+`report_generation_error` removes a run from `missing_report`/the backfill for good; a new
+`ReportGenerationFailure.OTHER` and a `_FAILURE_BY_VALIDATION_CODE` map (keyed on
+`ValidationError.code`, the exception's own stable-identifier contract) now degrade an
+unrecognised cause visibly instead of guessing, the same rule `reasons.label_for` already
+applies to an unrecognised `ReasonCode`. `report_generation_detail` was documented as
+untranslated and operator-only while actually being captured under the tenant's language —
+made genuinely, deliberately both: translated and client-facing, matching
+`CheckRun.failure_detail`'s already-established shape (`docs/decisions.md`, "Report prose
+belongs to the server"). The frontend's `report.generationFailed` hardcoded "too large to
+store" for any non-empty error code — deleted; `ReviewDetailPage.tsx` now renders the
+server's own `report_generation_detail` as given, with `report_generation_error` used only as
+a `data-` attribute, never a lookup key.
+
+Not reviewer-gated — no invariant, diff fully read (318 lines across 13 files, plus a
+migration correctly scoped to only this task's field change, leaving a pre-existing unrelated
+`failure_reason` drift alone). Verified against real forced causes: a genuine
+`unsupported_kind` recorded as `other` rather than `too_large`; a genuine `TOO_LARGE` run's
+detail rendering real Persian sourced from the compiled catalogue; two new Storybook `play`
+tests proving the page renders whichever sentence the server sends, not a hardcoded one.
+
 **T-0038 — a specification that asserted nothing must not report PASS either. Done
 2026-09-10.** The other half of T-0028's fix, at the level up it was explicitly forbidden to
 touch: `judge()` reported `PASS` for an `optional`-cardinality specification with zero
@@ -1673,7 +1698,8 @@ Added 2026-09-17, from the T-0060 review:
 - **T-0093** — an idempotence proof pasted one `Media` uuid where it claimed two matched,
   and a docstring names a throttle that never applies on a hand-wired route.
 - **T-0094** — nothing pins a VIEWER's continued ability to download a report.
-- **T-0061** — four loose ends in the report-generation failure record.
+- ~~**T-0061** — four loose ends in the report-generation failure record.~~ **Done
+  2026-09-17.** See "What has landed" above.
 
 Added 2026-09-08, from the T-0056 review:
 
