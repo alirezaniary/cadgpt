@@ -6,6 +6,7 @@ What we use, and why. Adding a dependency is a decision — log it in `docs/deci
 
 ```
 packages/engine/     cadgpt_engine   Deterministic checking. No framework. No network.
+packages/regulations/ cadgpt_regulations  Corpus inventory, provenance, and publication gates.
 services/api/        cadgpt          Django + DRF + Celery, six apps.
 services/web/        @cadgpt/web     React + Vite + TanStack Query, TypeScript.
 deploy/                              Dockerfiles and the compose stack.
@@ -13,6 +14,23 @@ deploy/                              Dockerfiles and the compose stack.
 
 One uv workspace, one lockfile. The service depends on the engine as a workspace member,
 so it resolves locally and is never published.
+
+## Regulation corpus
+
+| Concern | Choice |
+| --- | --- |
+| Contract validation | JSON Schema Draft 2020-12 through `jsonschema>=4.23,<5.0` |
+| Official HTTP acquisition | `httpx>=0.28.1,<0.29`; streamed bodies, manual redirects, monotonic total deadlines, no environment proxies |
+| PDF identity | SHA-256 over the immutable source bytes, pinned in the curated catalog |
+| Media detection | Content signatures; filename extensions are not trusted |
+| PDF page count | Poppler `pdfinfo`, invoked directly without a shell |
+| Failure policy | Complete acquisition/inventory with terminal quarantine; publication fails closed |
+
+The package contains no OCR, inference, database, or service integration. Acquisition is
+limited to exact catalogued origins, validates every redirect before following it, disables
+proxy environment variables, and stores raw metadata, projections, rejected bodies, and PDFs
+under attested paths. Its catalog, receipt, and manifest schemas reject unknown fields, and
+generated JSON contains no wall-clock value, so identical inputs produce byte-identical data.
 
 ## Evaluation — inherited, pinned, proven working
 

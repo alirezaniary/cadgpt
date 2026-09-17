@@ -1,0 +1,557 @@
+{
+  "$id": "https://cadgpt.local/schemas/regulation-acquisition-2.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {"schema_version": {"const": "1.0.0"}},
+        "required": ["schema_version"]
+      },
+      "then": {
+        "not": {"required": ["history"]},
+        "properties": {
+          "artifacts": {
+            "items": {"not": {"required": ["initial_transport"]}}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"schema_version": {"const": "2.0.0"}},
+        "required": ["schema_version"]
+      },
+      "then": {
+        "properties": {
+          "artifacts": {
+            "items": {
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {"state": {"const": "ready"}},
+                    "required": ["state"]
+                  },
+                  "then": {
+                    "properties": {
+                      "initial_transport": {"$ref": "#/$defs/transportAttestation"}
+                    }
+                  }
+                }
+              ],
+              "required": ["initial_transport"]
+            }
+          }
+        },
+        "required": ["history"]
+      }
+    }
+  ],
+  "properties": {
+    "artifacts": {
+      "items": {"$ref": "#/$defs/artifactResult"},
+      "type": "array"
+    },
+    "catalog": {"$ref": "#/$defs/catalogIdentity"},
+    "history": {
+      "items": {"$ref": "#/$defs/historyEntry"},
+      "type": "array"
+    },
+    "metadata_sources": {
+      "items": {"$ref": "#/$defs/metadataResult"},
+      "type": "array"
+    },
+    "policy": {"$ref": "#/$defs/policy"},
+    "schema_version": {"enum": ["1.0.0", "2.0.0"]},
+    "summary": {"$ref": "#/$defs/summary"}
+  },
+  "required": [
+    "schema_version",
+    "catalog",
+    "policy",
+    "summary",
+    "metadata_sources",
+    "artifacts"
+  ],
+  "type": "object",
+  "$defs": {
+    "artifactResult": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"state": {"const": "ready"}}},
+          "then": {
+            "properties": {
+              "action": {"enum": ["acquired", "reused"]},
+              "artifact_path": {"$ref": "#/$defs/relativePath"},
+              "bytes": {"minimum": 1, "type": "integer"},
+              "detected_media_type": {"const": "application/pdf"},
+              "error": {"type": "null"},
+              "pdf_page_count": {"minimum": 1, "type": "integer"},
+              "quarantine_path": {"type": "null"},
+              "sha256": {"$ref": "#/$defs/sha256"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {"const": "acquired"},
+              "state": {"const": "ready"}
+            },
+            "required": ["action", "state"]
+          },
+          "then": {
+            "properties": {
+              "attempts": {"minimum": 1, "type": "integer"},
+              "http_status": {"minimum": 200, "maximum": 299, "type": "integer"},
+              "redirect_chain": {"minItems": 1},
+              "resolved_url": {"format": "iri", "type": "string"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {"const": "reused"},
+              "state": {"const": "ready"}
+            },
+            "required": ["action", "state"]
+          },
+          "then": {
+            "properties": {
+              "attempts": {"const": 0},
+              "http_status": {"type": "null"},
+              "redirect_chain": {"maxItems": 0},
+              "resolved_url": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"state": {"const": "quarantined"}}},
+          "then": {
+            "properties": {
+              "action": {"const": "none"},
+              "artifact_path": {"type": "null"},
+              "error": {"$ref": "#/$defs/error"}
+            }
+          }
+        }
+      ],
+      "properties": {
+        "action": {"enum": ["acquired", "reused", "none"]},
+        "artifact_path": {"$ref": "#/$defs/nullableRelativePath"},
+        "attempts": {"minimum": 0, "type": "integer"},
+        "bytes": {"type": ["integer", "null"], "minimum": 0},
+        "catalog_key": {"minLength": 1, "type": "string"},
+        "catalog_order": {"minimum": 1, "type": "integer"},
+        "detected_media_type": {"type": ["string", "null"]},
+        "download_url": {"format": "iri", "type": "string"},
+        "error": {"$ref": "#/$defs/nullableError"},
+        "expected_bytes": {"minimum": 1, "type": "integer"},
+        "expected_media_type": {"const": "application/pdf"},
+        "expected_pdf_pages": {"minimum": 1, "type": "integer"},
+        "expected_sha256": {"$ref": "#/$defs/sha256"},
+        "http_status": {"type": ["integer", "null"], "minimum": 100, "maximum": 599},
+        "initial_transport": {"$ref": "#/$defs/nullableTransportAttestation"},
+        "local_path": {"$ref": "#/$defs/flatPath"},
+        "pdf_page_count": {"type": ["integer", "null"], "minimum": 1},
+        "quarantine_path": {"$ref": "#/$defs/nullableRelativePath"},
+        "redirect_chain": {
+          "items": {"format": "iri", "type": "string"},
+          "type": "array"
+        },
+        "remote_filename": {"minLength": 1, "type": "string"},
+        "requested_url": {"format": "iri", "type": "string"},
+        "resolved_url": {"type": ["string", "null"], "format": "iri"},
+        "sha256": {
+          "anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "state": {"enum": ["ready", "quarantined"]}
+      },
+      "required": [
+        "catalog_key",
+        "catalog_order",
+        "download_url",
+        "requested_url",
+        "resolved_url",
+        "redirect_chain",
+        "remote_filename",
+        "local_path",
+        "expected_sha256",
+        "expected_bytes",
+        "expected_media_type",
+        "expected_pdf_pages",
+        "attempts",
+        "http_status",
+        "state",
+        "action",
+        "sha256",
+        "bytes",
+        "detected_media_type",
+        "pdf_page_count",
+        "artifact_path",
+        "quarantine_path",
+        "error"
+      ],
+      "type": "object"
+    },
+    "catalogIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "catalog_id": {"minLength": 1, "type": "string"},
+        "provenance": {"items": {"type": "object"}, "type": "array"},
+        "schema_version": {
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "type": "string"
+        },
+        "sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "required": ["catalog_id", "schema_version", "sha256", "provenance"],
+      "type": "object"
+    },
+    "documentLink": {
+      "additionalProperties": false,
+      "properties": {
+        "href": {"minLength": 1, "type": "string"},
+        "label": {"type": "string"}
+      },
+      "required": ["label", "href"],
+      "type": "object"
+    },
+    "error": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "ARTIFACT_BODY_MISSING",
+            "BODY_TOO_LARGE",
+            "CONTENT_STORE_CONFLICT",
+            "EXISTING_TARGET_CHANGED",
+            "EXISTING_TARGET_CONFLICT",
+            "EXISTING_TARGET_INSPECTION_FAILED",
+            "HTTP_FETCH_FAILED",
+            "HTTP_LENGTH_MISMATCH",
+            "HTTP_RETRY_EXHAUSTED",
+            "HTTP_STATUS_ERROR",
+            "HTTP_STREAM_ERROR",
+            "HTTP_TRANSPORT_ERROR",
+            "INTERNAL_ACQUISITION_ERROR",
+            "INVALID_CONTENT_LENGTH",
+            "INVALID_REDIRECT",
+            "MEDIA_TYPE_MISMATCH",
+            "METADATA_BODY_MISSING",
+            "METADATA_ID_MISMATCH",
+            "METADATA_INVALID_RECORD",
+            "METADATA_MEDIA_TYPE_MISMATCH",
+            "NOT_ATTEMPTED",
+            "PDFINFO_FAILED",
+            "PDFINFO_UNAVAILABLE",
+            "PDF_ENCRYPTED",
+            "PDF_PAGE_COUNT_MISMATCH",
+            "SOURCE_DISCOVERY_DRIFT",
+            "SOURCE_HASH_MISMATCH",
+            "SOURCE_SIZE_MISMATCH",
+            "TOTAL_TIMEOUT_EXCEEDED",
+            "TOO_MANY_REDIRECTS",
+            "UNAPPROVED_ORIGIN",
+            "UNAPPROVED_REDIRECT",
+            "UNSAFE_EXISTING_TARGET",
+            "UNSUPPORTED_CONTENT_ENCODING"
+          ],
+          "type": "string"
+        },
+        "diagnostic": {"minLength": 1, "type": "string"}
+      },
+      "required": ["code", "diagnostic"],
+      "type": "object"
+    },
+    "flatPath": {
+      "minLength": 1,
+      "pattern": "^(?!\\.{1,2}$)(?![A-Za-z]:)[^/\\\\\\u0000]+$",
+      "type": "string"
+    },
+    "historyEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {"minimum": 0, "type": "integer"},
+        "origins": {
+          "items": {"$ref": "#/$defs/historyOrigin"},
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "path": {"$ref": "#/$defs/relativePath"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "storage_kind": {
+          "enum": ["metadata_raw", "metadata_projection", "quarantine"]
+        }
+      },
+      "required": ["storage_kind", "path", "sha256", "bytes", "origins"],
+      "type": "object"
+    },
+    "historyOrigin": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {"terminal_code": {"const": "RETAINED_PRIOR_EVIDENCE"}},
+            "required": ["terminal_code"]
+          },
+          "then": {"properties": {"original_path": {"type": "null"}}}
+        },
+        {
+          "if": {
+            "properties": {"terminal_code": {"const": "INTERRUPTED_TEMP_RECOVERED"}},
+            "required": ["terminal_code"]
+          },
+          "then": {
+            "properties": {
+              "original_path": {"$ref": "#/$defs/relativePath"},
+              "subject": {
+                "enum": [
+                  "acquisition-receipt",
+                  "inventory-manifest",
+                  "artifact-download",
+                  "metadata-download",
+                  "metadata-projection"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "original_path": {"$ref": "#/$defs/nullableRelativePath"},
+        "subject": {"minLength": 1, "type": "string"},
+        "terminal_code": {
+          "enum": ["RETAINED_PRIOR_EVIDENCE", "INTERRUPTED_TEMP_RECOVERED"]
+        }
+      },
+      "required": ["terminal_code", "subject", "original_path"],
+      "type": "object"
+    },
+    "metadataResult": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"state": {"const": "ready"}}},
+          "then": {
+            "properties": {
+              "detected_media_type": {"enum": ["application/json", "application/ld+json"]},
+              "error": {"type": "null"},
+              "projection": {"$ref": "#/$defs/projection"},
+              "projection_path": {"$ref": "#/$defs/relativePath"},
+              "projection_sha256": {"$ref": "#/$defs/sha256"},
+              "quarantine_path": {"type": "null"},
+              "raw_bytes": {"minimum": 1, "type": "integer"},
+              "raw_path": {"$ref": "#/$defs/relativePath"},
+              "raw_sha256": {"$ref": "#/$defs/sha256"},
+              "resolved_url": {"format": "iri", "type": "string"},
+              "semantic_sha256": {"$ref": "#/$defs/sha256"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"state": {"const": "quarantined"}}},
+          "then": {"properties": {"error": {"$ref": "#/$defs/error"}}}
+        }
+      ],
+      "properties": {
+        "attempts": {"minimum": 0, "type": "integer"},
+        "catalog_order": {"minimum": 1, "type": "integer"},
+        "detected_media_type": {"type": ["string", "null"]},
+        "error": {"$ref": "#/$defs/nullableError"},
+        "kind": {"enum": ["page", "post"]},
+        "http_status": {"type": ["integer", "null"], "minimum": 100, "maximum": 599},
+        "projection": {
+          "anyOf": [{"$ref": "#/$defs/projection"}, {"type": "null"}]
+        },
+        "projection_path": {"$ref": "#/$defs/nullableRelativePath"},
+        "projection_sha256": {
+          "anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "quarantine_path": {"$ref": "#/$defs/nullableRelativePath"},
+        "raw_bytes": {"type": ["integer", "null"], "minimum": 0},
+        "raw_path": {"$ref": "#/$defs/nullableRelativePath"},
+        "raw_sha256": {
+          "anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "redirect_chain": {
+          "items": {"format": "iri", "type": "string"},
+          "type": "array"
+        },
+        "requested_url": {"format": "iri", "type": "string"},
+        "resolved_url": {"type": ["string", "null"], "format": "iri"},
+        "semantic_sha256": {
+          "anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "source_key": {"minLength": 1, "type": "string"},
+        "state": {"enum": ["ready", "quarantined"]},
+        "wordpress_id": {"minimum": 1, "type": "integer"}
+      },
+      "required": [
+        "source_key",
+        "catalog_order",
+        "kind",
+        "wordpress_id",
+        "requested_url",
+        "resolved_url",
+        "redirect_chain",
+        "attempts",
+        "http_status",
+        "state",
+        "raw_sha256",
+        "raw_bytes",
+        "raw_path",
+        "detected_media_type",
+        "projection",
+        "projection_sha256",
+        "semantic_sha256",
+        "projection_path",
+        "quarantine_path",
+        "error"
+      ],
+      "type": "object"
+    },
+    "nullableError": {
+      "anyOf": [{"$ref": "#/$defs/error"}, {"type": "null"}]
+    },
+    "nullableTransportAttestation": {
+      "anyOf": [{"$ref": "#/$defs/transportAttestation"}, {"type": "null"}]
+    },
+    "nullableRelativePath": {
+      "anyOf": [{"$ref": "#/$defs/relativePath"}, {"type": "null"}]
+    },
+    "policy": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_origins": {
+          "items": {"format": "uri", "type": "string"},
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "connect_timeout_seconds": {"exclusiveMinimum": 0, "type": "number"},
+        "max_artifact_bytes": {"minimum": 1, "type": "integer"},
+        "max_attempts": {"minimum": 1, "type": "integer"},
+        "max_metadata_bytes": {"minimum": 1, "type": "integer"},
+        "max_redirects": {"minimum": 0, "type": "integer"},
+        "read_timeout_seconds": {"exclusiveMinimum": 0, "type": "number"},
+        "total_timeout_seconds": {
+          "exclusiveMinimum": 0,
+          "maximum": 3600,
+          "type": "number"
+        }
+      },
+      "required": [
+        "allowed_origins",
+        "max_redirects",
+        "max_attempts",
+        "connect_timeout_seconds",
+        "read_timeout_seconds",
+        "max_metadata_bytes",
+        "max_artifact_bytes",
+        "total_timeout_seconds"
+      ],
+      "type": "object"
+    },
+    "projection": {
+      "additionalProperties": false,
+      "properties": {
+        "content_rendered": {"type": "string"},
+        "content_text": {"type": "string"},
+        "date": {"minLength": 1, "type": "string"},
+        "date_gmt": {"minLength": 1, "type": "string"},
+        "document_links": {
+          "items": {"$ref": "#/$defs/documentLink"},
+          "type": "array"
+        },
+        "link": {"format": "iri", "type": "string"},
+        "modified": {"minLength": 1, "type": "string"},
+        "modified_gmt": {"minLength": 1, "type": "string"},
+        "status": {"minLength": 1, "type": "string"},
+        "title_rendered": {"type": "string"},
+        "wordpress_id": {"minimum": 1, "type": "integer"}
+      },
+      "required": [
+        "wordpress_id",
+        "status",
+        "date",
+        "date_gmt",
+        "modified",
+        "modified_gmt",
+        "link",
+        "title_rendered",
+        "content_rendered",
+        "content_text",
+        "document_links"
+      ],
+      "type": "object"
+    },
+    "relativePath": {
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)[^/\\\\\\u0000]+(?:/[^/\\\\\\u0000]+)*$",
+      "type": "string"
+    },
+    "sha256": {"pattern": "^[a-f0-9]{64}$", "type": "string"},
+    "summary": {
+      "additionalProperties": false,
+      "properties": {
+        "artifacts_acquired": {"minimum": 0, "type": "integer"},
+        "artifacts_expected": {"minimum": 0, "type": "integer"},
+        "artifacts_quarantined": {"minimum": 0, "type": "integer"},
+        "artifacts_ready": {"minimum": 0, "type": "integer"},
+        "artifacts_reused": {"minimum": 0, "type": "integer"},
+        "bytes": {"minimum": 0, "type": "integer"},
+        "metadata_expected": {"minimum": 0, "type": "integer"},
+        "metadata_quarantined": {"minimum": 0, "type": "integer"},
+        "metadata_ready": {"minimum": 0, "type": "integer"},
+        "pdf_pages": {"minimum": 0, "type": "integer"}
+      },
+      "required": [
+        "metadata_expected",
+        "metadata_ready",
+        "metadata_quarantined",
+        "artifacts_expected",
+        "artifacts_ready",
+        "artifacts_acquired",
+        "artifacts_reused",
+        "artifacts_quarantined",
+        "pdf_pages",
+        "bytes"
+      ],
+      "type": "object"
+    },
+    "transportAttestation": {
+      "additionalProperties": false,
+      "properties": {
+        "attempts": {"minimum": 1, "type": "integer"},
+        "bytes": {"minimum": 1, "type": "integer"},
+        "detected_media_type": {"const": "application/pdf"},
+        "http_status": {"minimum": 200, "maximum": 299, "type": "integer"},
+        "pdf_page_count": {"minimum": 1, "type": "integer"},
+        "redirect_chain": {
+          "items": {"format": "iri", "type": "string"},
+          "minItems": 1,
+          "type": "array"
+        },
+        "requested_url": {"format": "iri", "type": "string"},
+        "resolved_url": {"format": "iri", "type": "string"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "required": [
+        "requested_url",
+        "resolved_url",
+        "redirect_chain",
+        "attempts",
+        "http_status",
+        "sha256",
+        "bytes",
+        "detected_media_type",
+        "pdf_page_count"
+      ],
+      "type": "object"
+    }
+  }
+}

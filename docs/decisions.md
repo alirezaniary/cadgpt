@@ -360,6 +360,139 @@ people who are not us. That list is in `prd.md` 6 and is still unclaimed.
 **Reopens if:** one of them acquires a maintained release and solves something `prd.md` 6 does
 not already cover. Three of the five had their first and last commit on the same day.
 
+## 2026-09-02 — Extract regulations beside the engine, fail closed, and defer review
+
+The Iranian regulation corpus is now in scope as an offline authoring input, not as code baked
+into `cadgpt_engine`. A new package beside the engine will preserve the publications' source
+order, editions, appendices, amendments, prose, tables, and mathematics as structured,
+source-anchored data. Converting accepted semantics into buildingSMART IDS is explicitly not
+part of this workstream yet.
+
+The pipeline runs automatically until every document, page, chunk, and assertion reaches a
+terminal state. It never pauses the corpus run for human input. Ambiguous OCR, conflicting
+workers, uncertain legal relationships, and critical formula questions are accumulated in an
+append-only review queue and excluded from publishable data until reviewed later. This does
+not promise that models make no mistakes; it enforces the useful guarantee that no unsupported
+or unresolved assertion can silently cross the publication boundary.
+
+Official web material corroborates or contradicts the PDFs in a separately versioned evidence
+layer. Search results and unofficial mirrors may locate a source but are not evidence, and web
+content never silently rewrites the primary artifact. The checking engine remains deterministic,
+network-free, inference-free, and jurisdiction-agnostic.
+
+**Reopens if:** source licensing prevents retaining the required evidence artifacts, or a later
+ratification study shows that the fail-closed contract cannot support usable coverage.
+
+The first corpus contract uses JSON Schema Draft 2020-12, validated by the narrowly pinned
+`jsonschema` library, rather than introducing a model framework. Schemas are public artifacts
+that later non-Python workers can consume, reject unknown fields recursively, and make every
+contract version explicit. Poppler's existing `pdfinfo` executable remains the authoritative
+page-count source; this phase adds no PDF parser, OCR stack, network client, or inference SDK.
+
+## 2026-09-02 — Official acquisition separates remote identity from local storage
+
+An official artifact now has three identities with different trust levels. `download_url` is
+the exact configured network request, `remote_filename` is inert Unicode evidence and may
+contain decoded separators, and `local_path` is a unique catalog-controlled flat name. Neither
+URL decoding nor `Content-Disposition` can choose a filesystem path. This is necessary for the
+Volume 17 URL whose `%2F` bytes denote a remote name with embedded separators, but it applies to
+the whole corpus so one exceptional source cannot become an exceptional code path.
+
+Official acquisition uses the narrowly pinned `httpx>=0.28.1,<0.29`. Redirects are followed
+manually with an exact-origin check at every hop, environment proxy configuration is disabled,
+bodies are streamed into exclusive temporary files, and installation is atomic and
+no-clobber. Existing identical files are re-attested and reused without changing their mtime;
+different files are never overwritten. SHA-256, byte count, PDF signature, and Poppler page
+count must all match the curated contract before an artifact is installed.
+
+Each source or artifact also has one monotonic total deadline spanning redirects, streaming,
+and retries, in addition to per-operation HTTP timeouts. Acquisition accepts only a
+caller-created output root owned by the current user and not writable by group or world;
+managed directories are re-attested before payload installation. Pathname operations do not
+eliminate replacement by another process running as the same user, so same-user directory
+replacement remains an explicitly documented local hardening residual.
+
+The deterministic receipt retains raw WordPress bytes and canonical semantic projections in
+content-addressed storage. It records every source and artifact even when siblings fail, while
+`acquisition-check` rehashes stored evidence and fails closed on drift, quarantine, missing
+coverage, or unaccounted generated payloads. Acquisition health remains separate from review:
+a correctly downloaded guide with an unresolved legal relationship is still not publishable.
+
+The URL layer validates names and TLS origins but does not pin a resolved IP address into the
+HTTP connection. `httpx` performs DNS resolution after the exact-host check. HTTPS certificate
+validation materially limits DNS rebinding against the official hosts, but connection-level
+DNS pinning remains a residual hardening opportunity rather than a guarantee claimed here.
+
+**Reopens if:** acquisition must run across an untrusted resolver without TLS, or a future
+network policy requires connection-level address pinning in addition to exact-origin and TLS
+validation.
+
+## 2026-09-03 - Formulas retain source evidence and use MathML for interchange
+
+A formula is never represented by one model-written string. Each formula record keeps its exact
+page and span anchors, an immutable source crop, and the raw visual-order transcription. Derived
+display forms use Unicode mathematics, LaTeX, and Presentation MathML; Content MathML is the
+standard semantic interchange form and is emitted only when a parser can round-trip it and the
+symbols, operators, grouping, relations, subscripts, superscripts, and numeric literals reconcile
+with the source evidence. LaTeX is a rendering convenience, not the authoritative semantic form.
+
+Variables and named constants are separate source-anchored records. Units retain the printed form
+and may add a UCUM canonical code when the mapping is unambiguous. Method names and abbreviations
+such as `LRFD` and `ASD` are explicitly not equations. A formula with unresolved glyphs, grouping,
+symbol definitions, or unit mapping remains terminal but quarantined for deferred review; internet
+or model evidence cannot silently repair its primary transcription.
+
+This layered representation is deliberately redundant: the crop and raw spans let a later worker
+re-check the publication, Presentation MathML renders portably, Content MathML carries machine
+meaning, and the review state prevents a plausible rendering from being mistaken for verified
+semantics.
+
+**Reopens if:** a downstream symbolic engine requires a different standards-based semantic form
+that can be losslessly derived while preserving the same evidence and quarantine boundary.
+
+## 2026-09-03 - The 43-document corpus is an immutable cohort, not a claim of currency
+
+The acquired 43 documents remain the exact cohort requested and attested by hash. A live official
+web audit on 2026-09-03 mapped all 43 through INBR WordPress records, but also showed that the site
+now presents Volume 12 fifth edition (1403) ahead of the cohort's 1392 edition and exposes official
+corrections absent from the cohort, including the 2019 Volume 3 correction and a two-page masonry
+guide correction. The official Volume 11 landing title also describes its correction more broadly
+than the catalog title.
+
+The pipeline therefore never equates successful processing of 43/43 with "current complete INBR
+corpus". Live official additions, replacements, title conflicts, and unmapped documents are stored
+as separately versioned corroboration findings and block any currency/completeness claim. They do
+not silently replace an attested PDF or expand the active cohort mid-run. A later cohort revision
+must be explicit, acquire new hashes, preserve the old cohort, and rerun affected stages.
+
+**Reopens if:** the user explicitly selects a new official-source snapshot as the active cohort.
+
+## 2026-09-06 — Revise the active 43-document INBR cohort for official Volume 11 and 24 replacements
+
+The user selected the current official replacements for the two endpoint failures recorded by the
+first durable acquisition attempt. This is a replacement-only revision: the cohort remains 43
+artifacts and 5,892 pages, with the same supplemental documents and relationships. It does not
+claim every historical edition or every subsequently published INBR document.
+
+- Volume 11 (`volume-11-edition-1400`) now pins the official post-7042 PDF
+  `mabhas11-2.pdf`: 13,622,631 bytes, 144 pages, SHA-256
+  `07283f909f9e7c3f9189f6518a1ec9f3215025c78d72727e19528282794ad477`. The official cover
+  retains its third-edition / 1400 identity, so the existing amendment relationship remains
+  directed to the same catalog key.
+- Volume 24 (`volume-24-current-1404`) now pins the official post-7061 PDF
+  `mabhas24-4.pdf`: 2,975,003 bytes, 53 pages, SHA-256
+  `3a5bfd8efb03b8dc53c8bcd00c3e432c71f6b99f729344ff015570a679076623`. Its official cover
+  supplies the previously unset identity: first edition / 1404.
+- The revised catalog snapshots post 7042 in addition to the existing sources, and pins the
+  current post-7061 semantic projection. Its total is 470,674,872 bytes.
+
+The failed pre-revision durable acquisition remains preserved under its original ignored root. The
+revised cohort must use a separate durable `cohort_id`, acquire all artifacts and official metadata
+again, and pass `acquisition-check` before page processing. No historical receipt or stored source
+payload is overwritten or reinterpreted as evidence for this revision.
+
+**Reopens if:** INBR replaces either pinned endpoint again, or the user selects an expansion beyond
+this 43-artifact cohort.
 ## A frontend change proves itself in a browser against the running stack
 
 Decided 2026-09-02, at the start of Phase 3.
@@ -1488,3 +1621,29 @@ failing every task it won with a host-path `ENOENT` — nothing inside this prod
 that error. Not killed (host-process termination is outside this task's write scope); neutralized
 for the evidence runs by moving Redis's published host port (`deploy/.env`, gitignored,
 `REDIS_HOST_PORT=16380`) out from under it. Worth a human's attention outside this task.
+
+---
+
+## 2026-09-18 — `feat/inbr-regulations-pipeline` merged; its T-0024–T-0030 renumbered to T-0098–T-0104
+
+The branch built `packages/regulations` — the INBR corpus acquisition and semantic-extraction
+pipeline described in the entries above — off a `main` from before task numbering reached its
+current point. Its seven task files claimed T-0024 through T-0030, which `main` had since
+assigned to unrelated frontend work (the browser evidence harness, report presentation, and
+five more), each cross-referenced by a dozen other task files, `plan.md`, and `CHECKPOINT.md`.
+Git's merge found no conflict here — the files sit at different paths — so nothing would have
+caught it without a manual check of the task ledger.
+
+Renumbered the branch's seven files to T-0098–T-0104 (continuing after `main`'s then-current
+max, T-0097) and fixed every reference inside the branch's own content: the task files
+themselves, `docs/inbr-operations.md`, and the active/queued task list in `plan.md`'s INBR
+workstream section. `main`'s existing T-0024–T-0030 files and every reference to them are
+untouched. Three further conflicts from genuine textual overlap — `Makefile`'s `.PHONY` list,
+`pyproject.toml`'s per-file lint ignores, and the tail of this file, where both branches had
+appended new entries — were resolved by union rather than by picking a side; `uv.lock` was
+regenerated against the merged `pyproject.toml` rather than trusting git's line-level merge of a
+generated file.
+
+**Reopens if:** a future branch is developed far enough from `main` that its task numbers drift
+again — the fix each time is the same manual renumber, since nothing enforces uniqueness across
+branches by construction.

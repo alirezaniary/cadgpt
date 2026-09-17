@@ -1,0 +1,54 @@
+{
+  "$id": "https://cadgpt.local/schemas/regulation-model-bundle-1.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "bundle_id": {"minLength": 1, "type": "string"},
+    "catalog_key": {"minLength": 1, "type": "string"},
+    "source_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "configuration_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "sequence": {"minimum": 1, "type": "integer"},
+    "start_pdf_page": {"minimum": 1, "type": "integer"},
+    "end_pdf_page": {"minimum": 1, "type": "integer"},
+    "page_count": {"minimum": 1, "maximum": 10, "type": "integer"},
+    "input_bytes": {"minimum": 0, "type": "integer"},
+    "byte_ceiling": {"minimum": 1024, "type": "integer"},
+    "pages": {"items": {"$ref": "#/$defs/page"}, "minItems": 1, "maxItems": 10, "type": "array"},
+    "continuation_edges": {"items": {"$ref": "#/$defs/edge"}, "type": "array"},
+    "fallback": {"enum": ["bounded_bundle", "page_by_page"]}
+  },
+  "required": ["schema_version", "bundle_id", "catalog_key", "source_sha256", "configuration_sha256", "sequence", "start_pdf_page", "end_pdf_page", "page_count", "input_bytes", "byte_ceiling", "pages", "continuation_edges", "fallback"],
+  "type": "object",
+  "$defs": {
+    "relativePath": {"minLength": 1, "not": {"pattern": "(^/|(^|/)\\.\\.?(/|$)|\\\\)"}, "type": "string"},
+    "nullablePath": {"oneOf": [{"$ref": "#/$defs/relativePath"}, {"type": "null"}]},
+    "page": {
+      "additionalProperties": false,
+      "properties": {
+        "page_id": {"pattern": "^sha256:[0-9a-f]{64}:page:[0-9]{6}$", "type": "string"},
+        "pdf_page": {"minimum": 1, "type": "integer"},
+        "state": {"enum": ["ready", "needs_review", "failed"]},
+        "span_ids": {"items": {"minLength": 1, "type": "string"}, "type": "array", "uniqueItems": true},
+        "raw_native_text_path": {"$ref": "#/$defs/nullablePath"},
+        "normalized_text_path": {"$ref": "#/$defs/nullablePath"},
+        "model_render_path": {"$ref": "#/$defs/nullablePath"},
+        "input_bytes": {"minimum": 0, "type": "integer"}
+      },
+      "required": ["page_id", "pdf_page", "state", "span_ids", "raw_native_text_path", "normalized_text_path", "model_render_path", "input_bytes"],
+      "type": "object"
+    },
+    "edge": {
+      "additionalProperties": false,
+      "properties": {
+        "from_page_id": {"minLength": 1, "type": "string"},
+        "to_page_id": {"minLength": 1, "type": "string"},
+        "from_pdf_page": {"minimum": 1, "type": "integer"},
+        "to_pdf_page": {"minimum": 1, "type": "integer"},
+        "reason": {"const": "PREVIOUS_PAGE_LACKS_TERMINAL_PUNCTUATION"}
+      },
+      "required": ["from_page_id", "to_page_id", "from_pdf_page", "to_pdf_page", "reason"],
+      "type": "object"
+    }
+  }
+}

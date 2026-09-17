@@ -1,0 +1,566 @@
+{
+  "$defs": {
+    "acquisitionPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_origins": {
+          "items": {
+            "format": "uri",
+            "pattern": "^https?://",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "connect_timeout_seconds": {
+          "exclusiveMinimum": 0,
+          "maximum": 120,
+          "type": "number"
+        },
+        "max_artifact_bytes": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "max_attempts": {
+          "maximum": 10,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "max_metadata_bytes": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "max_redirects": {
+          "maximum": 10,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "read_timeout_seconds": {
+          "exclusiveMinimum": 0,
+          "maximum": 300,
+          "type": "number"
+        },
+        "total_timeout_seconds": {
+          "exclusiveMinimum": 0,
+          "maximum": 3600,
+          "type": "number"
+        }
+      },
+      "required": [
+        "allowed_origins",
+        "max_redirects",
+        "max_attempts",
+        "connect_timeout_seconds",
+        "read_timeout_seconds",
+        "max_metadata_bytes",
+        "max_artifact_bytes",
+        "total_timeout_seconds"
+      ],
+      "type": "object"
+    },
+    "catalogArtifact": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "review_flags": {
+                "minItems": 1
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "review_status": {
+                "const": "accepted"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "review_flags": {
+                "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "document_kind": {
+                "const": "numbered_volume"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "legal_status": {
+                "const": "binding_regulation"
+              },
+              "volume": {
+                "maximum": 24,
+                "minimum": 1,
+                "type": "integer"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "catalog_key": {
+          "$ref": "#/$defs/key"
+        },
+        "catalog_order": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "document_kind": {
+          "$ref": "#/$defs/documentKind"
+        },
+        "download_url": {
+          "format": "iri",
+          "minLength": 1,
+          "type": "string"
+        },
+        "edition": {
+          "$ref": "#/$defs/edition"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/evidence"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "expected_bytes": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "expected_media_type": {
+          "const": "application/pdf"
+        },
+        "expected_pdf_pages": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "expected_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "legal_status": {
+          "$ref": "#/$defs/legalStatus"
+        },
+        "local_path": {
+          "minLength": 1,
+          "pattern": "^[^/\\\\]+$",
+          "type": "string"
+        },
+        "relationships": {
+          "items": {
+            "$ref": "#/$defs/relationship"
+          },
+          "type": "array"
+        },
+        "remote_filename": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "review_flags": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "review_status": {
+          "enum": [
+            "accepted",
+            "needs_review"
+          ]
+        },
+        "source_urls": {
+          "items": {
+            "format": "iri",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "title_en": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "title_fa": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "translation_provenance": {
+          "$ref": "#/$defs/translationProvenance"
+        },
+        "volume": {
+          "anyOf": [
+            {
+              "maximum": 24,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "catalog_key",
+        "catalog_order",
+        "download_url",
+        "remote_filename",
+        "local_path",
+        "expected_media_type",
+        "expected_sha256",
+        "expected_bytes",
+        "expected_pdf_pages",
+        "document_kind",
+        "volume",
+        "title_fa",
+        "title_en",
+        "translation_provenance",
+        "edition",
+        "legal_status",
+        "relationships",
+        "source_urls",
+        "evidence",
+        "review_status",
+        "review_flags"
+      ],
+      "type": "object"
+    },
+    "documentKind": {
+      "enum": [
+        "numbered_volume",
+        "appendix",
+        "mandatory_appendix",
+        "amendment",
+        "clarification",
+        "circular",
+        "guide",
+        "handbook"
+      ]
+    },
+    "documentLink": {
+      "additionalProperties": false,
+      "properties": {
+        "href": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "href"
+      ],
+      "type": "object"
+    },
+    "edition": {
+      "additionalProperties": false,
+      "properties": {
+        "edition_number": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "label_en": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "label_fa": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "publication_date_shamsi": {
+          "pattern": "^[0-9]{4}/[0-9]{2}/[0-9]{2}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "publication_year_shamsi": {
+          "pattern": "^[0-9]{4}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "label_fa",
+        "label_en",
+        "edition_number",
+        "publication_year_shamsi",
+        "publication_date_shamsi"
+      ],
+      "type": "object"
+    },
+    "evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "official_catalog",
+            "official_rest_record",
+            "official_historical_metadata",
+            "official_document_cover",
+            "official_post",
+            "source_url"
+          ]
+        },
+        "note": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "url": {
+          "format": "iri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "url",
+        "note"
+      ],
+      "type": "object"
+    },
+    "family": {
+      "additionalProperties": false,
+      "properties": {
+        "catalog_key": {
+          "$ref": "#/$defs/key"
+        },
+        "catalog_order": {
+          "maximum": 24,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/evidence"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "source_urls": {
+          "items": {
+            "format": "iri",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "title_en": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "title_fa": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "translation_provenance": {
+          "$ref": "#/$defs/translationProvenance"
+        },
+        "volume": {
+          "maximum": 24,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "catalog_key",
+        "catalog_order",
+        "volume",
+        "title_fa",
+        "title_en",
+        "translation_provenance",
+        "source_urls",
+        "evidence"
+      ],
+      "type": "object"
+    },
+    "key": {
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "legalStatus": {
+      "enum": [
+        "binding_regulation",
+        "binding_appendix",
+        "official_amendment",
+        "official_clarification",
+        "official_circular",
+        "supplementary_nonbinding",
+        "draft_nonbinding",
+        "unknown"
+      ]
+    },
+    "metadataSource": {
+      "additionalProperties": false,
+      "properties": {
+        "catalog_order": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "expected_document_links": {
+          "items": {
+            "$ref": "#/$defs/documentLink"
+          },
+          "type": "array"
+        },
+        "expected_semantic_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "kind": {
+          "enum": [
+            "page",
+            "post"
+          ]
+        },
+        "requested_url": {
+          "format": "uri",
+          "type": "string"
+        },
+        "source_key": {
+          "$ref": "#/$defs/key"
+        },
+        "wordpress_id": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "source_key",
+        "catalog_order",
+        "kind",
+        "wordpress_id",
+        "requested_url",
+        "expected_semantic_sha256",
+        "expected_document_links"
+      ],
+      "type": "object"
+    },
+    "relationship": {
+      "additionalProperties": false,
+      "properties": {
+        "order": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target": {
+          "$ref": "#/$defs/key"
+        },
+        "type": {
+          "enum": [
+            "EDITION_OF",
+            "APPENDIX_OF",
+            "MANDATORY_APPENDIX_OF",
+            "AMENDS",
+            "CLARIFIES",
+            "SUPERSEDES",
+            "GUIDE_FOR",
+            "DRAFT_OF",
+            "REFERENCES",
+            "EXPLAINS"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "target",
+        "order"
+      ],
+      "type": "object"
+    },
+    "sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "translationProvenance": {
+      "enum": [
+        "official",
+        "cover_translation",
+        "curated"
+      ]
+    }
+  },
+  "$id": "https://cadgpt.local/schemas/regulation-catalog-2.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "acquisition_policy": {
+      "$ref": "#/$defs/acquisitionPolicy"
+    },
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/catalogArtifact"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "catalog_id": {
+      "const": "inbr-national-building-regulations"
+    },
+    "families": {
+      "items": {
+        "$ref": "#/$defs/family"
+      },
+      "maxItems": 24,
+      "minItems": 24,
+      "type": "array"
+    },
+    "metadata_sources": {
+      "items": {
+        "$ref": "#/$defs/metadataSource"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "provenance": {
+      "items": {
+        "$ref": "#/$defs/evidence"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    }
+  },
+  "required": [
+    "schema_version",
+    "catalog_id",
+    "acquisition_policy",
+    "metadata_sources",
+    "provenance",
+    "families",
+    "artifacts"
+  ],
+  "type": "object"
+}

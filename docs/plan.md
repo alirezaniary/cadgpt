@@ -1810,6 +1810,48 @@ each of which the current architecture was shaped to receive:
 - **Findings as rows**, when dispositions arrive and findings need identity across runs.
   Until then the report is one JSON document, which is what it is used as.
 
+## Regulation corpus workstream — **IN PROGRESS 2026-09-02**
+
+This workstream supports Gate 1 and the later rule-pack phase without putting jurisdictional
+logic into the checking engine. It converts the official INBR publications into a source-
+anchored semantic corpus; compiling accepted semantics into buildingSMART IDS remains a later
+and separate step.
+
+All commits for this workstream remain on `feat/inbr-regulations-pipeline`; downloaded PDFs,
+page renders, OCR data, model inputs, and inference outputs remain outside Git. Real runs use the
+ignored, restart-safe `.cadgpt/inbr/` workspace described in `docs/inbr-operations.md`, never
+`/tmp`.
+
+1. **Corpus contract and inventory — DONE 2026-09-02.** Immutable hashes, MIME checks, canonical Persian and
+   English titles, official ordering, editions, relationships, coverage, and quarantine.
+2. **Official acquisition and metadata snapshots — DONE 2026-09-03.** Reproducible official-only downloads,
+   inert remote identities, safe local paths, content-addressed evidence, and drift detection.
+3. **Page transcription.** Native positioned text where trustworthy; Persian/English OCR for
+   scans, photographs, and watermarks; raw and normalized forms retained together.
+4. **Document structure.** Ordered hierarchy, clauses, definitions, tables, figures,
+   equations, symbols, units, printed page labels, and exact source spans.
+5. **Model extraction.** Section-aware chunks capped near ten pages, two blind Luna
+   extractions, strict Structured Outputs, and raw-response retention.
+6. **Validation.** Deterministic anchor/reference/formula checks, independent Luna validation,
+   official-web corroboration, conflict reconciliation, and quarantine.
+7. **Publication.** Immutable JSON/JSONL plus a complete coverage and deferred-human-review
+   report. Processing runs to terminal states without waiting for a reviewer; flagged content
+   cannot enter the publishable corpus until reviewed later.
+
+The active task is `docs/tasks/T-0100-lossless-page-transcription.md`. The queued tasks are
+`docs/tasks/T-0101-source-anchored-document-structure.md` followed by
+`docs/tasks/T-0102-blind-luna-semantic-extraction.md` and
+`docs/tasks/T-0103-official-web-and-semantic-validation.md`, then
+`docs/tasks/T-0104-publish-validated-semantic-corpus.md`.
+
+(Renumbered from T-0024–T-0030 at merge time on 2026-09-18 — those IDs were already in use on
+`main` for unrelated frontend tasks. See `docs/decisions.md`.)
+
+The live official-site audit on 2026-09-03 maps every cohort artifact but proves the 43-document
+cohort is not the complete current publication set: Volume 12 has a newer official edition and at
+least two official corrections are outside the cohort. The pipeline preserves the requested cohort
+and reports this as versioned drift; it may not claim present-day completeness.
+
 ---
 
 ## Constraints on what is not built yet

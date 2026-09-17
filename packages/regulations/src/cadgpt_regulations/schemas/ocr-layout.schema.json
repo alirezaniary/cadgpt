@@ -1,0 +1,102 @@
+{
+  "$id": "https://cadgpt.local/schemas/regulation-ocr-layout-1.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "page_id": {"pattern": "^sha256:[0-9a-f]{64}:page:[0-9]{6}$", "type": "string"},
+    "coordinate_space": {"$ref": "#/$defs/coordinateSpace"},
+    "engine": {"$ref": "#/$defs/engine"},
+    "preprocessing": {"$ref": "#/$defs/preprocessing"},
+    "raw_text": {"type": "string"},
+    "tokens": {"items": {"$ref": "#/$defs/token"}, "type": "array"},
+    "lines": {"items": {"$ref": "#/$defs/line"}, "type": "array"}
+  },
+  "required": ["schema_version", "page_id", "coordinate_space", "engine", "preprocessing", "raw_text", "tokens", "lines"],
+  "type": "object",
+  "$defs": {
+    "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "bbox": {"items": {"minimum": 0, "type": "integer"}, "maxItems": 4, "minItems": 4, "type": "array"},
+    "coordinateSpace": {
+      "additionalProperties": false,
+      "properties": {
+        "unit": {"const": "pixel"},
+        "origin": {"const": "top_left"},
+        "width": {"minimum": 1, "type": "integer"},
+        "height": {"minimum": 1, "type": "integer"}
+      },
+      "required": ["unit", "origin", "width", "height"],
+      "type": "object"
+    },
+    "engine": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {"const": "tesseract"},
+        "version": {"const": "tesseract 5.3.4"},
+        "languages": {"const": ["fas", "eng"]},
+        "page_segmentation_mode": {"enum": [3, 6]},
+        "dpi": {"minimum": 72, "maximum": 600, "type": "integer"},
+        "models": {"items": {"$ref": "#/$defs/model"}, "minItems": 3, "maxItems": 3, "type": "array"},
+        "attempts": {"items": {"$ref": "#/$defs/attempt"}, "minItems": 1, "maxItems": 2, "type": "array"}
+      },
+      "required": ["name", "version", "languages", "page_segmentation_mode", "dpi", "models", "attempts"],
+      "type": "object"
+    },
+    "attempt": {
+      "additionalProperties": false,
+      "properties": {
+        "page_segmentation_mode": {"enum": [3, 6]},
+        "token_count": {"minimum": 0, "type": "integer"},
+        "line_count": {"minimum": 0, "type": "integer"},
+        "mean_confidence_permyriad": {"minimum": 0, "maximum": 10000, "type": "integer"}
+      },
+      "required": ["page_segmentation_mode", "token_count", "line_count", "mean_confidence_permyriad"],
+      "type": "object"
+    },
+    "model": {
+      "additionalProperties": false,
+      "properties": {
+        "language": {"enum": ["fas", "eng", "osd"]},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"minimum": 1, "type": "integer"}
+      },
+      "required": ["language", "sha256", "bytes"],
+      "type": "object"
+    },
+    "preprocessing": {
+      "additionalProperties": false,
+      "properties": {
+        "source_render_sha256": {"$ref": "#/$defs/sha256"},
+        "operations": {"items": {"enum": ["grayscale", "otsu_global"]}, "minItems": 1, "type": "array", "uniqueItems": true}
+      },
+      "required": ["source_render_sha256", "operations"],
+      "type": "object"
+    },
+    "token": {
+      "additionalProperties": false,
+      "properties": {
+        "span_id": {"minLength": 1, "type": "string"},
+        "raw_text": {"minLength": 1, "type": "string"},
+        "bbox": {"$ref": "#/$defs/bbox"},
+        "confidence_permyriad": {"minimum": 0, "maximum": 10000, "type": "integer"},
+        "block": {"minimum": 0, "type": "integer"},
+        "paragraph": {"minimum": 0, "type": "integer"},
+        "line": {"minimum": 0, "type": "integer"}
+      },
+      "required": ["span_id", "raw_text", "bbox", "confidence_permyriad", "block", "paragraph", "line"],
+      "type": "object"
+    },
+    "line": {
+      "additionalProperties": false,
+      "properties": {
+        "span_id": {"minLength": 1, "type": "string"},
+        "raw_text": {"minLength": 1, "type": "string"},
+        "bbox": {"$ref": "#/$defs/bbox"},
+        "confidence_permyriad": {"minimum": 0, "maximum": 10000, "type": "integer"},
+        "token_span_ids": {"items": {"minLength": 1, "type": "string"}, "minItems": 1, "type": "array"}
+      },
+      "required": ["span_id", "raw_text", "bbox", "confidence_permyriad", "token_span_ids"],
+      "type": "object"
+    }
+  }
+}

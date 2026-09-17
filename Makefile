@@ -8,7 +8,9 @@ COMPOSE := docker compose -f deploy/compose.yaml
 
 .PHONY: help verify lint format types contracts test test-fast test-postgres web-verify \
         install migrations migrate run worker shell schema messages compile-messages \
-        up down logs reset e2e
+        inbr-workspace up down logs reset e2e
+
+INBR_WORKSPACE := .cadgpt/inbr
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -26,8 +28,8 @@ format:  ## Apply ruff fixes and formatting
 	$(UV) ruff check . --fix
 	$(UV) ruff format .
 
-types:  ## mypy --strict over the engine and the service
-	$(UV) mypy packages/engine/src $(API)/cadgpt
+types:  ## mypy --strict over the Python packages and the service
+	$(UV) mypy packages/engine/src packages/regulations/src $(API)/cadgpt
 
 contracts:  ## The import contracts: I1, engine independence, app layering
 	$(UV) lint-imports --no-cache
@@ -74,6 +76,9 @@ messages:  ## Extract translatable strings into the .po catalogues (needs gettex
 # `gettext` call was made, so the catalogue has to be real for the suite to mean anything.
 compile-messages:  ## Compile the .po catalogues to .mo (needs gettext)
 	cd $(API) && $(UV) --project .. python manage.py compilemessages
+
+inbr-workspace:  ## Create and attest durable local INBR artifact roots
+	$(UV) cadgpt-regulations workspace --root $(INBR_WORKSPACE)
 
 schema:  ## Regenerate the OpenAPI schema and the frontend's types from it
 	cd $(API) && $(UV) --project .. python manage.py spectacular --color --file \
