@@ -72,12 +72,16 @@ named the storage key instead of the file the architect uploaded.
 
 **All three clauses of the MVP sentence now exist in code as of 2026-09-03** — upload (T-0024 and
 before), selection (T-0031), and the report file (T-0032). **Phase 3 is deliberately not marked
-done.** T-0033 remains unbuilt, and two findings from T-0032's review bear directly on whether the
-sentence is true in practice rather than in principle: a report could silently never be generated with
-no way to ask for it again — **closed by T-0051** — and the download button a real user would press
-has never been executed by any test (T-0053). T-0051's review then found the same lost-dispatch
-hazard still open upstream, where it strands the check itself (T-0056). The clauses are implemented; that they hold for a real user is not
-yet established, and this plan does not record it as though it were.
+done.** Every follow-up that questioned whether the sentence holds in practice rather than in
+principle has since landed: a report that could silently never be generated with no way to ask for
+it again, a download button no test had ever pressed, and a lost dispatch that stranded the check
+itself rather than only its file. What is still not established is that the sentence holds for a
+real user with a real office's model, and this plan does not record it as though it were.
+
+Task status lives in "What has landed" and "Queued" below, and nowhere else. This paragraph
+deliberately names no open task numbers: keeping a third list current is what produced the drift
+corrected on 2026-09-18, where it asserted three tasks open that this same file recorded as done
+(F9 of `docs/review-prompts/results/01-business-and-prd.md`).
 
 **Scope settled 2026-09-02 by the product owner.** Four direction questions were answered
 and written to `docs/decisions.md` and `prd.md` 12. The phase got smaller in three places and
@@ -1642,13 +1646,20 @@ report is now the whole product.
   landed — corrected 2026-09-14.)
 - ~~**T-0028** — a requirement that evaluated nothing reports `PASS`.~~ **Done 2026-09-02.**
   See "What has landed" above. (Same stale-bullet gap, corrected 2026-09-14.)
-- **T-0029** — say what was checked. The I7 disclosure copy, in the view and in the file.
-- **T-0030** — the rule catalogue: a global `RulePack` beside the tenant-owned `RuleSet`, with
-  jurisdiction, region, version and source citation, and a seeding path. No rule content.
-- **T-0031** — rule selection at check time, recorded on the run so it stays reproducible.
-- **T-0032** — the generated Markdown report and its URL on the job record.
-- **T-0033** — the measured upload ceiling, and a resource-exceeded run that fails with a named
-  reason instead of being redelivered forever.
+- ~~**T-0029** — say what was checked. The I7 disclosure copy, in the view and in the file.~~
+  **Done 2026-09-02.** See "What has landed" above.
+- ~~**T-0030** — the rule catalogue: a global `RulePack` beside the tenant-owned `RuleSet`, with
+  jurisdiction, region, version and source citation, and a seeding path. No rule content.~~
+  **Done 2026-09-03.** See "What has landed" above.
+- ~~**T-0031** — rule selection at check time, recorded on the run so it stays reproducible.~~
+  **Done 2026-09-03.** See "What has landed" above.
+- ~~**T-0032** — the generated Markdown report and its URL on the job record.~~ **Done
+  2026-09-03.** See "What has landed" above.
+- ~~**T-0033** — the measured upload ceiling, and a resource-exceeded run that fails with a named
+  reason instead of being redelivered forever.~~ **Done 2026-09-03.** See "What has landed"
+  above. (These five carried the same stale-bullet gap T-0027 and T-0028 above did — struck
+  2026-09-18, when an external review found the 2026-09-14 correction had stopped after two
+  bullets.)
 
 Added 2026-09-02 from the T-0025 and T-0028 reviews. They sit behind the MVP tasks above —
 none blocks the report shipping, and the two that touch honesty directly (T-0037, T-0038) are
@@ -1802,7 +1813,10 @@ each of which the current architecture was shaped to receive:
   called before `run_check`. The observations it writes are the only queryable artifact
   there will be — the enriched model plus its relations, not a store standing beside it, and
   specifically not a graph database: topologicpy's dual graph and the `Related` observations
-  already are the property graph.
+  already are the property graph. It cannot start before the open question `prd.md` 5.4 now
+  carries — where a pack's role selector runs — is answered, because that answer decides whether
+  a derived role is a written property at all, and the cheap local answer compiles a jurisdiction
+  into the engine.
 - **Rule packs** (`prd.md` 5.5) — a pack is many IDS files plus clause records, not the
   single file `RuleSet` holds today. `RuleSet` was shaped to grow into it.
 - **The coverage manifest** (`prd.md` 5.7) — which clauses were evaluated and which were not.

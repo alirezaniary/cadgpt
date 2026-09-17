@@ -1647,3 +1647,122 @@ generated file.
 **Reopens if:** a future branch is developed far enough from `main` that its task numbers drift
 again — the fix each time is the same manual renumber, since nothing enforces uniqueness across
 branches by construction.
+## 2026-09-18 — the first external PRD review: three fixes applied, one gap logged unowned, six direction questions raised
+
+**What happened.** The first of the five review prompts in `docs/review-prompts/` was run against
+`prd.md`, this log and `docs/plan.md` by a reviewer with no prior exposure to the project. Ten
+findings, saved verbatim at `docs/review-prompts/results/01-business-and-prd.md`. This entry
+records their disposition so the results file does not become the only place the outcome lives.
+
+**Fixed in the same pass, because each was a wording or status defect with one correct answer
+and no trade-off to weigh:**
+
+- **`prd.md` §8 said codification is "the only place in the system permitted an inference client."**
+  Read literally that forbids §5.9's assistance layer from existing, and this log's own contract
+  ("No inference client in the evaluation path") is narrower again — the engine *package*. Three
+  formulations of the one invariant the document claims is machine-checked. §8 now says "the only
+  place permitted an outbound inference call to a hosted API," and §5.9 names the contract's
+  subject on each side: codification and the assistance layer may hold an inference client; the
+  engine, the derivation layer and report generation may not, and nothing that may hold a model
+  handle may reach an external endpoint. The contract in force in `pyproject.toml` today is the
+  narrowest of the three and violates none of them, so no code change follows.
+- **`docs/plan.md`'s Phase 3 header named T-0033, T-0053 and T-0056 as open**, all three recorded
+  Done lower in the same file, and `### Queued` still carried T-0029 through T-0033 unstruck —
+  directly beneath T-0027 and T-0028, which carry the note "Stale bullet, never struck through
+  when it landed — corrected 2026-09-14." That correction stopped after two bullets. The five are
+  struck, and the header no longer names task numbers at all: task status is "What has landed" and
+  "Queued", and a third list in prose is what drifted. Direction of drift was safe (status behind
+  the work, never ahead), so nothing was over-claimed — the cost was a reader re-queueing finished
+  work, which the file already records happening once.
+- **`prd.md` §12 read as though user rule-set upload had left the product.** The 2026-09-04
+  decision removed the UI and explicitly left the backend API alone. The row now says so.
+
+**Logged and deliberately not fixed:** of seven invariants, I1 and I2 are machine-checked import
+contracts and I4 is mechanised by §5.5's build-time name guard. **I3, I5, I6 and I7 name no
+verification path in `prd.md`.** I7's does exist, in this log ("A rule that checked nothing never
+passes" and the totality test over `ReasonCode`), but the PRD does not reference it. I5 is the
+cheapest to close and the most load-bearing for defensibility — a finding whose basis does not
+resolve should fail report generation, and a pack whose clause index cannot resolve a cited basis
+should fail CI. This is recorded the way the `--accent` contrast entry was: **not blocked,
+unowned.** Whether the four without checks get mechanisms or get demoted out of the word
+"invariant" is a framing call for the product owner, not something to settle by editing the
+invariants section in passing.
+
+**Raised as direction questions, not decided here.** Six findings turn on a trade-off with more
+than one defensible answer, so none was actioned: the missing execution site for a rule pack's
+role selector (F1, blocking for Phase 4's derivation layer), the coverage manifest's denominator
+being authored by the same pipeline as its numerator (F3), the unstated mapping from §5.7's
+"distinct outcomes" — near-miss, deemed-to-satisfy-not-followed — into the three counts (F6),
+whether vendoring a fork is a permitted exception to I3 when a single-maintainer dependency
+stalls (F5), when gate 2 gets run given it cannot have preceded the choice of market it is scoped
+to (F4), and the absent commercial sibling document (F8). Each is stated with its quoted passages
+in the results file.
+
+**Reopens if:** the remaining four review prompts (02 through 05) are run — their findings land
+against code rather than docs, and this entry is the precedent for how they get dispositioned:
+fix what has one answer, log what is unowned, and put a trade-off to the owner rather than
+resolving it inside a review.
+
+---
+
+## 2026-09-18 — four answers to the external review, from the product owner
+
+Taken immediately after the entry above, on the four findings that had a real trade-off rather
+than one correct answer. Each is now in `prd.md`; this entry carries the reasoning and the
+condition that reopens it.
+
+**F6 — nothing that is not an established PASS is counted as a PASS.** `prd.md` 5.7 kept naming
+"distinct outcomes" — a near-miss inside tolerance, a deemed-to-satisfy route not followed, an
+undetermined applicability — against a status enum it closes permanently at three, and never said
+which count they land in. All of them are now **INDETERMINATE**, each with its own reason code and
+its own count reported beside the three. A near-miss is INDETERMINATE *even where the measurement
+clears the limit*: "inside the declared tolerance" is not a verdict the measurement established.
+The rejected alternative was the one an experienced reviewer would say out loud ("you're fine, but
+you have no room") — a PASS carrying its margin. It loses because 5.7 itself predicts a large
+share of all findings sit in that band, so the flattering reading would govern the biggest bucket
+in the report, in exactly the range where real violations cluster. The accepted cost is that
+INDETERMINATE gets crowded and a first run reads worse than a two-valued tool's would.
+
+**F3 — coverage is reported bounded-below until clause indexes are enumerated independently.**
+The manifest's denominator ("12 of 80 provisions") comes from the pack's own clause index, which
+the codification pipeline of `prd.md` 8 produces alongside the rules — so a chapter nobody
+ingested is missing from both sides and a partial pack reads as fully scoped, which is 5.7's own
+worst output relocated into the number meant to prevent it. Until an independent enumeration step
+exists, coverage states its own limit: "at least 12 of the 80 indexed provisions; chapters 4 to 7
+not indexed," never a bare fraction. The independent step is the real fix and is **deferred to the
+first authored pack**, where its ratification cost is measurable against gate 1's throughput
+instead of guessed at — the same reasoning as every other "measure it, do not pick a number" call
+in this log.
+
+**F1 — where a pack's role selector runs is recorded as an open problem, decided at the start of
+Phase 4.** A role is a Derived observation that is never stored (5.3, 5.4) and the only evaluator
+named is ifctester over IDS, which cannot compute one, so no execution site exists. The two
+candidates — a per-pack-version property namespace with each pack's run isolated, or role rules
+evaluated in the upstream non-IDS format 5.5 has under evaluation — both cost something real
+(amending 5.5's build guard and dropping "never stored"; or a second evaluator and a blocking
+dependency), and neither is worth committing to before the derivation layer is actually being
+built. What the deferral explicitly does **not** permit is a local answer at implementation time:
+5.4 now carries the question with the multi-pack collision spelled out, and `docs/plan.md`'s Phase
+4 derivation-layer item states the work cannot start before it is answered. The reason for that
+framing is that the cheap local answer — write the role onto the model as a property — is the one
+that compiles one jurisdiction into the engine, which is I4's failure mode.
+
+**F4 — gate 2 stays unrun, and `prd.md` 11 stays unamended.** The product owner's call is to defer
+both halves and let the first real office seeing the MVP be the measurement. Recorded here rather
+than in the PRD deliberately, so the position is written down somewhere without 11 being softened:
+**the document still calls gate 2 binding on whether v0's import path is worth shipping, and v0 is
+being finished anyway.** The bet is that the first real user answers the question with more weight
+than twenty phone calls would, and the exposure is that by then v0's import path is fully built
+either way — and 5.2 states almost every check is space-based, which is precisely what gate 2
+would have told us about in advance.
+
+**Not asked, and still open.** Two findings from the review were not put to the owner: whether
+vendoring a fork is a permitted exception to I3 when a sole-source dependency stalls (F5 — the
+risk itself is now named in 6, listing what goes dark per dependency, but the exception is
+undecided), and the absent commercial sibling document answering who pays, how much, and why now
+(F8). Both are recorded as unowned, not scheduled.
+
+**Reopens if:** a first real office's run is dominated by INDETERMINATE and the near-miss share is
+what makes it so — at which point F6's rejected alternative returns as a reporting question (does
+a near-miss get its own visible tier above INDETERMINATE?) rather than as a counting one, because
+the counting rule is not the part that is allowed to move.
