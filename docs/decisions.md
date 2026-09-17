@@ -1392,3 +1392,99 @@ predicates a single owner, not merging the catalogues.
 per-run wording) — that string belongs server-side from the start, per the existing decision — or
 if `Status` or `ReasonCode`'s zero-evidence set changes often enough that the `.tsx`-literal
 regex test above becomes a maintenance burden worth replacing with generated code.
+
+---
+
+## 2026-09-17 — A deploy is prevented from burning a claim, not classified after the fact
+
+**Problem (T-0062).** T-0033's bound (`CHECK_RUN_MAX_CLAIMS = 3`) counts every claim identically,
+whether the previous attempt died from the OOM killer or from an ordinary `docker compose up -d
+worker` deploy. `deploy/compose.yaml` set no `stop_grace_period`, so Docker's default 10s applied;
+a check running past that got SIGKILLed by an ordinary deploy exactly as if it had exhausted
+memory.
+
+**Mechanism verified against the actual installed versions (celery 5.6.3, kombu 5.6.2), not
+assumed from general docs.** A plain SIGTERM to Celery's prefork `MainProcess`
+(`celery.apps.worker.install_worker_term_handler`, unmapped `REMAP_SIGTERM`) triggers a *warm*
+shutdown: `WorkController.stop()` → `_shutdown(warm=True)` → the prefork `TaskPool.on_stop` calls
+the billiard pool's `close()` (stop taking new work) then `join()` (wait for in-flight child
+processes to finish on their own). Only if the whole container is then SIGKILLed — because the
+grace period elapsed before that join finished — does the check get abandoned. This is prevention,
+not classification: `_claim` never learns *why* a worker died, and does not need to, because the
+one cause this task can remove (an ordinary deploy) is kept from ever producing a kill.
+
+**A second, unassumed fact this task's investigation surfaced by running it, not by reading
+Celery's docs: a full-container SIGKILL does not redeliver the way T-0033's poison-message proof
+did.** T-0033's OOM kill took only the *child* fork; the surviving `MainProcess` detected the death
+itself and called `Request.reject(requeue=True)` — an explicit, immediate requeue, independent of
+any broker timeout. A full-container kill takes the `MainProcess` too, so nothing survives to
+reject anything; redelivery depends entirely on Redis's own `visibility_timeout`
+(`CELERY_BROKER_TRANSPORT_OPTIONS`, `base.py`), and `kombu.transport.redis.QoS.restore_visible`
+only restores a message once it is *older* than that timeout, while the competing signal —
+`reap_stalled_runs`' periodic sweep — does not fire the instant `CHECK_RUN_STALL_SECONDS` is
+crossed; it only runs on `CELERY_BEAT_SCHEDULE`'s own tick, `CHECK_RUN_STALL_SECONDS / 4`. So
+which one notices an abandoned message first is a race between (a) how far past the stall
+threshold the next scheduled tick lands — anywhere in `[0, CELERY_TASK_TIME_LIMIT/4]` — and (b)
+the fixed 60s margin before Redis restores visibility. **Corrected 2026-09-17: the first version
+of this entry treated the sweep as the reliable winner in general; it only wins below the
+crossover where the tick interval equals the margin, `CELERY_TASK_TIME_LIMIT/4 = 60s`, i.e.
+`CELERY_TASK_TIME_LIMIT = 240s`.** Below that, the sweep's worst-case tick delay is under 60s and
+it always wins. Above it — and production's default `CELERY_TASK_TIME_LIMIT = 1800s` is 7.5× past
+that crossover, a 450s tick against the same fixed 60s margin — the sweep only wins if the crash
+happens to land in roughly the last 60 of every 450 seconds between ticks (~13% of the cycle); the
+rest of the time Redis's redelivery restores the message first, `_claim` re-claims the
+still-`RUNNING` row, and a claim is genuinely burned — the original failure this task's Why section
+described, not a `STALLED` correction to it. The live reproduction below is real and demonstrates
+the mechanism correctly, but only at the compressed settings it actually used
+(`CELERY_TASK_TIME_LIMIT=60`, a 15s tick, comfortably below the 240s crossover) — reproduced live:
+a healthy, uninterrupted-would-have-succeeded 340,000-door check, killed by one ordinary
+`docker compose up -d --force-recreate worker`, sat `RUNNING` with `claim_count` stuck at `1` and
+was reaped as `STALLED` ("The worker running this check stopped responding") 75 seconds later. At
+production's actual `CELERY_TASK_TIME_LIMIT = 1800s`, the same mechanism analysis says the
+opposite outcome dominates: a false `resource_exhausted` via redelivery, not a false `STALLED` —
+reproducing that literally would mean observing a single interruption at real production
+timescales (30+ minutes), which was not attempted here for practical reasons, not because the
+race is structurally decided either way. Neither outcome changes whether the fix below works: it
+removes the SIGKILL event itself, so it corrects both failure surfaces at once regardless of which
+one would have won the race that, with the fix in place, never occurs.
+
+**Fix: `stop_grace_period` derived from `CELERY_TASK_TIME_LIMIT`, not invented.**
+`deploy/compose.yaml`'s `worker` now sets `stop_grace_period: ${WORKER_STOP_GRACE_PERIOD:-1860s}`
+— `CELERY_TASK_TIME_LIMIT` (1800s, this codebase's own already-settled answer to "how long may a
+check legitimately run") plus the same 60s margin `CELERY_BROKER_TRANSPORT_OPTIONS` already adds
+to that constant, reused rather than a fresh number chosen for this one setting. A task that would
+need longer than that is already going to be stopped by Celery's own hard time limit regardless of
+what Docker does, so there is no case where raising the grace period further would save a
+legitimate check that this one does not already cover. Overridable exactly like `WORKER_MEM_LIMIT`
+(T-0033), so the same compose file can restore the pre-fix 10s behaviour on demand for evidence.
+
+**`CHECK_RUN_MAX_CLAIMS` stays 3, re-justified rather than re-derived.** This number was never
+measured against real crash-frequency data — T-0033's own comment defends it by a different
+argument (upload sizing against worker memory), not by a claims-frequency measurement, and no
+such measurement exists anywhere in this codebase. Now that the grace-period fix removes an ordinary
+deploy from the population this bound counts, what is left is genuine resource exhaustion and any
+other real crash — and this system has never run in production, so there is no crash-frequency
+data anywhere in this codebase to derive a number from; `3` was never that kind of number and
+still isn't. What *is* measured (T-0033) is that `MAX_UPLOAD_BYTES` sizes one check to fit its
+share of worker memory with an 80% margin at `--concurrency 2` — so the one legitimate way a
+correctly-sized upload still gets OOM-killed is two such checks transiently overlapping on the
+same worker, a condition that resolves itself as soon as the neighbour finishes. One retry
+benefits from that; more retries do not help a model that is genuinely too large (T-0033's actual
+poison message), and only cost the shared queue more of them. `3` is kept as that defended
+minimum, not raised, and not re-derived from data that does not exist.
+
+**`claim_count` needs no reset.** The mechanism chosen is prevention (stop the SIGKILL from
+happening), not post-hoc cause classification inside `_claim` — no "cause" field was added to the
+row, so the reasoning T-0033 already relied on (a fresh request creates a new `CheckRun`; a
+`FAILED` run is not in flight) is exactly as true after this task as before it. Reopens only if a
+future change makes `_claim` distinguish causes explicitly, which this task deliberately does not
+do.
+
+**Environmental finding, not a product defect:** this task's real-path evidence was corrupted at
+first by a leftover, non-Docker `celery -A cadgpt.config.celery worker` process already running on
+the host (started by an earlier, unrelated session against `services/api/.env`'s forwarded
+`localhost:6380`/`:5433`), racing the Docker worker for the same Redis-backed `checks` queue and
+failing every task it won with a host-path `ENOENT` — nothing inside this product ever produces
+that error. Not killed (host-process termination is outside this task's write scope); neutralized
+for the evidence runs by moving Redis's published host port (`deploy/.env`, gitignored,
+`REDIS_HOST_PORT=16380`) out from under it. Worth a human's attention outside this task.

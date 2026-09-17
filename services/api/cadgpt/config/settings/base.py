@@ -316,6 +316,25 @@ CELERY_BEAT_SCHEDULE = {
 # same row-locked transaction that flips the run to `RUNNING`, not after the expensive
 # work starts, so the count survives a kill at any point after the claim is recorded and
 # never undercounts an attempt that got that far.
+#
+# T-0062: an *ordinary deploy* is no longer meant to be a member of the population this
+# bound counts at all -- `deploy/compose.yaml`'s `stop_grace_period` is now set well above
+# a check's own allowed running time, so a routine `docker compose up -d worker` is
+# absorbed by Celery's warm shutdown and never reaches the SIGKILL that would burn a claim.
+# What is left, once that population is removed, is genuine resource exhaustion (the OOM
+# killer) and any other cause that actually crashes the process handling the check --
+# neither of which this system has ever run in production, so there is no crash-frequency
+# data anywhere in this codebase to derive a number from, and `3` was never that kind of
+# number to begin with. What *is* measured is T-0033's memory derivation: `MAX_UPLOAD_BYTES`
+# is sized so a single check fits its share of the worker's memory with an 80% margin at
+# `--concurrency 2`, which means the one legitimate way a correctly-sized upload can still
+# be OOM-killed is two such checks overlapping on the same worker at once, transiently
+# pushing their combined RSS over the container limit -- a condition that resolves itself
+# as soon as the neighbour finishes, and one retry is enough to benefit from that. Kept
+# low, rather than raised, because a model that is *not* transient -- genuinely too large,
+# or the true poison message T-0033 exists for -- gains nothing from more attempts and only
+# costs the shared queue more of them. `3` is kept as that defended minimum, not a
+# frequency-derived figure; see docs/decisions.md.
 CHECK_RUN_MAX_CLAIMS = env.int("CHECK_RUN_MAX_CLAIMS", default=3)
 
 # How many non-passing elements one requirement itemises in a stored report. Counts stay

@@ -56,6 +56,16 @@ services:
       DATABASE_URL: postgres://cadgpt:cadgpt@postgres:5432/cadgpt
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
+      # Defaults match `base.py`'s own `env.int` defaults exactly -- overriding here does
+      # nothing on an ordinary `make up`. T-0062's evidence needs this reachable from
+      # compose, the same way T-0033's poison-message proof needs `WORKER_MEM_LIMIT`
+      # reachable: `CHECK_RUN_STALL_SECONDS` and the broker's `visibility_timeout` both
+      # derive from `CELERY_TASK_TIME_LIMIT`, so shrinking it here shrinks a real check's
+      # allowed running time and both of those derived windows together, at the same 60s
+      # margin, letting the exact real Celery/Redis/Docker mechanics this task's evidence
+      # depends on play out in seconds instead of the production default's tens of minutes.
+      CELERY_TASK_TIME_LIMIT: ${CELERY_TASK_TIME_LIMIT:-1800}
+      CELERY_TASK_SOFT_TIME_LIMIT: ${CELERY_TASK_SOFT_TIME_LIMIT:-1500}
       CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:8080
       CSRF_TRUSTED_ORIGINS: http://localhost:5173,http://localhost:8080
     command: >
@@ -85,6 +95,35 @@ services:
     # Overridable so the same compose file can reproduce the poison-message evidence in
     # T-0033's task file with a deliberately smaller limit, e.g. `WORKER_MEM_LIMIT=400m`.
     mem_limit: ${WORKER_MEM_LIMIT:-4g}
+    # T-0062: without this, Docker's default of 10s applies. `docker compose up -d worker`
+    # sends SIGTERM; Celery's prefork pool answers a first SIGTERM with a *warm* shutdown
+    # (verified against this image's installed celery==5.6.3: `celery.apps.worker.
+    # install_worker_term_handler` maps plain SIGTERM to 'Warm', and
+    # `celery.concurrency.prefork.TaskPool.on_stop` calls the billiard pool's `close()`
+    # then `join()` -- new work stops, but an in-flight task's child process is left to
+    # finish and exit on its own) -- so a check still running when the grace period
+    # elapses is what forces Docker's SIGKILL, which kills every process in the container
+    # at once, including Celery's own MainProcess. That is a different, harder failure
+    # than T-0033's poison-message proof, where the OOM killer took only the *child* fork
+    # and the surviving MainProcess raised `WorkerLostError` and re-queued the message
+    # itself within seconds: here nothing survives to reject-and-requeue, so redelivery
+    # waits on Redis's own `visibility_timeout` (`CELERY_BROKER_TRANSPORT_OPTIONS`,
+    # `services/api/cadgpt/config/settings/base.py`) -- tens of minutes at the default,
+    # racing `CHECK_RUN_STALL_SECONDS`'s own sweep for which one notices first. Either
+    # way a healthy check's claim is spent on a deploy that had nothing to do with it.
+    # `CELERY_TASK_TIME_LIMIT` (`base.py`) is this codebase's own standing answer to "how
+    # long may a check legitimately run" -- `CHECK_RUN_STALL_SECONDS` already derives from
+    # it by default, and a task that runs longer is stopped by Celery's own hard time
+    # limit regardless of what Docker does. Setting the grace period to that same duration
+    # plus the same 60s margin `CELERY_BROKER_TRANSPORT_OPTIONS` already adds to it (rather
+    # than a new margin invented for this one setting) means an ordinary deploy's SIGTERM
+    # is absorbed by the warm shutdown for every check that finishes within its own allowed
+    # time, and only a task Celery itself would already have killed, or a real crash, ever
+    # reaches Docker's SIGKILL. Overridable the same way `WORKER_MEM_LIMIT` is, so this
+    # compose file can also reproduce T-0062's own evidence with a deliberately short
+    # period, e.g. `WORKER_STOP_GRACE_PERIOD=10s` to restore the pre-fix behaviour on
+    # demand.
+    stop_grace_period: ${WORKER_STOP_GRACE_PERIOD:-1860s}
     volumes:
       - media_data:/app/services/api/mediafiles
     depends_on:

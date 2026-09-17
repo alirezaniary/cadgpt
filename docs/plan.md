@@ -1031,6 +1031,45 @@ migration correctly scoped to only this task's field change, leaving a pre-exist
 detail rendering real Persian sourced from the compiled catalogue; two new Storybook `play`
 tests proving the page renders whichever sentence the server sends, not a hardcoded one.
 
+**T-0062 — an ordinary deploy burned a run's claims exactly like an OOM kill. Done
+2026-09-17.** `CHECK_RUN_MAX_CLAIMS = 3` counts every claim identically; `deploy/compose.yaml`
+set no `stop_grace_period`, so Docker's default 10s applied, and a check still running when an
+ordinary `docker compose up -d worker` deploy landed got SIGKILLed for reasons having nothing to
+do with memory. Mechanism verified against the actually-installed `celery==5.6.3`/`kombu==5.6.2`:
+a plain SIGTERM triggers Celery's own warm shutdown, which lets an in-flight check finish
+naturally with no signal to the child — so `stop_grace_period` set above a check's own allowed
+running time (`CELERY_TASK_TIME_LIMIT` + the same 60s margin `CELERY_BROKER_TRANSPORT_OPTIONS`
+already uses) means an ordinary deploy's SIGTERM is always absorbed before Docker's SIGKILL would
+fire. This is prevention, not classification — `_claim` never learns why a worker died, because
+the one cause this task removes (routine redeploys) is kept from ever producing a kill.
+`CHECK_RUN_MAX_CLAIMS` stays 3, re-justified rather than re-derived (no crash-frequency data
+exists to derive it from); `claim_count` needs no reset, since nothing about when it's written
+changed.
+
+**Reviewer-gated as specified, two fix-now rounds on the write-up, code unchanged in both.** The
+reviewer independently re-derived the Celery mechanism from installed source, confirmed
+`stop_grace_period` cannot affect the kernel OOM killer, and reproduced all three real-path
+proofs' database rows exactly as pasted. Two findings were about what the evidence and
+`docs/decisions.md` *claimed*, not the code: the first write-up generalized a compressed-timescale
+observation (proof 1's `CELERY_TASK_TIME_LIMIT=60`) — that an ordinary deploy is always caught by
+`reap_stalled_runs` as `STALLED` rather than by redelivery as `resource_exhausted` — into a
+settled fact about "this stack." The reviewer's arithmetic (the beat sweep's tick interval,
+`CELERY_TASK_TIME_LIMIT/4`, against the fixed 60s redelivery margin, crossing over at
+`CELERY_TASK_TIME_LIMIT=240s`) shows the opposite holds at production's `1800s` default: Redis's
+redelivery wins the race roughly 87% of the time there, so the task's own original Why section —
+an ordinary deploy eventually burning a claim via `resource_exhausted` — is the realistic outcome
+in production, not the exception proof 1 seemed to suggest. Separately, `docs/decisions.md`
+attributed a quote ("was not measured") to T-0033's own comment that T-0033 never wrote. Neither
+finding touches whether the fix works — raising `stop_grace_period` removes the SIGKILL event
+itself, closing both failure surfaces regardless of which one would have won a race that, with the
+fix deployed, never occurs — so both rounds were documentation-only corrections to the evidence
+and decision record. Three further findings queued rather than fixed: `stop_grace_period`'s value
+is a hardcoded literal that can silently decouple from `CELERY_TASK_TIME_LIMIT` if the latter is
+overridden alone, reintroducing this task's own bug (**T-0095**); the `CHECK_RUN_MAX_CLAIMS`
+comment's own argument technically supports 2, not the 3 it's attached to (**T-0096**); and the
+large-model proofs used an uncommitted one-off generator instead of T-0033's own committed
+`scripts/generate_large_ifc_model.py` (**T-0097**).
+
 **T-0038 — a specification that asserted nothing must not report PASS either. Done
 2026-09-10.** The other half of T-0028's fix, at the level up it was explicitly forbidden to
 touch: `judge()` reported `PASS` for an `optional`-cardinality specification with zero
@@ -1710,8 +1749,18 @@ Added 2026-09-08, from the T-0056 review:
 - ~~**T-0083** — the server never activates the Persian the product is hardcoded to.~~
   **Done 2026-09-09.** See "What has landed" below.
 
-- **T-0062** — an ordinary deploy burns a run's claims, and there are only three. **The important
-  one of this group:** refusing a healthy check is worse than the failure the bound prevents.
+- ~~**T-0062** — an ordinary deploy burns a run's claims, and there are only three.~~ **Done
+  2026-09-17.** See "What has landed" above.
+
+Added 2026-09-17, from the T-0062 review:
+
+- **T-0095** — `stop_grace_period` is a hardcoded literal that can silently decouple from
+  `CELERY_TASK_TIME_LIMIT` if the latter is overridden alone.
+- **T-0096** — the `CHECK_RUN_MAX_CLAIMS` comment's own argument technically supports 2, not
+  the 3 it's attached to.
+- **T-0097** — T-0062's large-model proofs used an uncommitted generator instead of T-0033's
+  own committed `scripts/generate_large_ifc_model.py`.
+
 - **T-0063** — the stated limit must be the enforced limit.
 - **T-0064** — the old 512MB ceiling is still live at nginx, and nothing guards client-side.
 - **T-0065** — the memory model is a two-point line and its one corroborating point disagrees.
