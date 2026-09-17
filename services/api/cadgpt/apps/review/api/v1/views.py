@@ -110,6 +110,20 @@ class CheckRunViewSet(
         "retrieve": CheckRunDetailSerializer,
     }
 
+    def get_permissions(self) -> list[Any]:
+        """Reading a run is `IsTenantMember`; queuing work on it is not.
+
+        `generate_report` dispatches `generate_report_file` onto the same `checks` queue
+        real model checks run on -- the same shape of action as `ReviewViewSet.check`,
+        which already requires `IsTenantMemberOrAbove`. Without this override a VIEWER,
+        documented as "may read the tenant's work but change nothing", could queue that
+        work anyway (T-0060). Listing, reading, and downloading a report stay at the
+        membership floor; only the action that dispatches a task is raised.
+        """
+        if self.action == "generate_report":
+            return [IsTenantMemberOrAbove()]
+        return list(super().get_permissions())
+
     def get_queryset(self) -> QuerySet[CheckRun]:
         runs = self.tenant_queryset().filter(review__uuid=self.kwargs["review_uuid"])
         if self.action == "list":
@@ -178,6 +192,19 @@ class CheckRunViewSet(
         is untouched, and a run whose generation is already in flight is not duplicated.
         Both are `generate`'s own row-locked contract, nothing new here; this route only
         adds a second way to trigger it.
+
+        No `throttle_scope`, deliberately (T-0060). The queue-flood concern that motivated
+        raising this action's permission floor was "any VIEWER can hit this"; that is a
+        population problem, and the fix is the population no longer including VIEWER.
+        Adding a throttle on top would only bound a *member's* repeat presses, and this
+        action's own idempotence already bounds those tightly: `generate` locks the row,
+        checks `report_file_id`, and returns without rendering or storing anything once a
+        file exists -- one real render per succeeded run, everything after is a cheap
+        lock-and-return. Throttling it more than `check` above, which dispatches a full,
+        uncached model check on every call and carries the same `throttle_classes=[]`,
+        would make the cheaper, idempotent action the stricter one for no reason tied to
+        cost. If a real flood vector is ever found here, it is the same vector `check`
+        already has, and the fix belongs on both together, not on this one alone.
         """
         run = self.get_object()
         if run.status != CheckRunStatus.SUCCEEDED:

@@ -23,7 +23,8 @@ from cadgpt.apps.review.models import Review
 from cadgpt.apps.review.services import ReviewService
 from cadgpt.apps.rulepack.models import RulePack, RuleSet
 from cadgpt.apps.rulepack.services import RulePackService, RuleSetService
-from cadgpt.apps.tenancy.models import Tenant
+from cadgpt.apps.tenancy.choices import MembershipRole
+from cadgpt.apps.tenancy.models import Membership, Tenant
 from cadgpt.apps.tenancy.services import TenantProvisioningService
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
@@ -158,6 +159,44 @@ def rival_api(other_owner: User, other_tenant: Tenant) -> APIClient:
     client = APIClient()
     client.force_authenticate(user=other_owner)
     client.defaults["HTTP_X_TENANT"] = other_tenant.slug
+    return client
+
+
+@pytest.fixture
+def viewer_user(tenant: Tenant) -> User:
+    """A member of `tenant` with the lowest role: read, never write (T-0060)."""
+    user = AccountService().register(
+        email="viewer@example.test", password=PASSWORD, full_name="Viewer"
+    )
+    Membership.objects.grant(tenant=tenant, user=user, role=MembershipRole.VIEWER)
+    return user
+
+
+@pytest.fixture
+def viewer_api(viewer_user: User, tenant: Tenant) -> APIClient:
+    """A client authenticated as a VIEWER in `tenant` -- may read, must not queue work."""
+    client = APIClient()
+    client.force_authenticate(user=viewer_user)
+    client.defaults["HTTP_X_TENANT"] = tenant.slug
+    return client
+
+
+@pytest.fixture
+def member_user(tenant: Tenant) -> User:
+    """A member of `tenant` at the floor `IsTenantMemberOrAbove` requires (T-0060)."""
+    user = AccountService().register(
+        email="member@example.test", password=PASSWORD, full_name="Member"
+    )
+    Membership.objects.grant(tenant=tenant, user=user, role=MembershipRole.MEMBER)
+    return user
+
+
+@pytest.fixture
+def member_api(member_user: User, tenant: Tenant) -> APIClient:
+    """A client authenticated as a plain MEMBER in `tenant` -- above the VIEWER floor."""
+    client = APIClient()
+    client.force_authenticate(user=member_user)
+    client.defaults["HTTP_X_TENANT"] = tenant.slug
     return client
 
 

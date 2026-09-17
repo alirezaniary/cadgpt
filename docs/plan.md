@@ -973,6 +973,39 @@ removed frontend button before landing. Verified against the live stack: a run d
 recovering it with a real, fetchable report file over authenticated HTTP, and a second
 `--include-failed` run confirmed as a genuine no-op.
 
+**T-0060 — a VIEWER could queue work on the shared check queue. Done 2026-09-17.**
+`CheckRunViewSet.generate_report` required only `IsTenantMember`, while the analogous
+`ReviewViewSet.check` required `IsTenantMemberOrAbove` — a role-floor asymmetry, not a
+tenant-isolation leak (`get_object()` already goes through `tenant_queryset()`). A VIEWER,
+documented as "may read the tenant's work but change nothing," could enqueue
+`generate_report_file` on the shared `checks` queue. Closed with a `get_permissions`
+override raising `generate_report` alone to `IsTenantMemberOrAbove`; `list`/`retrieve`/
+`report_file` (the download) stay at `IsTenantMember`, confirmed live — a VIEWER still
+reads and downloads. No throttle added: the flood concern was a population problem the role
+fix already closes, and `generate` is idempotent and cheap after the first render.
+
+**Reviewer-gated on the tenancy role invariant, one fix-now round.** The reviewer confirmed
+the production fix live (VIEWER 403 / MEMBER 202 on both `check` and `generate-report`) and
+found one fail-now defect in the new structural regression test
+(`cadgpt/tests/test_role_floor.py`, written to catch the next endpoint that ships without an
+equivalent role floor): its permission resolver assumed router-injected `@action` kwargs, a
+mechanism that does not apply to `CheckRunViewSet.generate_report`'s own hand-wired route —
+so the guard would have false-passed a regression on exactly the routing style of the
+endpoint the whole task exists to protect, proven by mutation (swapping the shipped fix for
+an "idiomatic" `@action(permission_classes=...)` form made the structural test report "no
+offenders" while a VIEWER genuinely got through). Closed same task: permission resolution
+now derives from the actually-resolved route's callback (`cls`/`actions`/`initkwargs`) file
+`ViewSetMixin.as_view()` really constructs, not an assumed registration path. `make verify`
+re-run clean, 328 passed. Four further findings queued rather than fixed: the same guard can
+still misattribute permissions under an `@action.mapping`-decorated verb sharing a route
+with a differently-named sibling, unused anywhere today (**T-0091**); the no-throttle
+reasoning bounds work-per-message rather than queue depth, and understates a narrow race in
+`generate`'s own dropped-lock window (**T-0092**); the evidence's idempotence proof pasted
+one `Media` uuid where it claimed two matched, and a docstring names a throttle mechanism
+that never actually applies on this hand-wired route (**T-0093**); and nothing pins a
+VIEWER's continued ability to download a report against a future widening of the permission
+branch (**T-0094**).
+
 **T-0038 — a specification that asserted nothing must not report PASS either. Done
 2026-09-10.** The other half of T-0028's fix, at the level up it was explicitly forbidden to
 touch: `judge()` reported `PASS` for an `optional`-cardinality specification with zero
@@ -1628,7 +1661,18 @@ Added 2026-09-14, from the T-0055 review:
   **Done 2026-09-14.** See "What has landed" above.
 - ~~**T-0059** — a run stranded by the size cap has no way back once the cap is raised.~~
   **Done 2026-09-14.** See "What has landed" above.
-- **T-0060** — queuing work needs a role floor; a viewer can flood the check queue.
+- ~~**T-0060** — queuing work needs a role floor; a viewer can flood the check queue.~~
+  **Done 2026-09-17.** See "What has landed" above.
+
+Added 2026-09-17, from the T-0060 review:
+
+- **T-0091** — the role-floor structural guard can misattribute permissions under
+  `@action.mapping`-decorated verbs; unused pattern today.
+- **T-0092** — the no-throttle reasoning on `generate_report` bounds work-per-message, not
+  queue depth, and understates a narrow race in `generate`'s dropped-lock window.
+- **T-0093** — an idempotence proof pasted one `Media` uuid where it claimed two matched,
+  and a docstring names a throttle that never applies on a hand-wired route.
+- **T-0094** — nothing pins a VIEWER's continued ability to download a report.
 - **T-0061** — four loose ends in the report-generation failure record.
 
 Added 2026-09-08, from the T-0056 review:
