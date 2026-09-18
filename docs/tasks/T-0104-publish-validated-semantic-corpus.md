@@ -1,7 +1,15 @@
 # T-0104 - Publish the validated semantic corpus and deferred-review ledger
 
-**Phase:** Regulation corpus 7   **Status:** open
+**Phase:** Regulation corpus 7   **Status:** superseded
 **Touches invariants:** I1, import contracts
+
+> **Superseded 2026-09-19, split.** The publication mechanism is `rule_release.py`'s hash-pinned
+> manifest, which already carries a `deferred` block and coverage counts. The **coverage-honesty
+> half of this task is not deferred** — deferring it would break "never assert compliance we did
+> not establish" — and moves into `docs/tasks/T-0109-compile-the-corpus-and-count-what-was-not.md`,
+> which must name and count every candidate that did not compile. The **deferred-human-review
+> ledger and the JSONL corpus publication are deferred** past "real IDS files exist"; they return
+> when a reviewer workflow is actually wanted. See `docs/decisions.md`, 2026-09-19.
 
 ## Why
 

@@ -1867,12 +1867,54 @@ acquisition. The pinned `tessdata_best` model data was recovered from the backup
 `.cadgpt/inbr/toolchain/tessdata-best/` with hashes matching T-0100's pins. Each task file carries
 the full audit note.
 
-The active task is a re-run of `docs/tasks/T-0100-lossless-page-transcription.md` against
-`.cadgpt/inbr/acquisition/revision-2026-09-07`. The queued tasks are
-`docs/tasks/T-0101-source-anchored-document-structure.md` followed by
-`docs/tasks/T-0102-blind-luna-semantic-extraction.md` and
-`docs/tasks/T-0103-official-web-and-semantic-validation.md`, then
-`docs/tasks/T-0104-publish-validated-semantic-corpus.md`.
+**Re-plan, 2026-09-19. The audit paragraph above is history, not current status, and the
+seven-stage list above it is superseded by T-0031.** Stages 1-3 are done against the durable
+workspace and `tools/inbr_pipeline_status.py --json` re-confirms it live: acquisition
+`revision-2026-09-06`, 43/43 documents, 5,892/5,892 pages, transcription
+`revision-2026-09-09-paddle`, 668/668 chunks complete, every stage `ready`. Rule extraction
+is complete too: 900 draft files covering 668/668 chunks, 667 carrying genuine per-record
+analysis after the Haiku remediation, chunk 42 still unreadable. 5,378 candidate records
+exist across those drafts.
+
+**The design that replaced stages 4-7 is `docs/tasks/T-0031-source-cited-rule-codification.md`**
+(note: the number collides with an unrelated frontend T-0031 on `main`; the file name
+disambiguates). Transcript -> provisional batch -> verified transcript citation -> canonical
+rule IR -> compiled IDS -> hash-pinned release. `T-0101`, `T-0102`, `T-0103` and `T-0104` are
+all marked `superseded` in their own files; see `docs/decisions.md`, 2026-09-19.
+
+**What actually works, executed against real corpus data on 2026-09-19** (chunk 313, volume 11,
+PDF page 118): `provisional-batch` produced 5 candidates and 10 transcript revisions;
+`transcript_citation.make_transcript_citation` promoted 10/10 revisions to `citation_status:
+"verified"`; `compile-native-rule` emitted a real `.ids` plus sidecar; `rule-release` packaged
+it into a hash-pinned release; `ifctester.ids.open()` parsed the result. The entire spine from
+Persian transcript to a source-cited IDS file already runs.
+
+**The one thing missing is the IFC mapping.** Of 5,378 candidate records, **zero** carry
+`entity` / `attribute` / `comparator` / `value`. The drafts are Persian prose — `statement_fa`,
+`implementation_type`, `classification` — and nothing in the repository maps prose to an IFC
+target. That mapping, plus the command that joins a candidate to its verified citation, is the
+whole remaining distance to real compiled rule files.
+
+The queue, in execution order:
+
+1. `docs/tasks/T-0105-one-ids-compiler-not-two.md` — retire the unwired duplicate compiler.
+2. `docs/tasks/T-0106-authoritative-draft-per-chunk.md` — one deterministic draft per chunk
+   across 900 files and 668 chunks; no selection policy exists today.
+3. `docs/tasks/T-0107-candidate-to-compiled-ids.md` — the missing command, proven end to end
+   on one real document.
+4. `docs/tasks/T-0108-the-ifc-mapping-table.md` — author the prose-to-IFC mapping as reviewable,
+   source-cited data.
+5. `docs/tasks/T-0109-compile-the-corpus-and-count-what-was-not.md` — the full-corpus run and
+   a coverage manifest that names every candidate that did **not** compile.
+6. `docs/tasks/T-0110-a-citation-that-quotes-one-sentence.md` — citation granularity.
+7. `docs/tasks/T-0111-reimport-the-projection-from-the-authoritative-index.md` — off the
+   critical path; the current side dump is 66% templated rows.
+
+Deferred past "real IDS files exist", as a deliberate speed call recorded in
+`docs/decisions.md`: official-web corroboration (old T-0103) and the full corpus-publication
+and deferred-human-review ledger (old T-0104). Neither gates traceability — a compiled rule's
+provenance comes from the acquisition receipt hashes, which are already pinned — and the
+coverage-honesty half of T-0104 is carried by T-0109 instead.
 
 (Renumbered from T-0024–T-0030 at merge time on 2026-09-18 — those IDs were already in use on
 `main` for unrelated frontend tasks. See `docs/decisions.md`.)

@@ -1,7 +1,16 @@
 # T-0103 - Cross-validate semantics against source evidence and the official web
 
-**Phase:** Regulation corpus 6   **Status:** open
+**Phase:** Regulation corpus 6   **Status:** superseded
 **Touches invariants:** I1, import contracts
+
+> **Superseded 2026-09-19 as a sequenced blocker, not as a concern.** Official-web corroboration
+> does not gate traceability: a compiled rule's provenance is the acquisition receipt's
+> `document_sha256`, the PDF page, and the transcript hash, all pinned already. What this task
+> would establish is that the 43-document cohort matches the live official site — and
+> `docs/plan.md` already refuses to claim present-day completeness (the 2026-09-03 cohort-drift
+> audit stands). Deferring it therefore asserts nothing we have not established. It returns if
+> the product owner needs present-day publication completeness. See `docs/decisions.md`,
+> 2026-09-19.
 
 ## Why
 

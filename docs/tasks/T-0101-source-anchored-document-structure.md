@@ -1,7 +1,15 @@
 # T-0101 - Reconstruct source-anchored document structure and mathematical evidence
 
-**Phase:** Regulation corpus 4   **Status:** open
+**Phase:** Regulation corpus 4   **Status:** superseded
 **Touches invariants:** I1, import contracts
+
+> **Superseded 2026-09-19 by `docs/tasks/T-0031-source-cited-rule-codification.md`.** That
+> design's citation contract makes structural node and span arrays optional: the document
+> identity, PDF page, transcript record, and hashes are sufficient evidence. Demonstrated on
+> 2026-09-19 — a `citation_status: "verified"` citation was produced from a real chunk-313
+> transcript revision with `source_node_ids: []` and `source_span_ids: []`, compiled to a real
+> `.ids`, and parsed by `ifctester`. `source_reanchor.py` remains available as an optional
+> audit. See `docs/decisions.md`, 2026-09-19.
 
 ## Why
 

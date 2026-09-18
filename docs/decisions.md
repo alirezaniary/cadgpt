@@ -1821,3 +1821,84 @@ paths, and the verification script are in `docs/inbr-haiku-remediation-runbook.m
 **Reopens if:** the per-chunk cross-check finds the already-imported 27-document Postgres
 data (`cadgpt-database-2026-09-16.dump`) used a templated draft where a real one exists —
 deferred until after the 190 chunks are filled, not yet run.
+
+## 2026-09-19 — The INBR route is re-planned around T-0031; the only missing component is the IFC mapping
+
+Re-derived from the repository and from real runs rather than from the docs, because several
+docs contradicted the code. Corrections to what was believed:
+
+- `docs/plan.md`'s INBR narrative still named a re-run of T-0100 as the active task and
+  T-0101/T-0102/T-0103/T-0104 as the queue. All four are superseded by
+  `docs/tasks/T-0031-source-cited-rule-codification.md`, which was merged on 2026-09-18 but
+  only ever recorded in T-0102's own Status line. The plan also pointed at acquisition
+  `revision-2026-09-07`; the live workspace is `revision-2026-09-06`.
+- The side PostgreSQL dump in the `inbr-dump-pg` container holds **43** documents / 5,892 pages
+  / 3,346 rule candidates, not 27 documents. The cross-check that was deferred in
+  `docs/inbr-haiku-remediation-runbook.md` is now answered: **2,204 of those 3,346 candidates
+  (66%) were imported from the `rule-worker-a`/`b`/`c` templated stub drafts.** That data is not
+  evidence of anything and must not be treated as a checkpoint.
+- The deployed `cadgpt-api-1` image predates the merge — `manage.py showmigrations inbr` returns
+  "No installed app with label 'inbr'" — even though `cadgpt.apps.inbr` is in `LOCAL_APPS` in
+  source. The Django path has never run in the running stack.
+- The Django `inbr` app and `packages/regulations/sql/rule_projection.sql` are **not** competing
+  implementations. They are two views of one schema: identical `db_table` names, identical
+  index names, identical column sets. Django's `0001_initial` owns the application database;
+  the SQL file is the standalone rebuild script that `rule_projection.py` mirrors. Nothing to
+  reconcile, but no test asserts they stay in step.
+
+**What was proven to run, on real corpus data, 2026-09-19** (chunk 313, volume-11-edition-1400,
+PDF page 118): `provisional-batch` -> 5 candidates + 10 transcript revisions;
+`transcript_citation.make_transcript_citation` -> 10/10 promoted to `citation_status: "verified"`;
+`compile-native-rule` -> real `.ids` + sidecar; `rule-release` -> hash-pinned release directory;
+`ifctester.ids.open()` parsed it. The spine is real.
+
+**The gap is the IFC mapping, and only that.** Across all 900 draft files and 5,378 candidate
+records, **zero** carry `entity`/`attribute`/`comparator`/`value`. The drafts hold Persian prose.
+Nothing maps prose to an IFC target. Secondarily, `make_transcript_citation` — the function that
+promotes a provisional citation to a `verified` one — is reachable only from tests; no CLI
+command joins a candidate to it.
+
+**Decision — the fast path is five tasks, T-0105 through T-0109**, in that order: pick one of the
+two compilers; establish a deterministic authoritative draft per chunk; build the
+candidate-to-compiled-IDS command and prove it on one document; author the IFC mapping as
+reviewable source-cited data; then run the corpus and publish a coverage manifest. T-0110
+(citation granularity) and T-0111 (re-import the projection) follow and gate nothing.
+
+**Decision — T-0101, T-0103 and T-0104 are marked `superseded`** in their own files, joining
+T-0102. T-0101 (source-anchored document structure) is superseded on its merits: T-0031's
+citation contract makes structural node and span arrays optional, and a `verified` citation was
+produced this session with `source_node_ids: []`. T-0103 (official-web corroboration) and T-0104
+(full publication and deferred-review ledger) are superseded **as sequenced blockers**, not as
+concerns. Their substance is explicitly deferred past "real IDS files exist":
+
+- Web corroboration does not gate traceability. A compiled rule's provenance is the acquisition
+  receipt's `document_sha256`, the PDF page, and the transcript hash — all pinned already. What
+  web corroboration would establish is that the 43-document cohort matches the live official
+  site, and the plan already refuses to claim present-day completeness (the 2026-09-03 audit
+  paragraph stands). Deferring it asserts nothing we have not established.
+- The coverage-honesty half of T-0104 is **not** deferred, because deferring it would break
+  "never assert compliance we did not establish". It moves into T-0109: the release must name
+  and count every candidate that did not compile, with its reason. `rule_release.py` already
+  carries a `deferred` block and coverage counts for exactly this.
+
+**Decision — the Postgres import is off the critical path.** The compilers read files, not rows;
+the projection is a query convenience. T-0111 re-imports it from the authoritative index once
+that index exists, replacing the templated rows.
+
+**Decision — content quality of the 190 remediated chunks gets no separate review task.** Only
+candidates that acquire an IFC mapping in T-0108 reach a compiler, and authoring that mapping
+requires reading the candidate. Unmapped candidates are inert and are counted as uncompiled by
+T-0109. A bad candidate can therefore never become a silent PASS; it can only fail to become a
+rule, which the coverage manifest reports.
+
+**Known defects logged here so they are not rediscovered:** `implementation_type: "table_lookup"`
+appears on 4 candidates and is outside the documented five-value enum; chunk 42 still fails JSON
+parsing and has no usable draft; `citation.citation_description` prints
+`صفحه چاپی {pdf_page}` when `printed_page_label` is null, asserting a printed-page label that was
+never established; and the compiled `instructions` field carries the whole transcript section
+(thousands of characters of garbled scan OCR) rather than the sentence the rule came from.
+
+**Reopens if:** the product owner needs present-day publication completeness (web corroboration
+returns), a reviewer workflow before release (T-0104's ledger returns), or if the IFC mapping
+turns out not to be authorable at useful volume — in which case the corpus yields a searchable
+cited requirement catalogue rather than executable IDS, and that is a different product decision.
