@@ -1852,7 +1852,23 @@ ignored, restart-safe `.cadgpt/inbr/` workspace described in `docs/inbr-operatio
    report. Processing runs to terminal states without waiting for a reviewer; flagged content
    cannot enter the publishable corpus until reviewed later.
 
-The active task is `docs/tasks/T-0100-lossless-page-transcription.md`. The queued tasks are
+**Durable-evidence audit, 2026-09-18.** Stage 3 is marked done in
+`docs/tasks/T-0100-lossless-page-transcription.md`, but its qualifying run lived in `/tmp` and no
+longer exists, and neither does any copy of it. The durable workspace holds a valid 43-document /
+5,892-page T-0099 acquisition and, for stage 3, only a one-document smoke run. The external backup
+`cadgpt-nonrepo-material-2026-09-16.zip` contains one full-corpus transcription, but it is a
+PaddleOCR run that mainline `transcription-check` rejects on four counts, and the structure and
+extraction trees built on it are likewise unusable (no `structure.json`; an extraction queue with
+`passes: ["structured_transcript"]` that `extraction-status` rejects for lacking blind passes A and
+B). Stages 6 and 7 have no implementation at all — none of `web-evidence`, `validate-semantics`,
+`validation-check`, `publish-corpus` or `corpus-check` exists. So stages 3–7 are all genuinely
+unstarted in evidence terms, and the route restarts at a stage-3 re-run from the durable
+acquisition. The pinned `tessdata_best` model data was recovered from the backup into
+`.cadgpt/inbr/toolchain/tessdata-best/` with hashes matching T-0100's pins. Each task file carries
+the full audit note.
+
+The active task is a re-run of `docs/tasks/T-0100-lossless-page-transcription.md` against
+`.cadgpt/inbr/acquisition/revision-2026-09-07`. The queued tasks are
 `docs/tasks/T-0101-source-anchored-document-structure.md` followed by
 `docs/tasks/T-0102-blind-luna-semantic-extraction.md` and
 `docs/tasks/T-0103-official-web-and-semantic-validation.md`, then

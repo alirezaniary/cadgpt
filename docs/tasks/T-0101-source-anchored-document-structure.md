@@ -117,6 +117,83 @@ done.
 
 Not run yet.
 
+### Durable-workspace audit, 2026-09-18
+
+An audit of `.cadgpt/inbr/` and of the external backup
+`/media/alireza/09210865357/cadgpt-nonrepo-material-2026-09-16.zip` (44.9 GB, 134,773 entries,
+read-only) established that no qualifying structure run exists and that none can currently be
+produced, because T-0101's only input — a re-attesting full-corpus T-0100 transcription — does not
+exist anywhere.
+
+What is in the durable workspace today:
+
+```sh
+$ uv run cadgpt-regulations acquisition-check \
+    .cadgpt/inbr/acquisition/revision-2026-09-07/acquisition.json \
+    --root .cadgpt/inbr/acquisition/revision-2026-09-07 \
+    --catalog packages/regulations/src/cadgpt_regulations/data/inbr_catalog.json
+valid acquisition: 10/10 metadata, 43/43 PDFs, 5892 pages, 470674872 bytes
+```
+
+The T-0099 cohort is intact and valid. `.cadgpt/inbr/transcription/revision-2026-09-07` is not a
+corpus run: its two transcription manifests summarise `documents_expected: 1` with 40 and 41 pages
+respectively, and `.cadgpt/inbr/structure/structure.json` and `structure2/structure.json` are the
+structure outputs of those one-document smoke runs (3.1 KB each). `.cadgpt/inbr/extraction`,
+`extraction2`, `validation` and `publication` are empty directories.
+
+The backup holds three transcription revisions and three structure revisions. Only
+`transcription/revision-2026-09-09-paddle` has a transcription manifest at all
+(`manifests/transcription/eefa9043….json`, `bundles: 668`, `documents_processed: 43`,
+`pages_expected: 5892`, `pages_failed: 0`, `pages_needs_review: 4674`, `pages_ready: 1218`).
+`transcription/revision-2026-09-06` (21.9 GB, 60,691 files) contains only `manifests/page-probe`
+entries — `transcribe` never produced a manifest there, so it is an unfinished render stage, not a
+transcription. `transcription/revision-2026-09-08-f6` and `f6-smoke-2026-09-08` are smoke runs.
+
+The paddle revision was extracted in full (14.5 GB) alongside the acquisition receipt it binds to
+(`revision-2026-09-06`, canonical SHA-256 `bd6be8d2546580bac2c059a2a5fd93a376f237b64f20c2af5c5e6ab67f158535`,
+matching the manifest's `acquisition.receipt_sha256`) and checked with mainline code:
+
+```sh
+$ uv run cadgpt-regulations transcription-check \
+    .../transcription/revision-2026-09-09-paddle/manifests/transcription/eefa90439f34920f139f6a1cedb6f96de49613549a9f4937857b948fccd680dc.json \
+    --root .../transcription/revision-2026-09-09-paddle \
+    --acquisition-root .../acquisition/revision-2026-09-06 \
+    --catalog packages/regulations/src/cadgpt_regulations/data/inbr_catalog.json
+- acquisition: ACQUISITION_INVALID: cannot inspect acquisition quarantine directory .../quarantine
+- page-probe: PAGE_PROBE_INVALID: page probe schema error at configuration:
+  Additional properties are not allowed ('paddle_device' was unexpected)
+- transcription: TRANSCRIPTION_INVALID: transcription schema error at configuration:
+  Additional properties are not allowed ('ocr_engine', 'paddle_det_model', 'paddle_device',
+  'paddle_rec_model', 'paddle_text_det_limit_side_len', 'paddle_text_recognition_batch_size'
+  were unexpected)
+- output: OUTPUT_INVENTORY_INVALID: generated evidence inventory differs:
+  unindexed=['ledger.json', 'ledger.lock', 'ledger/a0e11055….json'],
+  missing=['pages/…/000005/render.png', …]
+observed 43 documents and 5892 pages; 4 blocker(s)
+```
+
+The two schema blockers are structural: that corpus was produced by a PaddleOCR toolchain
+(`paddleocr 3.7.0`, `paddlepaddle 3.3.1`, `arabic_PP-OCRv5_mobile_rec`, `paddle_device: gpu:0`)
+whose configuration keys mainline's page-probe and transcription schemas reject outright. The
+inventory blocker is two separate defects: a `ledger`/`ledger.json`/`ledger.lock` queue was written
+into the immutable transcription root, and only 4,958 of 5,892 `render.png` page renders exist
+(5,892 `page.json` and 5,892 `native.json` are present), so 934 pages have no immutable full-page
+source render. T-0100 requires one per page. The revision is therefore not usable as T-0101 input
+without a code change to T-0100's pinned toolchain contract, recovery of the missing renders, and a
+reproducibility argument for GPU PaddleOCR that T-0100's "different pinned stack … proved by the
+real path" clause would demand.
+
+The backup's structure revisions cannot substitute. `structure/revision-2026-09-14` and
+`revision-2026-09-15` are byte-identical to each other — 711 identical paths with identical sizes
+and CRC32s, and inner mtimes dated 2026-09-13 — which is exactly the deterministic re-attest-and-
+reuse behaviour this task requires and is good evidence the implementation's determinism works.
+But neither directory contains a `structure.json` manifest (both hold only `bundles/` and
+`graphs/`), so there is nothing for `structure-check`, `extract-jobs` or `semantic-publish` to
+consume, and both were built over the rejected paddle transcription.
+
+Conclusion: T-0101 remains `open` and unstarted in evidence terms. It is blocked on a
+T-0100 transcription that re-attests under mainline code.
+
 ## Review
 
 Required because this task defines the source graph and formula evidence boundary consumed by model

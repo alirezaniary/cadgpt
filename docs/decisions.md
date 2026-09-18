@@ -1766,3 +1766,24 @@ undecided), and the absent commercial sibling document answering who pays, how m
 what makes it so — at which point F6's rejected alternative returns as a reporting question (does
 a near-miss get its own visible tier above INDETERMINATE?) rather than as a counting one, because
 the counting rule is not the part that is allowed to move.
+
+**The INBR corpus restarts at transcription, and the PaddleOCR branch does not come with it
+(2026-09-18).** An audit of `.cadgpt/inbr/` and of the read-only backup
+`/media/alireza/09210865357/cadgpt-nonrepo-material-2026-09-16.zip` established that the pipeline's
+real state is: T-0099 acquisition valid and durable (43/43 PDFs, 5,892 pages, re-attests clean);
+T-0100 done in code but with its only qualifying run lost in `/tmp`; T-0101 through T-0104 with no
+qualifying run at all. The backup's one full-corpus transcription was produced by a PaddleOCR /
+GPU toolchain whose configuration keys mainline's page-probe and transcription schemas reject
+outright, which is a merge that never happened rather than a corpus that can be re-attested — and
+it additionally lacks 934 of 5,892 immutable page renders and has a work queue written into its
+immutable root. Rather than widen T-0100's pinned-stack contract retroactively to admit a
+non-deterministic GPU OCR engine over evidence we cannot re-derive, the corpus restarts from the
+durable acquisition with the Tesseract 5.3.4 / `tessdata_best` identity T-0100 already pinned and
+proved; the model data was recovered from the backup with matching hashes. Everything built on the
+paddle transcription — two byte-identical structure revisions that have no `structure.json`, a
+668-job extraction queue whose `passes` are `["structured_transcript"]` rather than blind A and B,
+and ~1,500 ad-hoc `worker-drafts/` JSON files carrying model-authored `statement_fa` Persian with
+no span anchors — is out-of-band scratch and is not ingested. Whether T-0100's status is reopened
+or a separate re-run task is filed is left to the coordinator; the task file records the gap either
+way. The 2026-09-03 `artifacts/inbr-semantic/publications/` trees are a prototype over the retired
+41-document catalog with `complete: false` and zero accepted candidates, and are superseded.

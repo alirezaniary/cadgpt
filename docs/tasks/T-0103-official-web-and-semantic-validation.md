@@ -116,6 +116,26 @@ The evidence must show:
 
 Not run yet.
 
+### Durable-workspace audit, 2026-09-18
+
+Not started, and not startable: none of this task's three commands exists.
+
+```sh
+$ uv run cadgpt-regulations --help
+{workspace,inventory,acquire,acquisition-check,page-probe,transcribe,transcription-check,
+ structure,structure-check,extract-jobs,extract-ingest,validator-ingest,extraction-status,
+ semantic-publish,semantic-publish-check,validate,publish-check}
+
+$ grep -rn 'web-evidence\|validate-semantics\|validation-check' packages/regulations/src packages/regulations/tests
+(no matches)
+```
+
+`packages/regulations/src/cadgpt_regulations/validation.py` is the T-0098 manifest/catalog checker
+("Schema, coverage, and fail-closed publication checks"), unrelated to this task.
+`.cadgpt/inbr/validation/` is empty locally and absent from the 2026-09-16 backup. No official-web
+snapshot has ever been taken. `docs/inbr-operations.md` is correct that `semantic-publish` is a
+semantic-evidence boundary and not this stage.
+
 ## Review
 
 Required because this task establishes the publication gate and introduces bounded network evidence

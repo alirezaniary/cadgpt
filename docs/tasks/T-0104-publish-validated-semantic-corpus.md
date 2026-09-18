@@ -110,6 +110,30 @@ The evidence must show:
 
 Not run yet.
 
+### Durable-workspace audit, 2026-09-18
+
+Not started. Neither `publish-corpus` nor `corpus-check` exists in `cli.py` (see the subcommand
+list quoted in T-0103's audit note); `grep -rn 'publish-corpus\|corpus-check' packages/regulations`
+returns nothing. `.cadgpt/inbr/publication/` is empty locally and absent from the 2026-09-16
+backup.
+
+The backup contains ten directories under
+`packages/regulations/artifacts/inbr-semantic/publications/<hash>/` (1.49 GB total, all timestamped
+2026-09-03) holding `manifest.json`, `documents.json`, `formats.json`, `queue.json`,
+`rules.jsonl`, `tables.jsonl`, `units.jsonl`, `formulas.jsonl`, `deferred.jsonl`, `rejected.jsonl`.
+These are `semantic-publish` output, not this task's release contract, and they are superseded:
+
+- `inputs.catalog_sha256` is `2d3e73e6c812252a07ef35cb10fd6059cf0c311af23daff92ff67d371e7cef0c`,
+  the retired 41-document / 5,695-page catalog, not the pinned cohort's
+  `2fdf671658e6099321b95bf72bc22373ca98c597a5ce699641f070813a6e05e9`.
+- `complete` is `false`; the summary reports `bundles_total: 663`, `bundles_pending: 449`,
+  `bundles_needs_validation: 28`, `bundles_validated: 186`, `deferred: 11569`, `rejected: 0`.
+- Every entry in `validated_bundles` inspected carries `accepted_candidates: 0`.
+
+So the 1.49 GB is an incomplete prototype over a cohort the corpus contract has since replaced,
+with nothing accepted. It is retained only in the read-only backup and is not a basis for this
+task.
+
 ## Review
 
 Required because this task is the final publication boundary and milestone end of the regulation

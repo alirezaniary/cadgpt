@@ -226,6 +226,48 @@ It starts with network disabled as UID/GID 10001, exposes the regulations CLI, r
 Tesseract 5.3.4, and lists only the pinned `eng`, `fas`, and `osd` data. No PDF, render,
 OCR output, model bundle, manifest, check report, or Luna response is tracked in Git.
 
+### Durable-workspace audit, 2026-09-18 — the evidence above is not recoverable
+
+The qualifying run recorded above happened in `/tmp/cadgpt-inbr-transcription.hwIllI` and
+`/tmp/cadgpt-inbr-acquisition.GzxDl0`. Neither path exists on this machine
+(`ls -d /tmp/cadgpt-inbr-*` returns nothing), and per `docs/inbr-operations.md` those artifacts
+cannot be recovered. The external backup `cadgpt-nonrepo-material-2026-09-16.zip` does not contain
+them either — it was taken from `.cadgpt/inbr/`, never from `/tmp`.
+
+What survives in the durable workspace is only the T-0099 layer plus a one-document smoke run:
+
+- `.cadgpt/inbr/acquisition/revision-2026-09-07` re-attests cleanly — `valid acquisition: 10/10
+  metadata, 43/43 PDFs, 5892 pages, 470674872 bytes`. Note its canonical receipt SHA-256 is
+  `064ce6862daf8edbfde69ec1d960b7a35966a47e3ba8ff8e24263f7750f4abb5`, a different receipt identity
+  from the backup's `revision-2026-09-06` (`bd6be8d2…`) although both pin catalog
+  `2fdf671658e60993…` and the same 43 documents / 5,892 pages.
+- `.cadgpt/inbr/transcription/revision-2026-09-07` is a smoke run: its transcription manifests
+  report `documents_expected: 1` over 40 and 41 pages. The corresponding `transcription-check`
+  reports are `valid: true` (40 pages ready, 0 blockers) and `valid: false` (41 pages failed) —
+  one document, not the corpus.
+
+The pinned OCR model data *was* recovered from the backup and restored to
+`.cadgpt/inbr/toolchain/tessdata-best/`; its hashes match this task's pins exactly:
+
+```sh
+$ sha256sum .cadgpt/inbr/toolchain/tessdata-best/*
+8280aed0782fe27257a68ea10fe7ef324ca0f8d85bd2fd145d1c2b560bcb66ba  eng.traineddata
+99e420969b5ddd2cb135b416316a7ed417c59c4faf9e0d28941348f6448114df  fas.traineddata
+9cf5d576fcc47564f11265841e5ca839001e7e6f38ff7f7aacf46d15a96b00ff  osd.traineddata
+```
+
+The Tesseract binary is not installed on this host (`tesseract --version` → command not found); the
+offline regulations Docker image recorded above is the intended execution path.
+
+The backup's only full-corpus transcription, `revision-2026-09-09-paddle`, is a PaddleOCR run that
+mainline code rejects on four counts — see the audit note in T-0101 for the full
+`transcription-check` output. It is not a substitute for the run recorded here.
+
+Status is left as `done` because the code, the tests, and the run recorded above all happened and
+were verified at the time. But no durable artifact of that run exists, so T-0101 currently has no
+input. Whether this task should be reopened, or a separate re-run task filed, is a coordinator
+decision — see `docs/decisions.md`, 2026-09-18.
+
 ## Review
 
 Required because this task establishes the evidence boundary consumed by model extraction and
