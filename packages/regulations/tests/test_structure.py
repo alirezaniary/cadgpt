@@ -5,12 +5,16 @@ import hashlib
 import json
 from pathlib import Path
 
+import cadgpt_regulations.structure as structure_module
 import pytest
 from cadgpt_regulations.errors import StructureError
 from cadgpt_regulations.jsonio import sha256_json
 from cadgpt_regulations.structure import (
     _align_alternate_lines,
     _formula_record,
+    _page_lines,
+    _printed_label,
+    _repeated_numeric_labels,
     _unit_record,
     _validate_graph_schema,
     build_structure,
@@ -109,6 +113,35 @@ def test_formula_record_preserves_source_and_defers_semantic_math() -> None:
     assert "<mtext>F = ma</mtext>" in record["presentation_mathml"]
 
 
+def test_cropless_live_transcription_equation_is_deferred_without_fake_artifact() -> None:
+    """The live Paddle evidence contains equations with no rendered crop."""
+    record = _formula_record(
+        {
+            "candidate_id": (
+                "sha256:0947a7066398b348ea5c2aab2fc1b3c3c0e69ead5438c62b69409c941e4efd5f:"
+                "page:000102:equation:0000"
+            ),
+            "crop_file": None,
+            "raw_text": " 22/5 \u00d7 16/5",
+            "span_id": (
+                "sha256:0947a7066398b348ea5c2aab2fc1b3c3c0e69ead5438c62b69409c941e4efd5f:"
+                "page:000102:native:line:000160"
+            ),
+            "source_kind": "native",
+            "bbox": [181444, 595480, 237650, 608487],
+        },
+        crop_artifacts={},
+    )
+
+    assert record["crop"] is None
+    assert record["raw_transcription"] == " 22/5 \u00d7 16/5"
+    assert record["parse_status"] == "needs_review"
+    assert record["diagnostics"] == [
+        "FORMULA_CROP_UNAVAILABLE",
+        "FORMULA_SEMANTIC_PARSE_DEFERRED",
+    ]
+
+
 def test_unit_record_maps_only_known_printed_units() -> None:
     candidate = {
         "candidate_id": "unit-1",
@@ -152,6 +185,130 @@ def test_alternate_lines_are_not_linked_by_position_when_text_differs() -> None:
         "native-1",
         "native-2",
     ]
+
+
+@pytest.mark.parametrize(
+    ("raw_text", "expected"),
+    [
+        ("  2  -5  -1  -1  عنوان", "2-5-1-1"),
+        ("\u06f2 - \u06f5 - \u06f1", "\u06f2-\u06f5-\u06f1"),
+        ("978-600-301-002-4 ISBN", None),
+        (
+            (
+                "\u06f9\u06f7\u06f8-\u06f6\u06f0\u06f0-"
+                "\u06f3\u06f0\u06f1-\u06f0\u06f0\u06f2-\u06f4 ISBN"
+            ),
+            None,
+        ),
+        ("30.000", None),
+    ],
+)
+def test_printed_label_normalizes_spaced_hyphens_and_rejects_numeric_artifacts(
+    raw_text: str, expected: str | None
+) -> None:
+    assert _printed_label({"raw_text": raw_text, "bbox": [100, 100, 300, 200]}) == expected
+
+
+def test_printed_label_rejects_running_header_in_page_margin() -> None:
+    line = {
+        "raw_text": "1-1",
+        "bbox": [100, 900, 300, 950],
+        "_coordinate_height": 1000,
+    }
+
+    assert _printed_label(line) is None
+
+
+def test_repeated_numeric_labels_are_identified_as_running_headers(tmp_path: Path) -> None:
+    pages: list[dict[str, object]] = []
+    for page_number in (1, 2, 3):
+        probe_path = Path("probe") / f"{page_number:06d}"
+        evidence_path = Path("evidence") / f"{page_number:06d}"
+        native = {
+            "coordinate_space": {
+                "height": 1000,
+                "origin": "bottom_left",
+            },
+            "lines": [
+                {
+                    "span_id": f"native-{page_number}",
+                    "raw_text": "1-1",
+                    "bbox": [100, 450, 200, 470],
+                }
+            ],
+        }
+        _write_bytes(tmp_path / probe_path / "native.json", json.dumps(native).encode())
+        evidence = {
+            "probe": {
+                "package_path": probe_path.as_posix(),
+                "route": "native",
+            }
+        }
+        _write_bytes(
+            tmp_path / evidence_path / "evidence.json", json.dumps(evidence).encode()
+        )
+        pages.append({"pdf_page": page_number, "package_path": evidence_path.as_posix()})
+
+    repeated = _repeated_numeric_labels(
+        {"pages": pages},
+        root=tmp_path,
+    )
+
+    assert repeated == {"1-1"}
+
+
+def test_mixed_native_plus_ocr_keeps_native_text_and_adds_unique_ocr_lines(
+    tmp_path: Path,
+) -> None:
+    package = Path("page")
+    native_path = tmp_path / "probe" / "native.json"
+    ocr_path = tmp_path / package / "ocr.json"
+    _write_bytes(
+        native_path,
+        json.dumps(
+            {
+                "coordinate_space": {"height": 1000},
+                "lines": [
+                    {
+                        "span_id": "native-1",
+                        "raw_text": "Native text",
+                        "bbox": [0, 100, 10, 110],
+                    }
+                ],
+            }
+        ).encode(),
+    )
+    _write_bytes(
+        ocr_path,
+        json.dumps(
+            {
+                "coordinate_space": {"height": 1000},
+                "lines": [
+                    {
+                        "span_id": "ocr-duplicate",
+                        "raw_text": "Native text",
+                        "bbox": [0, 100, 10, 110],
+                    },
+                    {
+                        "span_id": "ocr-unique",
+                        "raw_text": "OCR figure caption",
+                        "bbox": [0, 200, 10, 210],
+                    },
+                ],
+            }
+        ).encode(),
+    )
+    evidence = {
+        "probe": {
+            "package_path": "probe",
+            "route": "native_plus_ocr",
+            "classification": "mixed",
+        }
+    }
+
+    lines = _page_lines(evidence, package=package, root=tmp_path)
+
+    assert [line["span_id"] for line in lines] == ["native-1", "ocr-unique"]
 
 
 def _write_bytes(path: Path, payload: bytes) -> None:
@@ -450,3 +607,35 @@ def test_build_structure_anchors_method_abbreviation_candidates(tmp_path: Path) 
     span_id = f"{page_id}:native:line:000000"
     assert record["source_span_ids"] == [span_id]
     assert graph["pages"][0]["abbreviation_ids"] == [record["abbreviation_id"]]
+
+
+def test_build_structure_reuses_installed_graph_and_bundle_payloads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The final pass must not reread/decode generated graph or bundle files.
+
+    ``install_immutable_bytes`` has already hashed and attested these exact
+    payloads.  The build-local cache reuses their decoded objects while the
+    validator still checks the installed snapshot identity.  Source evidence
+    reads remain expected and are intentionally not suppressed here.
+    """
+    transcription_root = tmp_path / "transcription"
+    transcription_root.mkdir(mode=0o700)
+    transcription = _real_transcription_with_abbreviation(transcription_root)
+    output_root = tmp_path / "structure"
+    output_root.mkdir(mode=0o700)
+    reads: list[Path] = []
+    original = structure_module.read_attested_bytes
+
+    def recording_read(path: Path, **kwargs: object):
+        reads.append(path)
+        return original(path, **kwargs)
+
+    monkeypatch.setattr(structure_module, "read_attested_bytes", recording_read)
+    build_structure(
+        transcription,
+        transcription_root=transcription_root,
+        output_root=output_root,
+    )
+
+    assert not any(path.is_relative_to(output_root) for path in reads)

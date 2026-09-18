@@ -1,0 +1,76 @@
+{
+  "$id": "https://cadgpt.local/schemas/rule-ir-1.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schema_version",
+    "rule_key",
+    "title_fa",
+    "ifc_versions",
+    "entity",
+    "attribute",
+    "comparator",
+    "value",
+    "source_citation"
+  ],
+  "properties": {
+    "schema_version": {"const": "rule-ir-1.0.0"},
+    "rule_key": {"type": "string", "minLength": 1},
+    "title_fa": {"type": "string", "minLength": 1},
+    "ifc_versions": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "entity": {"type": "string", "minLength": 1},
+    "attribute": {"type": "string", "minLength": 1},
+    "comparator": {"enum": ["eq", "equals", "gt", "gte", "lt", "lte"]},
+    "value": {"type": "number"},
+    "unit": {"type": ["string", "null"]},
+    "source_citation": {"$ref": "#/$defs/sourceCitation"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonEmptyStrings": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "sourceCitation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document_key",
+        "book_title_fa",
+        "edition_fa",
+        "document_sha256",
+        "pdf_page",
+        "exact_text_fa",
+        "exact_text_sha256",
+        "qualifier_text_fa",
+        "citation_status"
+      ],
+      "properties": {
+        "document_key": {"type": "string", "minLength": 1},
+        "book_title_fa": {"type": "string", "minLength": 1},
+        "edition_fa": {"type": "string", "minLength": 1},
+        "document_sha256": {"$ref": "#/$defs/sha256"},
+        "pdf_page": {"type": "integer", "minimum": 1},
+        "printed_page_label": {"type": ["string", "null"], "minLength": 1},
+        "page_id": {"type": ["string", "null"], "minLength": 1},
+        "source_node_ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "source_span_ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "exact_text_fa": {"type": "string", "minLength": 1},
+        "exact_text_sha256": {"$ref": "#/$defs/sha256"},
+        "qualifier_text_fa": {"type": ["string", "null"]},
+        "citation_status": {"const": "verified"},
+        "evidence_kind": {"enum": ["source_graph", "transcript"]},
+        "transcript_revision_id": {"type": ["string", "null"]},
+        "transcript_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

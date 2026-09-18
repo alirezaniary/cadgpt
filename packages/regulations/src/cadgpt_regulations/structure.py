@@ -19,19 +19,26 @@ from cadgpt_regulations.jsonio import (
 )
 from cadgpt_regulations.resources import load_packaged_json
 from cadgpt_regulations.storage import (
+    FileSnapshot,
     InstallStatus,
     StorageError,
     ensure_private_tree,
+    file_snapshot_is_current,
     install_immutable_bytes,
     read_attested_bytes,
     safe_path,
     validate_output_root,
 )
-from cadgpt_regulations.transcription import normalize_search_text, validate_transcription
+from cadgpt_regulations.transcription import (
+    ascii_digit_view,
+    normalize_search_text,
+    validate_transcription,
+)
 
 STRUCTURE_SCHEMA_VERSION = "1.0.0"
 _LABEL_PATTERN = re.compile(
-    r"^\s*([0-9\u06f0-\u06f9\u0660-\u0669]+(?:[-.][0-9\u06f0-\u06f9\u0660-\u0669]+){1,8})(?:\s+|$)"
+    r"^\s*([0-9\u06f0-\u06f9\u0660-\u0669]+"
+    r"(?:\s*[-.]\s*[0-9\u06f0-\u06f9\u0660-\u0669]+){1,8})(?:\s+|$)"
 )
 _UCUM = {
     "mm": "mm",
@@ -72,6 +79,18 @@ class StructureRun:
     graphs_reused: int
 
 
+@dataclass(frozen=True)
+class _GeneratedArtifact:
+    """Payload and install attestation retained for one build invocation."""
+
+    payload: JsonObject
+    snapshot: FileSnapshot
+
+
+def _artifact_cache_key(path: Path) -> str:
+    return path.as_posix()
+
+
 def build_structure(
     transcription: JsonObject,
     *,
@@ -86,6 +105,7 @@ def build_structure(
         raise StructureError(str(exc)) from exc
 
     graph_records: list[JsonObject] = []
+    generated_artifacts: dict[str, _GeneratedArtifact] = {}
     created = 0
     reused = 0
     for raw_document in cast(list[JsonObject], transcription["documents"]):
@@ -96,8 +116,10 @@ def build_structure(
         relative = Path("graphs") / cast(str, graph["source_sha256"]) / f"{digest}.json"
         try:
             ensure_private_tree(output_root, relative.parent.as_posix())
-            result = install_immutable_bytes(
-                safe_path(output_root, relative.as_posix()), payload
+            graph_path = safe_path(output_root, relative.as_posix())
+            result = install_immutable_bytes(graph_path, payload)
+            generated_artifacts[_artifact_cache_key(graph_path)] = _GeneratedArtifact(
+                graph, result.snapshot
             )
         except StorageError as exc:
             raise StructureError(str(exc)) from exc
@@ -118,6 +140,7 @@ def build_structure(
                     transcription_document=raw_document,
                     output_root=output_root,
                     graph_sha256=digest,
+                    generated_artifacts=generated_artifacts,
                 ),
             }
         )
@@ -135,6 +158,12 @@ def build_structure(
         root=output_root,
         transcription=transcription,
         transcription_root=transcription_root,
+        # The transcription was fully re-attested above before any graph is
+        # built.  The graph pass re-attests every source artifact it consumes;
+        # avoid running the transcription package directory walk a second time
+        # over the multi-gigabyte corpus.
+        transcription_prevalidated=True,
+        generated_artifacts=generated_artifacts,
     )
     install = install_immutable_bytes(
         output_root / "structure.json", canonical_bytes(manifest)
@@ -154,12 +183,21 @@ def validate_structure(
     root: Path,
     transcription: JsonObject,
     transcription_root: Path,
+    transcription_prevalidated: bool = False,
+    generated_artifacts: dict[str, _GeneratedArtifact] | None = None,
 ) -> None:
     """Re-attest every graph, anchor, formula crop, and source page."""
     try:
         schema = load_packaged_json("cadgpt_regulations.schemas", "structure.schema.json")
         validate_schema(manifest, schema, description="structure manifest")
-        validate_transcription(transcription, root=transcription_root)
+        # ``build_structure`` validates the complete transcription (including
+        # package directory snapshots) before graph generation.  In that path
+        # only the inexpensive intrinsic manifest validation is needed here;
+        # direct callers retain the full source-package re-attestation default.
+        validate_transcription(
+            transcription,
+            root=None if transcription_prevalidated else transcription_root,
+        )
     except (ManifestError, StorageError, TranscriptionError) as exc:
         raise StructureError(str(exc)) from exc
     if manifest["transcription_sha256"] != sha256_json(transcription):
@@ -172,15 +210,17 @@ def validate_structure(
     for reference, source_document in zip(references, source_documents, strict=True):
         if reference["catalog_key"] != source_document["catalog_key"]:
             raise StructureError("structure document order differs from transcription")
+        graph_path = safe_path(root, cast(str, reference["path"]))
         try:
-            payload, snapshot = read_attested_bytes(
-                safe_path(root, cast(str, reference["path"])),
+            graph, snapshot = _load_generated_or_attested(
+                graph_path,
                 expected_sha256=cast(str, reference["sha256"]),
                 expected_bytes=cast(int, reference["bytes"]),
+                generated_artifacts=generated_artifacts,
+                description="source graph",
             )
         except StorageError as exc:
             raise StructureError(str(exc)) from exc
-        graph = loads_object(payload.decode("utf-8"), description="source graph")
         _validate_graph_schema(graph)
         if snapshot.sha256 != reference["sha256"]:
             raise StructureError("source graph hash differs from its reference")
@@ -188,6 +228,7 @@ def validate_structure(
             graph,
             source_document=source_document,
             transcription_root=transcription_root,
+            source_artifacts_prevalidated=transcription_prevalidated,
         )
         source_bundles = cast(list[JsonObject], source_document["bundles"])
         structural_bundles = reference.get("bundles")
@@ -195,18 +236,21 @@ def validate_structure(
             raise StructureError("structure document has no canonical bundles")
         if len(structural_bundles) != len(source_bundles):
             raise StructureError("canonical bundle count differs from transcription")
+        bundle_expectations = _build_bundle_expectations(
+            graph, source_document=source_document
+        )
         for bundle, source_bundle in zip(structural_bundles, source_bundles, strict=True):
             for field in ("sequence", "start_pdf_page", "end_pdf_page", "page_count"):
                 if bundle.get(field) != source_bundle.get(field):
                     raise StructureError(f"canonical bundle differs at {field}")
+            bundle_path = safe_path(root, cast(str, bundle["path"]))
             try:
-                payload, snapshot = read_attested_bytes(
-                    safe_path(root, cast(str, bundle["path"])),
+                loaded, snapshot = _load_generated_or_attested(
+                    bundle_path,
                     expected_sha256=cast(str, bundle["sha256"]),
                     expected_bytes=cast(int, bundle["bytes"]),
-                )
-                loaded = loads_object(
-                    payload.decode("utf-8"), description="structural bundle"
+                    generated_artifacts=generated_artifacts,
+                    description="structural bundle",
                 )
             except (StorageError, KeyError, TypeError, UnicodeDecodeError) as exc:
                 raise StructureError(f"invalid structural bundle: {exc}") from exc
@@ -236,6 +280,9 @@ def validate_structure(
                 source_document=source_document,
                 source_bundle=source_bundle,
                 bundle_reference=bundle,
+                expected_contents=bundle_expectations.get(
+                    cast(int, source_bundle["sequence"])
+                ),
             )
         if graph["counts"] != reference["counts"]:
             raise StructureError("source graph counts differ from its reference")
@@ -250,22 +297,17 @@ def _validate_structural_bundle_contents(
     source_document: JsonObject,
     source_bundle: JsonObject,
     bundle_reference: JsonObject,
+    expected_contents: JsonObject | None = None,
 ) -> None:
     start = cast(int, source_bundle["start_pdf_page"])
     end = cast(int, source_bundle["end_pdf_page"])
-    pages = cast(list[JsonObject], graph["pages"])
-    expected_pages = [
-        {
-            **page,
-            "blocks": [
-                node
-                for node in cast(list[JsonObject], graph["nodes"])
-                if node["pdf_page"] == page["pdf_page"]
-            ],
-        }
-        for page in pages
-        if start <= cast(int, page["pdf_page"]) <= end
-    ]
+    if expected_contents is None:
+        expected_contents = _build_bundle_expectations(
+            graph, source_document=source_document
+        ).get(cast(int, source_bundle["sequence"]))
+    if expected_contents is None:
+        raise StructureError("structural bundle has no expected content")
+    expected_pages = cast(list[JsonObject], expected_contents["pages"])
     actual_pages = bundle.get("pages")
     if actual_pages != expected_pages:
         raise StructureError("structural bundle pages or blocks differ from graph")
@@ -275,33 +317,130 @@ def _validate_structural_bundle_contents(
         raise StructureError("structural bundle range differs from transcription")
     if len(expected_pages) != bundle_reference["page_count"]:
         raise StructureError("structural bundle page count is false")
-    page_numbers = {cast(int, page["pdf_page"]) for page in expected_pages}
     for collection, id_field in (
         ("formulas", "formula_id"),
         ("tables", "table_id"),
         ("units", "unit_id"),
         ("abbreviations", "abbreviation_id"),
     ):
-        expected = [
-            item
-            for item in cast(list[JsonObject], graph[collection])
-            if cast(int, item["pdf_page"]) in page_numbers
-        ]
+        expected = cast(list[JsonObject], expected_contents[collection])
         if bundle.get(collection) != expected:
             raise StructureError(f"structural bundle {collection} differ from graph")
         ids = [cast(str, item[id_field]) for item in expected]
         if len(ids) != len(set(ids)):
             raise StructureError(f"structural bundle repeats {id_field}")
-    expected_edges = [
-        edge
-        for edge in cast(list[JsonObject], graph["continuation_edges"])
-        if start <= cast(int, edge["from_pdf_page"]) <= end
-        or start <= cast(int, edge["to_pdf_page"]) <= end
-    ]
+    expected_edges = cast(list[JsonObject], expected_contents["continuation_edges"])
     if bundle.get("continuation_edges") != expected_edges:
         raise StructureError("structural bundle continuation edges differ from graph")
     if source_document.get("catalog_key") != bundle.get("catalog_key"):
         raise StructureError("structural bundle catalog identity differs")
+
+
+def _load_generated_or_attested(
+    path: Path,
+    *,
+    expected_sha256: str,
+    expected_bytes: int,
+    generated_artifacts: dict[str, _GeneratedArtifact] | None,
+    description: str,
+) -> tuple[JsonObject, FileSnapshot]:
+    """Reuse a just-installed payload after checking its stable file identity.
+
+    ``install_immutable_bytes`` already hashes and attests the exact bytes.  A
+    build invocation can therefore reuse that decoded object and snapshot,
+    avoiding a second full read/decode of graph and bundle files.  Direct
+    validators, or files absent from the invocation cache, retain the original
+    read-and-hash path.
+    """
+    cached = None if generated_artifacts is None else generated_artifacts.get(
+        _artifact_cache_key(path)
+    )
+    if cached is not None:
+        if (
+            cached.snapshot.sha256 != expected_sha256
+            or cached.snapshot.bytes != expected_bytes
+            or not file_snapshot_is_current(path, cached.snapshot)
+        ):
+            raise StorageError(f"generated artifact changed after installation: {path}")
+        return cached.payload, cached.snapshot
+    payload, snapshot = read_attested_bytes(
+        path, expected_sha256=expected_sha256, expected_bytes=expected_bytes
+    )
+    return loads_object(payload.decode("utf-8"), description=description), snapshot
+
+
+def _build_bundle_expectations(
+    graph: JsonObject, *, source_document: JsonObject
+) -> dict[int, JsonObject]:
+    """Index canonical bundle contents once per graph.
+
+    Structural bundles repeat graph pages, nodes, semantic records, and
+    continuation edges.  Building each expected projection by scanning the
+    complete graph for every bundle made final validation quadratic for large
+    documents.  This index preserves byte-level equality checks while making
+    the projection work linear in the graph plus the bundle count.
+    """
+    pages = cast(list[JsonObject], graph["pages"])
+    nodes_by_page: dict[int, list[JsonObject]] = {}
+    for node in cast(list[JsonObject], graph["nodes"]):
+        nodes_by_page.setdefault(cast(int, node["pdf_page"]), []).append(node)
+    page_by_number = {
+        cast(int, page["pdf_page"]): {
+            **page,
+            "blocks": nodes_by_page.get(cast(int, page["pdf_page"]), []),
+        }
+        for page in pages
+    }
+    records_by_collection_page: dict[str, dict[int, list[JsonObject]]] = {}
+    for collection in ("formulas", "tables", "units", "abbreviations"):
+        by_page: dict[int, list[JsonObject]] = {}
+        for item in cast(list[JsonObject], graph[collection]):
+            by_page.setdefault(cast(int, item["pdf_page"]), []).append(item)
+        records_by_collection_page[collection] = by_page
+    edges = cast(list[JsonObject], graph["continuation_edges"])
+    result: dict[int, JsonObject] = {}
+    for source_bundle in cast(list[JsonObject], source_document["bundles"]):
+        sequence = cast(int, source_bundle["sequence"])
+        if sequence in result:
+            raise StructureError("transcription repeats a bundle sequence")
+        start = cast(int, source_bundle["start_pdf_page"])
+        end = cast(int, source_bundle["end_pdf_page"])
+        page_numbers = [
+            cast(int, page["pdf_page"])
+            for page in pages
+            if start <= cast(int, page["pdf_page"]) <= end
+        ]
+        page_set = set(page_numbers)
+        result[sequence] = {
+            "pages": [page_by_number[number] for number in page_numbers],
+            "formulas": [
+                item
+                for number in page_numbers
+                for item in records_by_collection_page["formulas"].get(number, [])
+            ],
+            "tables": [
+                item
+                for number in page_numbers
+                for item in records_by_collection_page["tables"].get(number, [])
+            ],
+            "units": [
+                item
+                for number in page_numbers
+                for item in records_by_collection_page["units"].get(number, [])
+            ],
+            "abbreviations": [
+                item
+                for number in page_numbers
+                for item in records_by_collection_page["abbreviations"].get(number, [])
+            ],
+            "continuation_edges": [
+                edge
+                for edge in edges
+                if cast(int, edge["from_pdf_page"]) in page_set
+                or cast(int, edge["to_pdf_page"]) in page_set
+            ],
+        }
+    return result
 
 
 def _build_document_graph(document: JsonObject, *, root: Path) -> JsonObject:
@@ -313,6 +452,7 @@ def _build_document_graph(document: JsonObject, *, root: Path) -> JsonObject:
     pages: list[JsonObject] = []
     parent_stack: dict[int, str] = {}
     source_order = 0
+    repeated_labels = _repeated_numeric_labels(document, root=root)
 
     for page in cast(list[JsonObject], document["pages"]):
         page_nodes: list[str] = []
@@ -332,8 +472,12 @@ def _build_document_graph(document: JsonObject, *, root: Path) -> JsonObject:
                 if not raw_text.strip():
                     continue
                 source_order += 1
-                label_match = _LABEL_PATTERN.match(raw_text)
-                label = label_match.group(1) if label_match else None
+                label = _printed_label(line)
+                if (
+                    label in repeated_labels
+                    and normalize_search_text(raw_text)[0].strip() == label
+                ):
+                    label = None
                 depth = len(re.split(r"[-.]", label)) if label else None
                 kind = _node_kind(depth)
                 parent_id = _node_parent(parent_stack, depth)
@@ -456,12 +600,42 @@ def _build_document_graph(document: JsonObject, *, root: Path) -> JsonObject:
     return graph
 
 
+def _repeated_numeric_labels(document: JsonObject, *, root: Path) -> set[str]:
+    """Identify numeric-only labels repeated at one page position like running headers."""
+    occurrences: dict[tuple[str, tuple[int, ...]], set[int]] = {}
+    for page in cast(list[JsonObject], document["pages"]):
+        if page.get("package_path") is None:
+            continue
+        package = Path(cast(str, page["package_path"]))
+        evidence = _load_json(root, package / "evidence.json", "page evidence")
+        for line in _page_lines(evidence, package=package, root=root):
+            label = _printed_label(line)
+            bbox = line.get("bbox")
+            if (
+                label is None
+                or normalize_search_text(cast(str, line["raw_text"]))[0].strip() != label
+            ):
+                continue
+            if (
+                not isinstance(bbox, list)
+                or len(bbox) != 4
+                or not all(isinstance(value, int) for value in bbox)
+            ):
+                continue
+            key = (label, tuple(cast(list[int], bbox)))
+            occurrences.setdefault(key, set()).add(cast(int, page["pdf_page"]))
+    return {
+        label for (label, _), page_numbers in occurrences.items() if len(page_numbers) >= 3
+    }
+
+
 def _install_structural_bundles(
     graph: JsonObject,
     *,
     transcription_document: JsonObject,
     output_root: Path,
     graph_sha256: str,
+    generated_artifacts: dict[str, _GeneratedArtifact] | None = None,
 ) -> list[JsonObject]:
     """Persist bounded canonical Persian page-block bundles for model consumers."""
     pages = cast(list[JsonObject], graph["pages"])
@@ -524,7 +698,12 @@ def _install_structural_bundles(
             / f"{sequence:06d}-{digest}.json"
         )
         ensure_private_tree(output_root, relative.parent.as_posix())
-        install_immutable_bytes(safe_path(output_root, relative.as_posix()), payload)
+        destination = safe_path(output_root, relative.as_posix())
+        install_result = install_immutable_bytes(destination, payload)
+        if generated_artifacts is not None:
+            generated_artifacts[_artifact_cache_key(destination)] = _GeneratedArtifact(
+                payload_object, install_result.snapshot
+            )
         result.append(
             {
                 "sequence": sequence,
@@ -543,22 +722,69 @@ def _page_lines(evidence: JsonObject, *, package: Path, root: Path) -> list[Json
     probe = cast(JsonObject, evidence["probe"])
     probe_package = Path(cast(str, probe["package_path"]))
     native = _load_json(root, probe_package / "native.json", "native layout")
+    native_coordinate_space = native.get("coordinate_space")
+    native_height = (
+        native_coordinate_space.get("height")
+        if isinstance(native_coordinate_space, dict)
+        else None
+    )
+    native_origin = (
+        native_coordinate_space.get("origin")
+        if isinstance(native_coordinate_space, dict)
+        else None
+    )
     native_lines = [
-        {**line, "source_kind": "native"}
+        {
+            **line,
+            "source_kind": "native",
+            "_coordinate_height": native_height,
+            "_coordinate_origin": native_origin,
+        }
         for line in cast(list[JsonObject], native["lines"])
     ]
     route = cast(str, probe["route"])
     if route not in {"ocr", "native_plus_ocr"}:
         return native_lines
     ocr = _load_json(root, package / "ocr.json", "OCR layout")
+    ocr_coordinate_space = ocr.get("coordinate_space")
+    ocr_height = (
+        ocr_coordinate_space.get("height")
+        if isinstance(ocr_coordinate_space, dict)
+        else None
+    )
+    ocr_origin = (
+        ocr_coordinate_space.get("origin")
+        if isinstance(ocr_coordinate_space, dict)
+        else None
+    )
     ocr_lines = [
-        {**line, "source_kind": "ocr"} for line in cast(list[JsonObject], ocr["lines"])
+        {
+            **line,
+            "source_kind": "ocr",
+            "_coordinate_height": ocr_height,
+            "_coordinate_origin": ocr_origin,
+        }
+        for line in cast(list[JsonObject], ocr["lines"])
     ]
     if route == "ocr":
         return ocr_lines
-    # Native+OCR pages expose one canonical stream to downstream models. Native
-    # evidence remains persisted in the page package for audit, while OCR is
-    # selected here because the probe marked the native layer incomplete.
+    # A genuinely mixed page has useful native text alongside image content. Keep
+    # native lines and add only OCR lines that are not exact duplicates.
+    if cast(str, probe.get("classification")) == "mixed":
+        native_texts: dict[str, int] = {}
+        for line in native_lines:
+            key = normalize_search_text(cast(str, line["raw_text"]))[0]
+            native_texts[key] = native_texts.get(key, 0) + 1
+        merged = list(native_lines)
+        for line in ocr_lines:
+            key = normalize_search_text(cast(str, line["raw_text"]))[0]
+            if native_texts.get(key, 0):
+                native_texts[key] -= 1
+                continue
+            merged.append(line)
+        return merged
+    # Suspect-native pages use OCR as the canonical stream, while native evidence
+    # remains available as an alternate source for audit and alignment.
     return ocr_lines
 
 
@@ -568,6 +794,18 @@ def _all_page_lines(evidence: JsonObject, *, package: Path, root: Path) -> list[
     route = cast(str, cast(JsonObject, evidence["probe"])["route"])
     if route != "native_plus_ocr":
         return canonical
+    if cast(str, cast(JsonObject, evidence["probe"]).get("classification")) == "mixed":
+        probe_package = Path(cast(str, cast(JsonObject, evidence["probe"])["package_path"]))
+        native = _load_json(root, probe_package / "native.json", "native layout")
+        ocr = _load_json(root, package / "ocr.json", "OCR layout")
+        native_lines = [
+            {**line, "source_kind": "native"}
+            for line in cast(list[JsonObject], native["lines"])
+        ]
+        ocr_lines = [
+            {**line, "source_kind": "ocr"} for line in cast(list[JsonObject], ocr["lines"])
+        ]
+        return [*canonical, *native_lines, *ocr_lines]
     probe_package = Path(cast(str, cast(JsonObject, evidence["probe"])["package_path"]))
     native = _load_json(root, probe_package / "native.json", "native layout")
     native_lines = [
@@ -579,6 +817,8 @@ def _all_page_lines(evidence: JsonObject, *, package: Path, root: Path) -> list[
 
 def _alternate_page_lines(evidence: JsonObject, *, root: Path) -> list[JsonObject] | None:
     if cast(str, cast(JsonObject, evidence["probe"])["route"]) != "native_plus_ocr":
+        return None
+    if cast(str, cast(JsonObject, evidence["probe"]).get("classification")) == "mixed":
         return None
     probe_package = Path(cast(str, cast(JsonObject, evidence["probe"])["package_path"]))
     native = _load_json(root, probe_package / "native.json", "native layout")
@@ -611,6 +851,49 @@ def _align_alternate_lines(
         result.append(alternate_lines[match_index])
         cursor = match_index + 1
     return result
+
+
+def _printed_label(line: JsonObject) -> str | None:
+    """Extract a conservative clause label from a positioned source line."""
+    normalized = normalize_search_text(cast(str, line["raw_text"]))[0]
+    match = _LABEL_PATTERN.match(normalized)
+    if match is None:
+        return None
+    label = re.sub(r"\s*([-.])\s*", r"\1", match.group(1))
+    parts = re.split(r"[-.]", label)
+    ascii_parts = re.split(r"[-.]", ascii_digit_view(label))
+    if ascii_parts[0] in {"978", "979"}:
+        return None
+    if (
+        "." in label
+        and "-" not in label
+        and (len(parts) == 2 and (len(parts[0]) > 2 or len(parts[1]) > 2))
+    ):
+        return None
+    coordinate_height = line.get("_coordinate_height")
+    coordinate_origin = line.get("_coordinate_origin")
+    bbox = line.get("bbox")
+    if (
+        isinstance(coordinate_height, int)
+        and isinstance(bbox, list)
+        and len(bbox) == 4
+        and all(isinstance(value, int) for value in bbox)
+    ):
+        bottom = bbox[1]
+        top = bbox[3]
+        in_top_margin = (
+            top >= coordinate_height * 0.9
+            if coordinate_origin == "bottom_left"
+            else bottom <= coordinate_height * 0.1
+        )
+        in_bottom_margin = (
+            bottom <= coordinate_height * 0.08
+            if coordinate_origin == "bottom_left"
+            else top >= coordinate_height * 0.92
+        )
+        if in_top_margin or in_bottom_margin:
+            return None
+    return label
 
 
 def _page_artifact_refs(
@@ -653,22 +936,36 @@ def _page_artifact_refs(
 def _formula_record(
     candidate: JsonObject, *, crop_artifacts: dict[str, JsonObject]
 ) -> JsonObject:
-    crop_file = cast(str, candidate["crop_file"])
-    artifact = crop_artifacts.get(Path(crop_file).name)
-    if artifact is None:
-        raise StructureError(f"formula crop is missing: {candidate['candidate_id']}")
+    crop_file = candidate.get("crop_file")
+    artifact: JsonObject | None = None
+    if crop_file is not None:
+        if not isinstance(crop_file, str) or not crop_file:
+            raise StructureError(
+                f"formula crop path is invalid: {candidate['candidate_id']}"
+            )
+        artifact = crop_artifacts.get(Path(crop_file).name)
+        if artifact is None:
+            raise StructureError(f"formula crop is missing: {candidate['candidate_id']}")
     raw = cast(str, candidate["raw_text"])
+    crop: JsonObject | None = None
+    diagnostics = ["FORMULA_SEMANTIC_PARSE_DEFERRED"]
+    if artifact is None:
+        # OCR/native evidence can identify an equation without a render crop;
+        # retain the source span and defer rather than fabricate an artifact.
+        diagnostics.insert(0, "FORMULA_CROP_UNAVAILABLE")
+    else:
+        crop = {
+            "path": artifact["path"],
+            "sha256": artifact["sha256"],
+            "bytes": artifact["bytes"],
+        }
     return {
         "formula_id": candidate["candidate_id"],
         "pdf_page": _page_from_span(cast(str, candidate["span_id"])),
         "source_kind": candidate["source_kind"],
         "source_span_ids": [candidate["span_id"]],
         "bbox": candidate["bbox"],
-        "crop": {
-            "path": artifact["path"],
-            "sha256": artifact["sha256"],
-            "bytes": artifact["bytes"],
-        },
+        "crop": crop,
         "raw_transcription": raw,
         "unicode": raw,
         "latex": None,
@@ -679,7 +976,7 @@ def _formula_record(
         ),
         "content_mathml": None,
         "parse_status": "needs_review",
-        "diagnostics": ["FORMULA_SEMANTIC_PARSE_DEFERRED"],
+        "diagnostics": diagnostics,
         "unresolved_glyphs": [],
     }
 
@@ -765,6 +1062,7 @@ def _validate_graph(
     *,
     source_document: JsonObject,
     transcription_root: Path,
+    source_artifacts_prevalidated: bool = False,
 ) -> None:
     for field in ("catalog_key", "catalog_order", "source_sha256", "pdf_page_count"):
         if graph[field] != source_document[field]:
@@ -815,12 +1113,13 @@ def _validate_graph(
         expected_artifacts = _page_artifact_refs(evidence, root=transcription_root)
         if graph_page.get("source_artifacts") != expected_artifacts:
             raise StructureError("source graph page artifacts differ from evidence")
-        for artifact in expected_artifacts:
-            read_attested_bytes(
-                safe_path(transcription_root, cast(str, artifact["path"])),
-                expected_sha256=cast(str, artifact["sha256"]),
-                expected_bytes=cast(int, artifact["bytes"]),
-            )
+        if not source_artifacts_prevalidated:
+            for artifact in expected_artifacts:
+                read_attested_bytes(
+                    safe_path(transcription_root, cast(str, artifact["path"])),
+                    expected_sha256=cast(str, artifact["sha256"]),
+                    expected_bytes=cast(int, artifact["bytes"]),
+                )
         canonical_lines = _page_lines(evidence, package=package, root=transcription_root)
         canonical_lines_by_page[page_number] = {
             cast(str, line["span_id"]): line for line in canonical_lines
@@ -982,7 +1281,10 @@ def _validate_graph(
                 canonical_lines_by_page=canonical_lines_by_page,
             )
     for formula in cast(list[JsonObject], graph["formulas"]):
-        crop = cast(JsonObject, formula["crop"])
+        crop = formula["crop"]
+        if crop is None:
+            continue
+        crop = cast(JsonObject, crop)
         read_attested_bytes(
             safe_path(transcription_root, cast(str, crop["path"])),
             expected_sha256=cast(str, crop["sha256"]),

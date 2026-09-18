@@ -53,6 +53,7 @@ LOCAL_APPS = [
     "cadgpt.apps.media",
     "cadgpt.apps.rulepack",
     "cadgpt.apps.review",
+    "cadgpt.apps.inbr",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

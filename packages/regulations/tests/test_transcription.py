@@ -35,11 +35,11 @@ def test_normalization_preserves_mathematics_identifiers_and_source_digits() -> 
 
 
 @pytest.mark.integration
-def test_page_worker_runs_real_parser_and_renderer_in_a_subprocess(
+def test_page_worker_runs_native_parser_without_rendering_native_text(
     tmp_path: Path,
 ) -> None:
     source = tmp_path / "native.pdf"
-    source.write_bytes(_native_pdf(b"Hello LRFD 2+2=4"))
+    source.write_bytes(_native_pdf(b"Hello native PDF text with LRFD 2+2=4"))
     source.chmod(0o600)
     output = tmp_path / "output"
     output.mkdir(mode=0o700)
@@ -53,8 +53,8 @@ def test_page_worker_runs_real_parser_and_renderer_in_a_subprocess(
         timeout_seconds=30,
     )
 
-    assert result.render.startswith(b"\x89PNG\r\n\x1a\n")
-    assert result.render_metrics["width_pixels"] == 1224
+    assert result.render is None
+    assert result.render_metrics is None
     assert "LRFD" in str(result.native["raw_glyph_text"])
     assert stat.S_IMODE((output / "native.json").stat().st_mode) == 0o600
 
@@ -167,6 +167,33 @@ def test_build_bundles_skips_a_chunk_where_every_page_failed(tmp_path: Path) -> 
     assert reused == 0
 
 
+def test_build_bundles_never_mixes_failed_pages_into_multi_page_bundle(
+    tmp_path: Path,
+) -> None:
+    """Failed pages must not produce bundles with unreadable null evidence paths."""
+    document = {
+        "catalog_key": "volume-01",
+        "source_sha256": "a" * 64,
+        "pages": [_ready_page(tmp_path, 1), _failed_page(2), _ready_page(tmp_path, 3)],
+    }
+
+    records, created, reused = _build_bundles(
+        document,
+        root=tmp_path,
+        configuration={"sha256": "b" * 64},
+        max_pages=10,
+        max_bytes=8 * 1024 * 1024,
+    )
+
+    assert [record["sequence"] for record in records] == [1, 2]
+    assert [(record["start_pdf_page"], record["end_pdf_page"]) for record in records] == [
+        (1, 1),
+        (3, 3),
+    ]
+    assert created == 2
+    assert reused == 0
+
+
 def test_validate_document_bundles_tolerates_a_gap_over_failed_pages_only(
     tmp_path: Path,
 ) -> None:
@@ -184,6 +211,16 @@ def test_validate_document_bundles_tolerates_a_gap_over_failed_pages_only(
     not_actually_failed = [dict(pages[0]), {**pages[1], "state": "ready"}, dict(pages[2])]
     with pytest.raises(TranscriptionError, match="gap"):
         _validate_document_bundles({"pages": not_actually_failed, "bundles": records})
+
+
+def test_validate_document_bundles_rejects_uncovered_ready_page_without_probe() -> None:
+    """Bundle coverage must be checked even when no page-probe is available."""
+    pages = [
+        _failed_page(1),
+        {**_failed_page(2), "state": "ready", "package_path": "evidence/2"},
+    ]
+    with pytest.raises(TranscriptionError, match="cover every document page"):
+        _validate_document_bundles({"pages": pages, "bundles": []})
 
 
 def _native_pdf(text: bytes) -> bytes:

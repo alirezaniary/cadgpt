@@ -262,12 +262,21 @@ def _publication_fixture(
                 "mapping_status": "mapped",
             }
         ],
+        "abbreviations": [
+            {
+                "abbreviation_id": f"sha256:{source_sha256}:page:000001:abbreviation:0000",
+                "pdf_page": 1,
+                "source_span_ids": [span_id],
+                "printed": "LRFD",
+            }
+        ],
         "counts": {
             "pages": 1,
             "nodes": 0,
             "tables": 1,
             "formulas": 1,
             "units": 1,
+            "abbreviations": 1,
             "continuation_edges": 0,
             "needs_review": 3,
         },
@@ -285,7 +294,13 @@ def _publication_fixture(
                 "bytes": graph_bytes,
             }
         ],
-        "summary": {"formulas": 1, "tables": 1, "units": 1, "needs_review": 3},
+        "summary": {
+            "formulas": 1,
+            "tables": 1,
+            "units": 1,
+            "abbreviations": 1,
+            "needs_review": 3,
+        },
     }
     return jobs, extraction_root, structure_root, structure
 
@@ -319,11 +334,17 @@ def test_publication_separates_engine_rules_from_deferred_data(tmp_path: Path) -
     assert first.manifest["summary"]["formulas"] == 1
     assert first.manifest["summary"]["tables"] == 1
     assert first.manifest["summary"]["units"] == 1
+    assert first.manifest["summary"]["abbreviations"] == 1
     assert first.manifest["summary"]["deferred"] == 5
-    assert second.files_reused == 10
+    assert second.files_reused == 11
     rule = json.loads((first.run_directory / "rules.jsonl").read_text())
     assert rule["candidate"]["candidate_id"] == "candidate-b-ready"
     assert rule["validation_decision"]["merge_id"] == "merge-ready"
+    abbreviations = [
+        json.loads(line)
+        for line in (first.run_directory / "abbreviations.jsonl").read_text().splitlines()
+    ]
+    assert abbreviations[0]["item"]["printed"] == "LRFD"
     deferred = [
         json.loads(line)
         for line in (first.run_directory / "deferred.jsonl").read_text().splitlines()

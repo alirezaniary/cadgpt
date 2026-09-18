@@ -1787,3 +1787,14 @@ no span anchors — is out-of-band scratch and is not ingested. Whether T-0100's
 or a separate re-run task is filed is left to the coordinator; the task file records the gap either
 way. The 2026-09-03 `artifacts/inbr-semantic/publications/` trees are a prototype over the retired
 41-document catalog with `complete: false` and zero accepted candidates, and are superseded.
+
+## 2026-09-13 - Final Luna transcripts are the rule-translation source
+
+The INBR workflow is PDF slices of ten pages, PaddleOCR first-pass text, and the PDF plus OCR
+text supplied to Luna. The completed Luna JSON is the downstream source checkpoint. It carries
+the source PDF/document identity, page number, transcript record, and exact text, so rule
+translation and IDS compilation consume it directly. Structural source spans are optional audit
+metadata; re-OCR, source-graph re-anchoring, and span closure are not compilation gates.
+
+**Reopens if:** the user changes the transcript production workflow or requires a separate
+pixel/line-level audit of a rule.

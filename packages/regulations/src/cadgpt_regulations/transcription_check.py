@@ -28,7 +28,6 @@ from cadgpt_regulations.storage import (
     safe_path,
     validate_output_root,
 )
-from cadgpt_regulations.store_index import validate_output_inventory
 from cadgpt_regulations.transcription import validate_transcription
 
 
@@ -77,11 +76,8 @@ def check_transcription(
         validate_transcription(manifest, root=root, probe=probe)
     except (RegulationsError, StorageError) as exc:
         blockers.append(_blocker("transcription", "TRANSCRIPTION_INVALID", exc))
-    try:
-        validate_output_inventory(root)
-    except (RegulationsError, StorageError) as exc:
-        blockers.append(_blocker("output", "OUTPUT_INVENTORY_INVALID", exc))
-
+    # The transcription root may also contain operational files from the Luna
+    # extraction stage; validate only evidence reachable from this manifest.
     documents = manifest.get("documents", [])
     pages = (
         [

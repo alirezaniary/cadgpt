@@ -1,0 +1,51 @@
+{
+  "schema_version": "inbr-source-evidence-1.0.0",
+  "revision": "revision-2026-09-09-paddle",
+  "catalog_key": "volume-10-edition-1401",
+  "source_sha256": "01d7fd2055f323cc59ed910a4b982f0feb40f39e35fc513f5f6d7840d4b357bc",
+  "page_id": "sha256:01d7fd2055f323cc59ed910a4b982f0feb40f39e35fc513f5f6d7840d4b357bc:page:000586",
+  "pdf_page": 586,
+  "classification": "image_scan",
+  "route": "ocr",
+  "state": "needs_review",
+  "reason_codes": [
+    "FULL_PAGE_BITMAP_WITHOUT_NATIVE_TEXT",
+    "OCR_LOW_CONFIDENCE_TOKENS",
+    "OCR_CRITICAL_IDENTIFIER_REVIEW",
+    "OCR_SIGNATURE_REGION_REVIEW"
+  ],
+  "native": {
+    "artifact_role": "native_layout",
+    "artifact_sha256": "6cf5ca813050c1f584f30097b1139f36963b8478562901332a2a5b563549f36d",
+    "artifact_bytes": 525,
+    "line_count": 0,
+    "span_count": 0
+  },
+  "render": {
+    "artifact_role": "source_render",
+    "artifact_sha256": "bd837013a8d2669ec5353458c886cb1f08bf9eac71fbc56f60513433d8b00750",
+    "artifact_bytes": 1501122
+  },
+  "ocr": {
+    "artifact_role": "ocr_layout",
+    "artifact_sha256": "258ee6c76dc9093e0c0baa8b277f48902aeb17bc1aafed1419ea5ed5c3e60260",
+    "artifact_bytes": 61680,
+    "line_count": 27,
+    "token_count": 43,
+    "mean_confidence_permyriad": 9128
+  },
+  "raw_native": {
+    "artifact_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "artifact_bytes": 0
+  },
+  "normalized_ocr": {
+    "artifact_sha256": "ab439f5e8b480f55baa813a1c8b9e5863fdfa9c636b916f4b7abfbbd2f9fa3e7",
+    "artifact_bytes": 1549,
+    "first_line": "مبحث دهم"
+  },
+  "attestation": {
+    "structural_graph_available": false,
+    "publishable": false,
+    "blocker": "OCR layout has not been converted to a T-0027 structural graph"
+  }
+}

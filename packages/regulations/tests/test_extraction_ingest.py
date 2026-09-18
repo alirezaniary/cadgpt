@@ -13,7 +13,10 @@ from cadgpt_regulations.extraction_ingest import (
     load_ingested_receipt,
 )
 from cadgpt_regulations.extraction_jobs import build_extraction_jobs
-from cadgpt_regulations.extraction_status import build_extraction_status
+from cadgpt_regulations.extraction_status import (
+    ExtractionStatusError,
+    build_extraction_status,
+)
 from cadgpt_regulations.storage import InstallStatus
 
 
@@ -395,3 +398,63 @@ def test_extraction_status_accounts_for_pending_and_validated_bundles(
     accepted = build_extraction_status(jobs, output_root=output_root)
     assert accepted["summary"]["bundles_accepted"] == 1
     assert accepted["bundles"][0]["validation"]["counts"]["accepted"] == 1
+
+
+def test_extraction_status_rejects_tampered_job_receipt_state(tmp_path: Path) -> None:
+    jobs, response_path, transcription_root, job_id = _fixture(tmp_path)
+    output_root = tmp_path / "extraction"
+    ingested = ingest_extraction_response(
+        jobs,
+        job_id=job_id,
+        response_path=response_path,
+        transcription_root=transcription_root,
+        output_root=output_root,
+    )
+
+    receipt = json.loads(ingested.receipt_path.read_text())
+    receipt["state"] = "accepted_candidate"
+    _write_json(ingested.receipt_path, receipt)
+
+    with pytest.raises(ExtractionStatusError, match="invalid state"):
+        build_extraction_status(jobs, output_root=output_root)
+
+
+def test_validator_ingest_rejects_cross_job_response_receipt_path(
+    tmp_path: Path,
+) -> None:
+    jobs, response_path, transcription_root, pass_a_job_id = _fixture(tmp_path)
+    output_root = tmp_path / "extraction"
+    pass_a = ingest_extraction_response(
+        jobs,
+        job_id=pass_a_job_id,
+        response_path=response_path,
+        transcription_root=transcription_root,
+        output_root=output_root,
+    )
+    pass_b_job = jobs["jobs"][1]
+    response = json.loads(response_path.read_text())
+    response["pass"] = "B"
+    response["candidates"][0]["candidate_id"] = "candidate-b"
+    _write_json(response_path, response)
+    pass_b = ingest_extraction_response(
+        jobs,
+        job_id=pass_b_job["job_id"],
+        response_path=response_path,
+        transcription_root=transcription_root,
+        output_root=output_root,
+    )
+
+    pass_a_receipt = json.loads(pass_a.receipt_path.read_text())
+    pass_a_receipt["response"] = json.loads(pass_b.receipt_path.read_text())["response"]
+    _write_json(pass_a.receipt_path, pass_a_receipt)
+
+    validator_path = tmp_path / "validator.json"
+    _write_json(validator_path, {})
+    with pytest.raises(ExtractionIngestError, match="response path"):
+        ingest_validator_response(
+            jobs,
+            bundle_id=jobs["jobs"][0]["bundle_id"],
+            response_path=validator_path,
+            transcription_root=transcription_root,
+            output_root=output_root,
+        )

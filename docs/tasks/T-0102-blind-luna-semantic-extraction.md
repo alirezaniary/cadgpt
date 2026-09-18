@@ -1,9 +1,13 @@
-# T-0102 - Extract source-anchored semantics with blind Luna workers
+# T-0102 - Extract source-anchored semantics with blind Luna workers (legacy path)
 
-**Phase:** Regulation corpus 5   **Status:** open
+**Phase:** Regulation corpus 5   **Status:** superseded
 **Touches invariants:** I1, import contracts
 
 ## Why
+
+This is the earlier structural-evidence extraction path. It is not required for the current
+transcript-to-rule workflow, which starts from the completed Luna transcript JSON and its PDF/page
+metadata.
 
 The page and structure layers make every source character, region, table, and formula addressable,
 but they do not state what a provision requires, permits, prohibits, defines, qualifies, or refers
@@ -116,57 +120,36 @@ The evidence must show:
 
 ## Evidence
 
-Not run yet.
+Not run, and not going to be: this task's blind-dual-pass structural-evidence design is superseded.
 
-### Durable-workspace audit, 2026-09-18
+### Durable-workspace audit, 2026-09-18, corrected same day
 
-`.cadgpt/inbr/extraction` and `.cadgpt/inbr/extraction2` are empty. The external backup
-`/media/alireza/09210865357/cadgpt-nonrepo-material-2026-09-16.zip` holds an extraction tree
-(`extraction/revision-2026-09-09-paddle`, 962 MB: `jobs.json`, 668 `responses/`, 668 `structured/`,
-44 `assembled/`, 1,471 `ledger/` entries) whose ledger reports `completed: 668, failed: 0,
-pending: 0`. It is not T-0102 work and mainline code rejects it:
+An earlier pass through this audit read the `extraction/revision-2026-09-09-paddle` tree (668
+`responses/`, 668 `structured/`, 44 `assembled/`) and the `worker-drafts/` scratch directories as
+out-of-band material to discard, because `extraction-status` rejects `jobs.json`'s single
+`structured_transcript` pass against this task's `blind_passes: ["A", "B"]` contract. That
+rejection is correct but the conclusion was wrong: that data was never meant to satisfy this task.
+It is the T-0031 transcript-to-rule flow's input, not this one's. `docs/inbr-operations.md` §5
+already says so directly: "This section documents the earlier T-0028 semantic-evidence importer.
+It is not the downstream transcript-to-rule path... After the transcript checkpoint, use
+`provisional-batch` below; do not run this importer again for the completed corpus."
 
-```sh
-$ uv run cadgpt-regulations extraction-status \
-    --jobs .../extraction/revision-2026-09-09-paddle/jobs.json \
-    --output-root .../extraction/revision-2026-09-09-paddle
-ExtractionJobError: extraction queue must contain blind passes A and B
-```
+The 43-document, 5,892-page structural-evidence path this task (and T-0101 before it) describes
+was abandoned in favor of a simpler design once the Persian-transcript checkpoint proved
+sufficient: page-cited `pdf_document`/`pdf_page`/`rule_candidate` rows built directly from the
+completed Luna transcript, no structure graph, no blind dual pass, no official-web corroboration
+gate. See `docs/inbr-transcript-to-rules.md`, `docs/research/inbr-transcript-to-engine-rules.md`,
+and `docs/tasks/T-0031-source-cited-rule-codification.md` for the design that replaced this one,
+and `docs/inbr-progress.md` for that flow's real state as of 2026-09-16: transcript-to-rule
+extraction complete for all 668 chunks (668/668 provisional drafts pass schema and record-ID
+validation), with the PostgreSQL import completed for 27 of 43 documents (3,346 `rule_candidate`
+rows) before the branch carrying this work was left unmerged.
 
-That manifest's top-level keys are `jobs, model, passes, prompt_sha256, prompt_version,
-response_schema_sha256, schema_version, summary, transcription_sha256`. It carries
-`passes: ["structured_transcript"]` — one non-blind pass, not `blind_passes: ["A", "B"]` — and has
-no `structure_sha256` at any level, so the jobs were never bound to a T-0101 structural bundle.
-`prompt_version` is `persian-structured-transcript-1.0.0`. It is the output of a pre-merge code
-generation that predates this task's contract; `extraction_jobs.py` now raises on both the missing
-blind passes and the missing structure binding.
-
-`.cadgpt/inbr/worker-drafts/` in the backup (≈90 MB excluding `previews/`, 1,573 JSON files across
-94 directories named `luna-*`, `rule-worker-*`, `batch-*`, `fresh-*`, plus 39 `worker-report.txt`
-notes) contains two distinct shapes:
-
-- 672 `chunk-N-response.json` files carrying `job_id`, `bundle_id`, `pass`, `model`,
-  `prompt_sha256`, `response_schema_sha256`. These are the raw responses behind the rejected
-  queue above: same superseded `structured_transcript` single-pass identity, no
-  `structure_sha256`, no `transcription_sha256`. They cannot be replayed through `extract-ingest`,
-  which validates the response against a blind-pass job identity that these responses do not have.
-- ~900 `chunk-N-extraction.json` / `repair-chunk-N-extraction.json` files whose shape is
-  `{schema_version, worker_id, prompt_version, items[]}` with per-item
-  `{record_id, outcome, state, rule, review_flags}`. These carry no `job_id`, `bundle_id`, `model`,
-  `prompt_sha256` or `response_schema_sha256` of any kind, and their `rule` objects hold
-  model-authored `title_fa` and `statement_fa` Persian strings with no span anchors. They are
-  out-of-band scratch work with no attested path into the pipeline. This task requires that
-  "quoted Persian is always re-derived during ingestion and is never accepted from the model
-  response"; these files are model-authored Persian presented as the record, so they must not be
-  ingested or promoted under any route and are discarded as raw material.
-
-Coverage claimed across the drafts is chunks 1–668 with gaps; the `worker-report.txt` notes are
-free-text status lines ("Completed chunk 500 only. … Schema validation passed.") written by ad-hoc
-parallel workers, not ingest receipts. No `extract-ingest` or `validator-ingest` receipt exists
-anywhere for the current contract.
-
-Conclusion: T-0102 remains `open` and unstarted in evidence terms. Nothing from the prior effort is
-reusable as input. It is blocked on T-0101, which is blocked on T-0100.
+This task is not reopened and not blocking anything. It stays on record because T-0100's
+transcription evidence and T-0101's structural-bundle work remain a legitimate, independently
+useful evidence layer if a future need (e.g. a pixel/line-level audit of a specific rule) requires
+re-anchoring past the page-citation level T-0031 uses. `source_reanchor.py` exists for exactly
+that, as an optional audit utility, not a compilation gate.
 
 ## Review
 

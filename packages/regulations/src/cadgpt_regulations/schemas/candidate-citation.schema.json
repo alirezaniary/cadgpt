@@ -1,0 +1,31 @@
+{
+  "$id": "https://cadgpt.local/schemas/candidate-citation-1.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "document_key", "book_title_fa", "edition_fa", "document_sha256", "pdf_page",
+    "exact_text_fa",
+    "exact_text_sha256", "qualifier_text_fa", "citation_status", "transcript_revision_id",
+    "transcript_sha256", "table_label", "section_label"
+  ],
+  "properties": {
+    "document_key": {"type": "string", "minLength": 1},
+    "book_title_fa": {"type": "string", "minLength": 1},
+    "edition_fa": {"type": "string", "minLength": 1},
+    "document_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "pdf_page": {"type": "integer", "minimum": 1},
+    "printed_page_label": {"type": ["string", "null"]},
+    "page_id": {"type": ["string", "null"]},
+    "source_node_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "source_span_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "exact_text_fa": {"type": "string", "minLength": 1},
+    "exact_text_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "qualifier_text_fa": {"type": ["string", "null"]},
+    "citation_status": {"enum": ["candidate", "needs_review", "unresolved"]},
+    "transcript_revision_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "transcript_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "table_label": {"type": ["string", "null"]},
+    "section_label": {"type": ["string", "null"]}
+  }
+}

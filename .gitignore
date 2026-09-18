@@ -34,6 +34,5 @@ dist/
 # (design-previews/_archive.md), not the bytes.
 design-previews/_live/
 
-# Local source corpus and generated payloads for the INBR regulations pipeline
-# (feat/inbr-regulations-pipeline); curated metadata and schemas stay tracked.
-/.cadgpt/inbr/
+# Temporary Claude collaboration worktrees.
+.claude/worktrees/

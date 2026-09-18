@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
-from cadgpt_regulations.errors import RegulationsError
+from cadgpt_regulations.errors import ManifestError, RegulationsError
 from cadgpt_regulations.extraction_jobs import validate_extraction_jobs
 from cadgpt_regulations.jsonio import (
     JsonObject,
@@ -84,7 +84,7 @@ def ingest_extraction_response(
         response = loads_object(
             response_bytes.decode("utf-8"), description="extraction response"
         )
-    except (StorageError, UnicodeDecodeError) as exc:
+    except (ManifestError, StorageError, UnicodeDecodeError) as exc:
         raise ExtractionIngestError(str(exc)) from exc
 
     _validate_response_identity(response, job)
@@ -206,7 +206,7 @@ def ingest_validator_response(
         response = loads_object(
             response_bytes.decode("utf-8"), description="validator response"
         )
-    except (StorageError, UnicodeDecodeError) as exc:
+    except (ManifestError, StorageError, UnicodeDecodeError) as exc:
         raise ExtractionIngestError(str(exc)) from exc
 
     bundle_job = pass_jobs["A"]
@@ -387,6 +387,12 @@ def _only_ingested_receipt(output_root: Path, job_id: str) -> JsonObject:
     receipt = load_ingested_receipt(entries[0])
     if receipt.get("job_id") != job_id:
         raise ExtractionIngestError(f"ingestion receipt job identity differs: {job_id}")
+    if receipt.get("state") != "needs_validation":
+        raise ExtractionIngestError(f"ingestion receipt has invalid state: {job_id}")
+    _validate_response_location(
+        receipt,
+        expected_directory=f"responses/{_job_token(job_id)}",
+    )
     return receipt
 
 
@@ -394,7 +400,22 @@ def _receipt_response_sha256(receipt: JsonObject) -> str:
     response = receipt.get("response")
     if not isinstance(response, dict):
         raise ExtractionIngestError("ingestion receipt has no response reference")
-    return _required_string(cast(JsonObject, response), "sha256")
+    return _required_sha256(cast(JsonObject, response), "sha256")
+
+
+def _validate_response_location(receipt: JsonObject, *, expected_directory: str) -> None:
+    response = receipt.get("response")
+    if not isinstance(response, dict):
+        raise ExtractionIngestError("ingestion receipt has no response reference")
+    reference = cast(JsonObject, response)
+    path_value = _required_string(reference, "path")
+    response_sha256 = _required_sha256(reference, "sha256")
+    path = Path(path_value)
+    if (
+        path.parent.as_posix() != expected_directory
+        or path.name != f"{response_sha256}.json"
+    ):
+        raise ExtractionIngestError("ingestion receipt response path is not identity-bound")
 
 
 def _load_stored_response(receipt: JsonObject, *, output_root: Path) -> JsonObject:
@@ -409,7 +430,7 @@ def _load_stored_response(receipt: JsonObject, *, output_root: Path) -> JsonObje
             expected_bytes=cast(int, reference["bytes"]),
         )
         return loads_object(payload.decode("utf-8"), description="stored blind response")
-    except (StorageError, UnicodeDecodeError, KeyError, TypeError) as exc:
+    except (ManifestError, StorageError, UnicodeDecodeError, KeyError, TypeError) as exc:
         raise ExtractionIngestError("cannot load stored blind response") from exc
 
 
@@ -529,6 +550,15 @@ def _required_string(value: JsonObject, field: str) -> str:
     return result
 
 
+def _required_sha256(value: JsonObject, field: str) -> str:
+    result = _required_string(value, field)
+    if len(result) != 64 or any(
+        character not in "0123456789abcdef" for character in result
+    ):
+        raise ExtractionIngestError(f"invalid SHA-256 at {field}")
+    return result
+
+
 def load_ingested_receipt(path: Path) -> JsonObject:
     """Load a stored receipt after stable-file attestation."""
     try:
@@ -537,5 +567,5 @@ def load_ingested_receipt(path: Path) -> JsonObject:
             path, expected_sha256=snapshot.sha256, expected_bytes=snapshot.bytes
         )
         return loads_object(payload.decode("utf-8"), description="ingestion receipt")
-    except (StorageError, UnicodeDecodeError) as exc:
+    except (ManifestError, StorageError, UnicodeDecodeError) as exc:
         raise ExtractionIngestError(str(exc)) from exc

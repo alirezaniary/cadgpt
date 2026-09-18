@@ -1,165 +1,541 @@
 {
-  "$id": "https://cadgpt.local/schemas/regulation-page-evidence-1.0.0.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "additionalProperties": false,
-  "properties": {
-    "schema_version": {"const": "1.0.0"},
-    "page_id": {"pattern": "^sha256:[0-9a-f]{64}:page:[0-9]{6}$", "type": "string"},
-    "source": {"$ref": "#/$defs/source"},
-    "probe": {"$ref": "#/$defs/probe"},
-    "configuration_sha256": {"$ref": "#/$defs/sha256"},
-    "state": {"enum": ["ready", "needs_review"]},
-    "reason_codes": {"items": {"minLength": 1, "type": "string"}, "type": "array"},
-    "normalization": {"$ref": "#/$defs/normalization"},
-    "ocr": {"oneOf": [{"$ref": "#/$defs/ocrSummary"}, {"type": "null"}]},
-    "semantic_evidence": {"$ref": "#/$defs/semanticEvidence"},
-    "artifacts": {"items": {"$ref": "#/$defs/artifact"}, "minItems": 4, "type": "array"},
-    "error": {"type": "null"}
-  },
-  "required": ["schema_version", "page_id", "source", "probe", "configuration_sha256", "state", "reason_codes", "normalization", "ocr", "semantic_evidence", "artifacts", "error"],
-  "type": "object",
   "$defs": {
-    "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
-    "relativePath": {"minLength": 1, "not": {"pattern": "(^/|(^|/)\\.\\.?(/|$)|\\\\)"}, "type": "string"},
-    "source": {
+    "artifact": {
       "additionalProperties": false,
       "properties": {
-        "catalog_key": {"minLength": 1, "type": "string"},
-        "catalog_order": {"minimum": 1, "type": "integer"},
-        "sha256": {"$ref": "#/$defs/sha256"},
-        "bytes": {"minimum": 1, "type": "integer"},
-        "pdf_page_count": {"minimum": 1, "type": "integer"},
-        "pdf_page": {"minimum": 1, "type": "integer"},
-        "printed_page_label": {"type": ["string", "null"]}
+        "bytes": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "media_type": {
+          "enum": [
+            "application/json",
+            "text/plain; charset=utf-8",
+            "image/jpeg",
+            "image/png"
+          ]
+        },
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "role": {
+          "enum": [
+            "raw_native_text",
+            "normalized_search_text",
+            "ascii_digit_view",
+            "model_input_render",
+            "ocr_layout",
+            "ocr_input_render",
+            "formula_crop"
+          ]
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
       },
-      "required": ["catalog_key", "catalog_order", "sha256", "bytes", "pdf_page_count", "pdf_page", "printed_page_label"],
-      "type": "object"
-    },
-    "probe": {
-      "additionalProperties": false,
-      "properties": {
-        "package_path": {"$ref": "#/$defs/relativePath"},
-        "package_sha256": {"$ref": "#/$defs/sha256"},
-        "configuration_sha256": {"$ref": "#/$defs/sha256"},
-        "toolchain_sha256": {"$ref": "#/$defs/sha256"},
-        "classification": {"minLength": 1, "type": "string"},
-        "route": {"enum": ["none", "native", "ocr", "native_plus_ocr"]}
-      },
-      "required": ["package_path", "package_sha256", "configuration_sha256", "toolchain_sha256", "classification", "route"],
-      "type": "object"
-    },
-    "normalization": {
-      "additionalProperties": false,
-      "properties": {
-        "native": {"$ref": "#/$defs/transformLog"},
-        "ocr": {"oneOf": [{"$ref": "#/$defs/transformLog"}, {"type": "null"}]},
-        "combined_policy": {"enum": ["none", "native", "ocr", "native_plus_ocr"]},
-        "digit_view": {"const": "persian_and_arabic_indic_to_ascii"}
-      },
-      "required": ["native", "ocr", "combined_policy", "digit_view"],
-      "type": "object"
-    },
-    "transformLog": {
-      "additionalProperties": false,
-      "properties": {
-        "version": {"const": "1.0.0"},
-        "operations": {"items": {"$ref": "#/$defs/operation"}, "type": "array"},
-        "protected_views": {"items": {"type": "string"}, "type": "array"}
-      },
-      "required": ["version", "operations", "protected_views"],
-      "type": "object"
-    },
-    "operation": {
-      "additionalProperties": false,
-      "properties": {"name": {"minLength": 1, "type": "string"}, "changes": {"minimum": 0, "type": "integer"}},
-      "required": ["name", "changes"],
-      "type": "object"
-    },
-    "semanticEvidence": {
-      "additionalProperties": false,
-      "properties": {
-        "symbols": {"items": {"$ref": "#/$defs/symbol"}, "type": "array"},
-        "tables": {"items": {"$ref": "#/$defs/table"}, "type": "array"}
-      },
-      "required": ["symbols", "tables"],
-      "type": "object"
-    },
-    "symbol": {
-      "additionalProperties": false,
-      "properties": {
-        "candidate_id": {"minLength": 1, "type": "string"},
-        "kind": {"enum": ["equation", "method_abbreviation", "unit_mention"]},
-        "source_kind": {"enum": ["native", "ocr"]},
-        "span_id": {"minLength": 1, "type": "string"},
-        "raw_text": {"minLength": 1, "type": "string"},
-        "bbox": {"items": {"type": "integer"}, "maxItems": 4, "minItems": 4, "type": "array"},
-        "crop_file": {"type": ["string", "null"]}
-      },
-      "required": ["candidate_id", "kind", "source_kind", "span_id", "raw_text", "bbox", "crop_file"],
-      "type": "object"
-    },
-    "table": {
-      "additionalProperties": false,
-      "properties": {"kind": {"const": "table_like_region"}, "reasons": {"items": {"type": "string"}, "minItems": 1, "type": "array"}},
-      "required": ["kind", "reasons"],
-      "type": "object"
-    },
-    "ocrSummary": {
-      "additionalProperties": false,
-      "properties": {
-        "engine": {"$ref": "#/$defs/ocrEngine"},
-        "token_count": {"minimum": 0, "type": "integer"},
-        "line_count": {"minimum": 0, "type": "integer"}
-      },
-      "required": ["engine", "token_count", "line_count"],
-      "type": "object"
-    },
-    "ocrEngine": {
-      "additionalProperties": false,
-      "properties": {
-        "name": {"const": "tesseract"},
-        "version": {"const": "tesseract 5.3.4"},
-        "languages": {"const": ["fas", "eng"]},
-        "page_segmentation_mode": {"enum": [3, 6]},
-        "dpi": {"minimum": 72, "maximum": 600, "type": "integer"},
-        "models": {"items": {"$ref": "#/$defs/model"}, "minItems": 3, "maxItems": 3, "type": "array"},
-        "attempts": {"items": {"$ref": "#/$defs/attempt"}, "minItems": 1, "maxItems": 2, "type": "array"}
-      },
-      "required": ["name", "version", "languages", "page_segmentation_mode", "dpi", "models", "attempts"],
+      "required": [
+        "role",
+        "path",
+        "sha256",
+        "bytes",
+        "media_type"
+      ],
       "type": "object"
     },
     "attempt": {
       "additionalProperties": false,
       "properties": {
-        "page_segmentation_mode": {"enum": [3, 6]},
-        "token_count": {"minimum": 0, "type": "integer"},
-        "line_count": {"minimum": 0, "type": "integer"},
-        "mean_confidence_permyriad": {"minimum": 0, "maximum": 10000, "type": "integer"}
+        "line_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mean_confidence_permyriad": {
+          "maximum": 10000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "page_segmentation_mode": {
+          "enum": [
+            3,
+            6
+          ]
+        },
+        "token_count": {
+          "minimum": 0,
+          "type": "integer"
+        }
       },
-      "required": ["page_segmentation_mode", "token_count", "line_count", "mean_confidence_permyriad"],
+      "required": [
+        "page_segmentation_mode",
+        "token_count",
+        "line_count",
+        "mean_confidence_permyriad"
+      ],
       "type": "object"
     },
     "model": {
       "additionalProperties": false,
       "properties": {
-        "language": {"enum": ["fas", "eng", "osd"]},
-        "sha256": {"$ref": "#/$defs/sha256"},
-        "bytes": {"minimum": 1, "type": "integer"}
+        "bytes": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "language": {
+          "enum": [
+            "fas",
+            "eng",
+            "osd"
+          ]
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
       },
-      "required": ["language", "sha256", "bytes"],
+      "required": [
+        "language",
+        "sha256",
+        "bytes"
+      ],
       "type": "object"
     },
-    "artifact": {
+    "normalization": {
       "additionalProperties": false,
       "properties": {
-        "role": {"enum": ["raw_native_text", "normalized_search_text", "ascii_digit_view", "model_input_render", "ocr_layout", "ocr_input_render", "formula_crop"]},
-        "path": {"$ref": "#/$defs/relativePath"},
-        "sha256": {"$ref": "#/$defs/sha256"},
-        "bytes": {"minimum": 0, "type": "integer"},
-        "media_type": {"enum": ["application/json", "text/plain; charset=utf-8", "image/jpeg", "image/png"]}
+        "combined_policy": {
+          "enum": [
+            "none",
+            "native",
+            "ocr",
+            "native_plus_ocr"
+          ]
+        },
+        "digit_view": {
+          "const": "persian_and_arabic_indic_to_ascii"
+        },
+        "native": {
+          "$ref": "#/$defs/transformLog"
+        },
+        "ocr": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/transformLog"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
       },
-      "required": ["role", "path", "sha256", "bytes", "media_type"],
+      "required": [
+        "native",
+        "ocr",
+        "combined_policy",
+        "digit_view"
+      ],
+      "type": "object"
+    },
+    "ocrEngine": {
+      "additionalProperties": false,
+      "properties": {
+        "attempts": {
+          "items": {
+            "$ref": "#/$defs/attempt"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "type": "array"
+        },
+        "det_model": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "device": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "dpi": {
+          "maximum": 600,
+          "minimum": 72,
+          "type": "integer"
+        },
+        "languages": {
+          "const": [
+            "fas",
+            "eng"
+          ]
+        },
+        "models": {
+          "items": {
+            "$ref": "#/$defs/model"
+          },
+          "maxItems": 3,
+          "minItems": 0,
+          "type": "array"
+        },
+        "name": {
+          "enum": [
+            "paddleocr"
+          ]
+        },
+        "page_segmentation_mode": {
+          "enum": [
+            0,
+            3,
+            6
+          ]
+        },
+        "raw_result": {
+          "type": "object"
+        },
+        "rec_model": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "languages",
+        "page_segmentation_mode",
+        "dpi",
+        "models",
+        "attempts"
+      ],
+      "type": "object"
+    },
+    "ocrSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "engine": {
+          "$ref": "#/$defs/ocrEngine"
+        },
+        "line_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "token_count": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "engine",
+        "token_count",
+        "line_count"
+      ],
+      "type": "object"
+    },
+    "operation": {
+      "additionalProperties": false,
+      "properties": {
+        "changes": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "changes"
+      ],
+      "type": "object"
+    },
+    "probe": {
+      "additionalProperties": false,
+      "properties": {
+        "classification": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "configuration_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "package_path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "package_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "route": {
+          "enum": [
+            "none",
+            "native",
+            "ocr",
+            "native_plus_ocr"
+          ]
+        },
+        "toolchain_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "required": [
+        "package_path",
+        "package_sha256",
+        "configuration_sha256",
+        "toolchain_sha256",
+        "classification",
+        "route"
+      ],
+      "type": "object"
+    },
+    "relativePath": {
+      "minLength": 1,
+      "not": {
+        "pattern": "(^/|(^|/)\\.\\.?(/|$)|\\\\)"
+      },
+      "type": "string"
+    },
+    "semanticEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "symbols": {
+          "items": {
+            "$ref": "#/$defs/symbol"
+          },
+          "type": "array"
+        },
+        "tables": {
+          "items": {
+            "$ref": "#/$defs/table"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "symbols",
+        "tables"
+      ],
+      "type": "object"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "source": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "catalog_key": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "catalog_order": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "pdf_page": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "pdf_page_count": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "printed_page_label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "required": [
+        "catalog_key",
+        "catalog_order",
+        "sha256",
+        "bytes",
+        "pdf_page_count",
+        "pdf_page",
+        "printed_page_label"
+      ],
+      "type": "object"
+    },
+    "symbol": {
+      "additionalProperties": false,
+      "properties": {
+        "bbox": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "type": "array"
+        },
+        "candidate_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "crop_file": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "enum": [
+            "equation",
+            "method_abbreviation",
+            "unit_mention"
+          ]
+        },
+        "raw_text": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "source_kind": {
+          "enum": [
+            "native",
+            "ocr"
+          ]
+        },
+        "span_id": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "candidate_id",
+        "kind",
+        "source_kind",
+        "span_id",
+        "raw_text",
+        "bbox",
+        "crop_file"
+      ],
+      "type": "object"
+    },
+    "table": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "table_like_region"
+        },
+        "reasons": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "reasons"
+      ],
+      "type": "object"
+    },
+    "transformLog": {
+      "additionalProperties": false,
+      "properties": {
+        "operations": {
+          "items": {
+            "$ref": "#/$defs/operation"
+          },
+          "type": "array"
+        },
+        "protected_views": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "version": {
+          "const": "1.0.0"
+        }
+      },
+      "required": [
+        "version",
+        "operations",
+        "protected_views"
+      ],
       "type": "object"
     }
-  }
+  },
+  "$id": "https://cadgpt.local/schemas/regulation-page-evidence-1.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/artifact"
+      },
+      "minItems": 3,
+      "type": "array"
+    },
+    "configuration_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "error": {
+      "type": "null"
+    },
+    "normalization": {
+      "$ref": "#/$defs/normalization"
+    },
+    "ocr": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ocrSummary"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "page_id": {
+      "pattern": "^sha256:[0-9a-f]{64}:page:[0-9]{6}$",
+      "type": "string"
+    },
+    "probe": {
+      "$ref": "#/$defs/probe"
+    },
+    "reason_codes": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "semantic_evidence": {
+      "$ref": "#/$defs/semanticEvidence"
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    },
+    "state": {
+      "enum": [
+        "ready",
+        "needs_review"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "page_id",
+    "source",
+    "probe",
+    "configuration_sha256",
+    "state",
+    "reason_codes",
+    "normalization",
+    "ocr",
+    "semantic_evidence",
+    "artifacts",
+    "error"
+  ],
+  "type": "object"
 }

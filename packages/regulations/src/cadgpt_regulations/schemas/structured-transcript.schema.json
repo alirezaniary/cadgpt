@@ -1,0 +1,1357 @@
+{
+  "$id": "https://cadgpt.local/schemas/structured-transcript-1.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "clauses": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "conditions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exceptions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "modality": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "predicate_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "record_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "references_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "source_page_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "source_span_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subject_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "uncertainty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_node_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exact_text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "exact_text_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id",
+          "kind",
+          "text_fa",
+          "source_page_ids",
+          "source_span_ids",
+          "subject_fa",
+          "predicate_fa",
+          "modality",
+          "value_fa",
+          "conditions_fa",
+          "exceptions_fa",
+          "references_fa",
+          "uncertainty"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "definitions": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "conditions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exceptions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "modality": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "predicate_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "record_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "references_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "source_page_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "source_span_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subject_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "uncertainty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_node_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exact_text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "exact_text_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id",
+          "kind",
+          "text_fa",
+          "source_page_ids",
+          "source_span_ids",
+          "subject_fa",
+          "predicate_fa",
+          "modality",
+          "value_fa",
+          "conditions_fa",
+          "exceptions_fa",
+          "references_fa",
+          "uncertainty"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "formulas": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "conditions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exceptions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "modality": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "predicate_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "record_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "references_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "source_page_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "source_span_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subject_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "uncertainty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_node_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exact_text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "exact_text_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id",
+          "kind",
+          "text_fa",
+          "source_page_ids",
+          "source_span_ids",
+          "subject_fa",
+          "predicate_fa",
+          "modality",
+          "value_fa",
+          "conditions_fa",
+          "exceptions_fa",
+          "references_fa",
+          "uncertainty"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "permissions": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "conditions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exceptions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "modality": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "predicate_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "record_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "references_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "source_page_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "source_span_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subject_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "uncertainty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_node_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exact_text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "exact_text_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id",
+          "kind",
+          "text_fa",
+          "source_page_ids",
+          "source_span_ids",
+          "subject_fa",
+          "predicate_fa",
+          "modality",
+          "value_fa",
+          "conditions_fa",
+          "exceptions_fa",
+          "references_fa",
+          "uncertainty"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "procedures": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "conditions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exceptions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "modality": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "predicate_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "record_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "references_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "source_page_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "source_span_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subject_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "uncertainty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_node_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exact_text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "exact_text_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id",
+          "kind",
+          "text_fa",
+          "source_page_ids",
+          "source_span_ids",
+          "subject_fa",
+          "predicate_fa",
+          "modality",
+          "value_fa",
+          "conditions_fa",
+          "exceptions_fa",
+          "references_fa",
+          "uncertainty"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "prohibitions": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "conditions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exceptions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "modality": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "predicate_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "record_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "references_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "source_page_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "source_span_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subject_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "uncertainty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_node_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exact_text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "exact_text_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id",
+          "kind",
+          "text_fa",
+          "source_page_ids",
+          "source_span_ids",
+          "subject_fa",
+          "predicate_fa",
+          "modality",
+          "value_fa",
+          "conditions_fa",
+          "exceptions_fa",
+          "references_fa",
+          "uncertainty"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "references": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "conditions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exceptions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "modality": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "predicate_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "record_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "references_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "source_page_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "source_span_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subject_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "uncertainty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_node_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exact_text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "exact_text_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id",
+          "kind",
+          "text_fa",
+          "source_page_ids",
+          "source_span_ids",
+          "subject_fa",
+          "predicate_fa",
+          "modality",
+          "value_fa",
+          "conditions_fa",
+          "exceptions_fa",
+          "references_fa",
+          "uncertainty"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "requirements": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "conditions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exceptions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "modality": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "predicate_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "record_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "references_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "source_page_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "source_span_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subject_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "uncertainty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_node_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exact_text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "exact_text_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id",
+          "kind",
+          "text_fa",
+          "source_page_ids",
+          "source_span_ids",
+          "subject_fa",
+          "predicate_fa",
+          "modality",
+          "value_fa",
+          "conditions_fa",
+          "exceptions_fa",
+          "references_fa",
+          "uncertainty"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "sections": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "conditions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exceptions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "modality": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "predicate_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "record_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "references_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "source_page_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "source_span_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subject_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "uncertainty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_node_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exact_text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "exact_text_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id",
+          "kind",
+          "text_fa",
+          "source_page_ids",
+          "source_span_ids",
+          "subject_fa",
+          "predicate_fa",
+          "modality",
+          "value_fa",
+          "conditions_fa",
+          "exceptions_fa",
+          "references_fa",
+          "uncertainty"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "source": {
+      "additionalProperties": false,
+      "properties": {
+        "bundle_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "catalog_key": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "end_pdf_page": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "source_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "start_pdf_page": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "catalog_key",
+        "source_sha256",
+        "bundle_id",
+        "start_pdf_page",
+        "end_pdf_page"
+      ],
+      "type": "object"
+    },
+    "tables": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "conditions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exceptions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "modality": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "predicate_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "record_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "references_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "source_page_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "source_span_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subject_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "uncertainty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_node_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exact_text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "exact_text_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id",
+          "kind",
+          "text_fa",
+          "source_page_ids",
+          "source_span_ids",
+          "subject_fa",
+          "predicate_fa",
+          "modality",
+          "value_fa",
+          "conditions_fa",
+          "exceptions_fa",
+          "references_fa",
+          "uncertainty"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "title_fa": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "transcript_fa": {
+      "type": "string"
+    },
+    "uncertainties": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "conditions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exceptions_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "modality": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "predicate_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "record_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "references_fa": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "source_page_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "source_span_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subject_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "uncertainty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value_fa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_node_ids": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "exact_text_fa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "exact_text_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id",
+          "kind",
+          "text_fa",
+          "source_page_ids",
+          "source_span_ids",
+          "subject_fa",
+          "predicate_fa",
+          "modality",
+          "value_fa",
+          "conditions_fa",
+          "exceptions_fa",
+          "references_fa",
+          "uncertainty"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "source",
+    "transcript_fa",
+    "title_fa",
+    "sections",
+    "clauses",
+    "definitions",
+    "requirements",
+    "prohibitions",
+    "permissions",
+    "procedures",
+    "tables",
+    "formulas",
+    "references",
+    "uncertainties"
+  ],
+  "type": "object"
+}

@@ -129,3 +129,22 @@ def test_resolve_root_arguments_makes_every_root_path_absolute(
         "extract-jobs": "transcription",
     }[argv[0]]
     assert not cast(Path, getattr(args, file_attr)).is_absolute()
+
+
+def test_resolve_root_arguments_does_not_follow_symlinked_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    real = tmp_path / "real"
+    real.mkdir(mode=0o700)
+    link = tmp_path / "link"
+    link.symlink_to(real, target_is_directory=True)
+
+    args = _parser().parse_args(["workspace", "--root", "link"])
+    _resolve_root_arguments(args)
+
+    resolved = cast(Path, args.root)
+    assert resolved == tmp_path / "link"
+    assert resolved.is_symlink()
+
+    assert main(["workspace", "--root", "link"]) == 2

@@ -115,9 +115,10 @@ def _index_probe_files(manifest: JsonObject, expected: set[str]) -> None:
                     {
                         f"{package}/native.json",
                         f"{package}/page.json",
-                        f"{package}/render.png",
                     }
                 )
+                if page.get("route") in {"ocr", "native_plus_ocr"}:
+                    expected.add(f"{package}/render.png")
 
 
 def _index_transcription_files(

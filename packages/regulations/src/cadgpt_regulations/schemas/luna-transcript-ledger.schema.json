@@ -1,0 +1,49 @@
+{
+  "$id": "https://cadgpt.local/schemas/luna-transcript-ledger-1.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "jobs": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "attempts": {"minimum": 0, "type": "integer"},
+          "bundle_id": {"minLength": 1, "type": "string"},
+          "chunk_order": {"minimum": 1, "type": "integer"},
+          "job_id": {"pattern": "^sha256:[0-9a-f]{64}$", "type": "string"},
+          "last_error": {"oneOf": [{"minLength": 1, "type": "string"}, {"type": "null"}]},
+          "lease_token": {"oneOf": [{"pattern": "^sha256:[0-9a-f]{64}$", "type": "string"}, {"type": "null"}]},
+          "response_path": {"oneOf": [{"minLength": 1, "type": "string"}, {"type": "null"}]},
+          "response_sha256": {"oneOf": [{"pattern": "^[0-9a-f]{64}$", "type": "string"}, {"type": "null"}]},
+          "status": {"enum": ["pending", "leased", "completed", "failed"]},
+          "structured_transcript_path": {"oneOf": [{"minLength": 1, "type": "string"}, {"type": "null"}]},
+          "structured_transcript_sha256": {"oneOf": [{"pattern": "^[0-9a-f]{64}$", "type": "string"}, {"type": "null"}]},
+          "worker_id": {"oneOf": [{"minLength": 1, "type": "string"}, {"type": "null"}]}
+        },
+        "required": [
+          "job_id", "bundle_id", "chunk_order", "status", "worker_id", "attempts",
+          "lease_token", "response_path", "response_sha256", "structured_transcript_path",
+          "structured_transcript_sha256", "last_error"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "queue_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "schema_version": {"const": "1.0.0"},
+    "summary": {
+      "additionalProperties": false,
+      "properties": {
+        "completed": {"minimum": 0, "type": "integer"},
+        "failed": {"minimum": 0, "type": "integer"},
+        "jobs": {"minimum": 0, "type": "integer"},
+        "leased": {"minimum": 0, "type": "integer"},
+        "pending": {"minimum": 0, "type": "integer"}
+      },
+      "required": ["jobs", "pending", "leased", "completed", "failed"],
+      "type": "object"
+    }
+  },
+  "required": ["schema_version", "queue_sha256", "jobs", "summary"],
+  "type": "object"
+}

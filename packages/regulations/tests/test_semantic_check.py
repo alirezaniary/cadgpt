@@ -285,3 +285,39 @@ def test_check_semantic_artifact_rejects_unknown_source_node(tmp_path: Path) -> 
             structure_binding=binding,
             structure_root=tmp_path,
         )
+
+
+def test_check_semantic_artifact_accepts_abbreviation_id(tmp_path: Path) -> None:
+    bundle_path, artifact_path, binding = _structured_fixture(tmp_path)
+    bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+    abbreviation_id = bundle["pages"][0]["page_id"] + ":abbreviation:0000"
+    bundle["pages"][0]["abbreviation_ids"] = [abbreviation_id]
+    bundle["abbreviations"] = [
+        {
+            "abbreviation_id": abbreviation_id,
+            "pdf_page": 1,
+            "source_kind": "ocr",
+            "source_span_ids": [bundle["pages"][0]["blocks"][0]["source_span_ids"][0]],
+            "bbox": [0, 0, 10, 10],
+            "printed": "LRFD",
+        }
+    ]
+    _write_json(bundle_path, bundle)
+    binding["structural_bundle_sha256"] = hashlib.sha256(
+        bundle_path.read_bytes()
+    ).hexdigest()
+    binding["abbreviation_ids"] = [abbreviation_id]
+    artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+    artifact["input_structural_bundle_sha256"] = binding["structural_bundle_sha256"]
+    artifact["candidates"][0]["abbreviation_ids"] = [abbreviation_id]
+    _write_json(artifact_path, artifact)
+
+    result = check_semantic_artifact(
+        bundle_path,
+        artifact_path,
+        root=tmp_path,
+        structure_binding=binding,
+        structure_root=tmp_path,
+    )
+
+    assert result.candidates == 1

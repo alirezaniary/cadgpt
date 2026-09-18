@@ -30,8 +30,12 @@ def _manifest() -> JsonObject:
         "docling_parse": "7.16.0",
         "pypdfium2": "5.13.0",
         "pillow": "11.3.0",
-        "tesseract": "tesseract 5.3.4",
-        "tessdata_models": [],
+        "paddle_cuda": True,
+        "paddle_device": "gpu:0",
+        "paddle_det_model": "PP-OCRv5_mobile_det",
+        "paddle_rec_model": "arabic_PP-OCRv5_mobile_rec",
+        "paddleocr": "3.7.0",
+        "paddlepaddle": "3.3.1",
     }
     source_sha256 = "a" * 64
     page = {

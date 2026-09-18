@@ -124,7 +124,7 @@ def build_semantic_publication(
         deferred.extend(bundle_deferred)
         validated_bundles.append(validation_reference)
 
-    formulas, tables, units, structural_deferred = _structure_records(
+    formulas, tables, units, abbreviations, structural_deferred = _structure_records(
         structure,
         structure_root=structure_root,
         artifacts_by_key=artifacts_by_key,
@@ -140,6 +140,7 @@ def build_semantic_publication(
         _Payload("formulas.jsonl", _jsonl_bytes(formulas), len(formulas)),
         _Payload("tables.jsonl", _jsonl_bytes(tables), len(tables)),
         _Payload("units.jsonl", _jsonl_bytes(units), len(units)),
+        _Payload("abbreviations.jsonl", _jsonl_bytes(abbreviations), len(abbreviations)),
         _Payload("rejected.jsonl", _jsonl_bytes(rejected), len(rejected)),
         _Payload("deferred.jsonl", _jsonl_bytes(deferred), len(deferred)),
     ]
@@ -188,6 +189,7 @@ def build_semantic_publication(
             "formulas": len(formulas),
             "tables": len(tables),
             "units": len(units),
+            "abbreviations": len(abbreviations),
             "rejected": len(rejected),
             "deferred": len(deferred),
         },
@@ -240,6 +242,7 @@ def validate_semantic_publication(manifest: JsonObject, *, root: Path) -> None:
         "formulas.jsonl",
         "tables.jsonl",
         "units.jsonl",
+        "abbreviations.jsonl",
         "rejected.jsonl",
         "deferred.jsonl",
     }
@@ -302,6 +305,7 @@ def validate_semantic_publication(manifest: JsonObject, *, root: Path) -> None:
         "formulas.jsonl": "formulas",
         "tables.jsonl": "tables",
         "units.jsonl": "units",
+        "abbreviations.jsonl": "abbreviations",
         "rejected.jsonl": "rejected",
         "deferred.jsonl": "deferred",
     }
@@ -481,6 +485,7 @@ def _formats_payload() -> JsonObject:
                 "formula_ids",
                 "table_ids",
                 "unit_ids",
+                "abbreviation_ids",
                 "source_span_ids",
                 "qualifier_span_ids",
             ],
@@ -501,6 +506,10 @@ def _formats_payload() -> JsonObject:
             "normalized_field": "ucum_code",
             "source_field": "printed",
             "quality_field": "mapping_status",
+        },
+        "abbreviations": {
+            "source_field": "printed",
+            "identity_field": "abbreviation_id",
         },
         "internet_verification": {
             "source": "validated INBR acquisition receipt",
@@ -685,13 +694,20 @@ def _structure_records(
     *,
     structure_root: Path,
     artifacts_by_key: dict[str, JsonObject],
-) -> tuple[list[JsonObject], list[JsonObject], list[JsonObject], list[JsonObject]]:
+) -> tuple[
+    list[JsonObject],
+    list[JsonObject],
+    list[JsonObject],
+    list[JsonObject],
+    list[JsonObject],
+]:
     raw_documents = structure.get("documents")
     if not isinstance(raw_documents, list):
         raise SemanticPublishError("structure manifest has no documents")
     formulas: list[JsonObject] = []
     tables: list[JsonObject] = []
     units: list[JsonObject] = []
+    abbreviations: list[JsonObject] = []
     deferred: list[JsonObject] = []
     for reference in raw_documents:
         if not isinstance(reference, dict):
@@ -747,6 +763,10 @@ def _structure_records(
                         "UNIT_MAPPING_REQUIRES_REVIEW", unit, provenance=provenance
                     )
                 )
+        for abbreviation in _records(graph, "abbreviations"):
+            abbreviations.append(
+                _structure_record("abbreviation", abbreviation, provenance=provenance)
+            )
         for page in _records(graph, "pages"):
             if page.get("state") != "ready":
                 deferred.append(
@@ -761,6 +781,7 @@ def _structure_records(
         expected.get("formulas") != len(formulas)
         or expected.get("tables") != len(tables)
         or expected.get("units") != len(units)
+        or expected.get("abbreviations") != len(abbreviations)
     ):
         raise SemanticPublishError("structure totals differ during publication")
     structural_expected = expected.get("needs_review")
@@ -775,7 +796,7 @@ def _structure_records(
     )
     if structural_expected != structural_actual:
         raise SemanticPublishError("structural deferred-review total differs")
-    return formulas, tables, units, deferred
+    return formulas, tables, units, abbreviations, deferred
 
 
 def _candidate_record(
@@ -927,6 +948,7 @@ def _structure_item_id(kind: str, item: JsonObject) -> str:
         "formula": "formula_id",
         "table": "table_id",
         "unit": "unit_id",
+        "abbreviation": "abbreviation_id",
         "page": "page_id",
     }[kind]
     return _required_string(item, field)

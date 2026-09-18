@@ -81,7 +81,7 @@
       "required": ["formula_id", "pdf_page", "source_kind", "source_span_ids", "bbox", "crop", "raw_transcription", "unicode", "latex", "presentation_mathml", "content_mathml", "parse_status", "diagnostics", "unresolved_glyphs"],
       "properties": {
         "formula_id": {"type": "string", "minLength": 1}, "pdf_page": {"type": "integer", "minimum": 1}, "source_kind": {"enum": ["native", "ocr"]},
-        "source_span_ids": {"$ref": "#/$defs/spanIds"}, "bbox": {"$ref": "#/$defs/bbox"}, "crop": {"$ref": "#/$defs/crop"},
+        "source_span_ids": {"$ref": "#/$defs/spanIds"}, "bbox": {"$ref": "#/$defs/bbox"}, "crop": {"anyOf": [{"$ref": "#/$defs/crop"}, {"type": "null"}]},
         "raw_transcription": {"type": "string"}, "unicode": {"type": "string"}, "latex": {"type": ["string", "null"]},
         "presentation_mathml": {"type": "string", "minLength": 1}, "content_mathml": {"type": ["string", "null"]},
         "parse_status": {"enum": ["validated", "needs_review", "rejected"]}, "diagnostics": {"type": "array", "items": {"type": "string"}}, "unresolved_glyphs": {"type": "array", "items": {"type": "string"}}
