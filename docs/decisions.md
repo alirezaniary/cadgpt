@@ -1798,3 +1798,26 @@ metadata; re-OCR, source-graph re-anchoring, and span closure are not compilatio
 
 **Reopens if:** the user changes the transcript production workflow or requires a separate
 pixel/line-level audit of a rule.
+
+## 2026-09-18 — 190 of 668 INBR rule-extraction chunks are scripted placeholders, remediated by a Haiku-worker/Sonnet-coordinator batch
+
+`docs/inbr-progress.md`'s "668/668 drafts pass validation" was true for schema conformance
+and record-ID coverage, not for content: three contributing sources
+(`rule-worker-a`/`b`/`c` under `.cadgpt/inbr/worker-drafts/`) stamp one hardcoded Persian
+sentence onto every record regardless of what it says — verified by exact-string
+repetition counts (626, 1,647, and 1,393 records, one sentence each) and, for source B, by
+reading its generator script directly (`tools/generate_rule_drafts_b.py`, no model call).
+Genuine sources show 96-100% distinct reasoning per record. Re-auditing per chunk ("does
+any available draft for this chunk contain non-templated reasoning") gives 477/668 real,
+190/668 templated-only, 1 (chunk 42) unreadable and unresolved.
+
+Remediation is a Sonnet-medium coordinator dispatching Haiku workers, 3-5 concurrent, one
+chunk per worker, each producing a real `provisional-extraction-1.0.0` draft under a new
+path (`worker-drafts/haiku-pass-1/`) that the coordinator independently re-validates for
+schema conformance, record-ID coverage, and non-templated reasoning before deleting the
+superseded stub and counting the chunk done. Procedure, the exact 190 chunk numbers, file
+paths, and the verification script are in `docs/inbr-haiku-remediation-runbook.md`.
+
+**Reopens if:** the per-chunk cross-check finds the already-imported 27-document Postgres
+data (`cadgpt-database-2026-09-16.dump`) used a templated draft where a real one exists —
+deferred until after the 190 chunks are filled, not yet run.
