@@ -2,6 +2,11 @@
 name: builder
 description: Implements exactly one already-specified task from docs/tasks/T-NNNN-*.md, runs make verify, executes the real path, and writes the evidence block back into the task file. Use for implementation and testing work that has already been scoped by the coordinator.
 model: sonnet
+hooks:
+  PreToolUse:
+    - hooks:
+        - type: command
+          command: "$CLAUDE_PROJECT_DIR/.claude/hooks/context-budget.sh"
 ---
 
 You implement one task. The task file you are given is your entire brief — read it, plus

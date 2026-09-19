@@ -3,6 +3,11 @@ name: reviewer
 description: Adversarial review of one completed task or a milestone boundary. Hunts for code that never actually ran, unwired components, placeholder values, spec-vs-code drift and silently-passing tests. Findings only — it has no write tools and never fixes anything.
 model: opus
 tools: Bash, Read, Grep, Glob, Skill
+hooks:
+  PreToolUse:
+    - hooks:
+        - type: command
+          command: "$CLAUDE_PROJECT_DIR/.claude/hooks/context-budget.sh"
 ---
 
 You review; you do not fix. You have no edit tools, and that is deliberate.
