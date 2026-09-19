@@ -1,36 +1,10 @@
 {
   "$id": "https://cadgpt.local/schemas/rule-ir-1.0.0.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "additionalProperties": false,
-  "type": "object",
-  "required": [
-    "schema_version",
-    "rule_key",
-    "title_fa",
-    "ifc_versions",
-    "entity",
-    "attribute",
-    "comparator",
-    "value",
-    "source_citation"
+  "oneOf": [
+    {"$ref": "#/$defs/attributeRule"},
+    {"$ref": "#/$defs/propertyRule"}
   ],
-  "properties": {
-    "schema_version": {"const": "rule-ir-1.0.0"},
-    "rule_key": {"type": "string", "minLength": 1},
-    "title_fa": {"type": "string", "minLength": 1},
-    "ifc_versions": {
-      "type": "array",
-      "items": {"type": "string", "minLength": 1},
-      "minItems": 1,
-      "uniqueItems": true
-    },
-    "entity": {"type": "string", "minLength": 1},
-    "attribute": {"type": "string", "minLength": 1},
-    "comparator": {"enum": ["eq", "equals", "gt", "gte", "lt", "lte"]},
-    "value": {"type": "number"},
-    "unit": {"type": ["string", "null"]},
-    "source_citation": {"$ref": "#/$defs/sourceCitation"}
-  },
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "nonEmptyStrings": {
@@ -70,6 +44,90 @@
         "evidence_kind": {"enum": ["source_graph", "transcript"]},
         "transcript_revision_id": {"type": ["string", "null"]},
         "transcript_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "minInclusive": {"type": ["number", "string"]},
+        "minExclusive": {"type": ["number", "string"]},
+        "maxInclusive": {"type": ["number", "string"]},
+        "maxExclusive": {"type": ["number", "string"]},
+        "enumeration": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": ["number", "string"]}
+        }
+      }
+    },
+    "attributeRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "rule_key",
+        "title_fa",
+        "ifc_versions",
+        "entity",
+        "attribute",
+        "comparator",
+        "value",
+        "source_citation"
+      ],
+      "properties": {
+        "schema_version": {"const": "rule-ir-1.0.0"},
+        "rule_key": {"type": "string", "minLength": 1},
+        "title_fa": {"type": "string", "minLength": 1},
+        "ifc_versions": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "entity": {"type": "string", "minLength": 1},
+        "attribute": {"type": "string", "minLength": 1},
+        "comparator": {"enum": ["eq", "equals", "gt", "gte", "lt", "lte"]},
+        "value": {"type": "number"},
+        "unit": {"type": ["string", "null"]},
+        "source_citation": {"$ref": "#/$defs/sourceCitation"}
+      }
+    },
+    "propertyRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "rule_key",
+        "title_fa",
+        "ifc_versions",
+        "entity",
+        "requirement_kind",
+        "property_set",
+        "property_name",
+        "datatype",
+        "bounds",
+        "source_citation"
+      ],
+      "properties": {
+        "schema_version": {"const": "rule-ir-1.0.0"},
+        "rule_key": {"type": "string", "minLength": 1},
+        "title_fa": {"type": "string", "minLength": 1},
+        "ifc_versions": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "entity": {"type": "string", "minLength": 1},
+        "requirement_kind": {"const": "property"},
+        "property_set": {"type": "string", "minLength": 1},
+        "property_name": {"type": "string", "minLength": 1},
+        "datatype": {"enum": ["double", "decimal", "integer", "string"]},
+        "bounds": {"$ref": "#/$defs/bounds"},
+        "unit": {"type": ["string", "null"]},
+        "source_citation": {"$ref": "#/$defs/sourceCitation"}
       }
     }
   }

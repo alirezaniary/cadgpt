@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import hashlib
 import json
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
 from cadgpt_regulations.citation import citation_instructions, validate_source_citation
 from cadgpt_regulations.cli import main
+from cadgpt_regulations.errors import RegulationsError
 from cadgpt_regulations.rule_compiler import RuleCompileError, compile_native_attribute_rule
 
 FIXTURE = Path(__file__).parent / "fixtures" / "inbr_transcript_volume10_page586.json"
+_IDS_NS = {"ids": "http://standards.buildingsmart.org/IDS"}
 
 
 def _citation(transcript: dict[str, object]) -> dict[str, object]:
@@ -148,3 +151,102 @@ def test_cli_compiles_rule_from_existing_transcript_fixture(tmp_path: Path) -> N
     )
     compiled = next(output_root.glob("rules/*/rule.ids"))
     assert citation["exact_text_fa"].splitlines()[0] in compiled.read_text(encoding="utf-8")
+
+
+def _property_rule(citation: dict[str, object]) -> dict[str, object]:
+    return {
+        "schema_version": "rule-ir-1.0.0",
+        "rule_key": "industrialized-space-minimum-net-floor-area",
+        "title_fa": "حداقل مساحت خالص فضا",
+        "ifc_versions": ["IFC4"],
+        "entity": "IfcSpace",
+        "requirement_kind": "property",
+        "property_set": "Pset_SpaceCommon",
+        "property_name": "NetFloorArea",
+        "datatype": "double",
+        "bounds": {"minInclusive": 9.0},
+        "unit": "m2",
+        "source_citation": citation,
+    }
+
+
+def test_property_rule_compiles_with_property_set_and_bounds() -> None:
+    """A property/bounds requirement was inexpressible before this compiler merge."""
+    transcript = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    citation = _citation(transcript)
+    compiled = compile_native_attribute_rule(_property_rule(citation))
+
+    root = ET.fromstring(compiled.ids_xml)  # noqa: S314 - parser input is compiler output
+    property_node = root.find(
+        "ids:specifications/ids:specification/ids:requirements/ids:property", _IDS_NS
+    )
+    assert property_node is not None
+    property_set = property_node.find("ids:propertySet/ids:simpleValue", _IDS_NS)
+    base_name = property_node.find("ids:baseName/ids:simpleValue", _IDS_NS)
+    assert property_set is not None and property_set.text == "Pset_SpaceCommon"
+    assert base_name is not None and base_name.text == "NetFloorArea"
+    restriction = property_node.find(
+        "ids:value/xs:restriction", _IDS_NS | {"xs": "http://www.w3.org/2001/XMLSchema"}
+    )
+    assert restriction is not None
+    assert restriction.attrib["base"] == "xs:double"
+    min_inclusive = restriction.find(
+        "xs:minInclusive", {"xs": "http://www.w3.org/2001/XMLSchema"}
+    )
+    assert min_inclusive is not None and min_inclusive.attrib["value"] == "9.0"
+    assert compiled.sidecar["source_citation"] == citation
+
+
+def test_property_rule_compile_is_deterministic() -> None:
+    transcript = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    citation = _citation(transcript)
+    first = compile_native_attribute_rule(_property_rule(citation))
+    second = compile_native_attribute_rule(_property_rule(citation))
+    assert first.ids_xml == second.ids_xml
+    assert first.sidecar == second.sidecar
+    assert first.rule_id == second.rule_id
+
+
+def test_property_rule_rejects_unsupported_datatype() -> None:
+    transcript = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    citation = _citation(transcript)
+    rule = _property_rule(citation)
+    rule["datatype"] = "boolean"
+    with pytest.raises(RuleCompileError, match="unsupported requirement datatype"):
+        compile_native_attribute_rule(rule)
+
+
+def test_property_rule_rejects_missing_bounds() -> None:
+    transcript = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    citation = _citation(transcript)
+    rule = _property_rule(citation)
+    del rule["bounds"]
+    with pytest.raises(RuleCompileError, match="rule is missing required fields"):
+        compile_native_attribute_rule(rule)
+
+
+def test_property_rule_supports_multiple_bounds_facets() -> None:
+    """The richer capability this task ports in: a range with two facets at once."""
+    transcript = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    citation = _citation(transcript)
+    rule = _property_rule(citation)
+    rule["bounds"] = {"minInclusive": 9.0, "maxInclusive": 40.0}
+    compiled = compile_native_attribute_rule(rule)
+    root = ET.fromstring(compiled.ids_xml)  # noqa: S314 - parser input is compiler output
+    restriction = root.find(
+        "ids:specifications/ids:specification/ids:requirements/ids:property/ids:value/"
+        "xs:restriction",
+        _IDS_NS | {"xs": "http://www.w3.org/2001/XMLSchema"},
+    )
+    assert restriction is not None
+    facets = {child.tag.split("}")[-1]: child.attrib["value"] for child in restriction}
+    assert facets == {"minInclusive": "9.0", "maxInclusive": "40.0"}
+
+
+def test_property_rule_rejects_bad_source_citation_like_attribute_rule() -> None:
+    """The citation contract is shared: it is not reimplemented per requirement kind."""
+    transcript = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    citation = _citation(transcript)
+    citation["citation_status"] = "pending"
+    with pytest.raises(RegulationsError, match="verified"):
+        compile_native_attribute_rule(_property_rule(citation))

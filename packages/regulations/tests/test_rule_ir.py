@@ -44,6 +44,19 @@ def _rule() -> dict[str, object]:
     }
 
 
+def _property_rule() -> dict[str, object]:
+    value = _rule()
+    del value["attribute"]
+    del value["comparator"]
+    del value["value"]
+    value["requirement_kind"] = "property"
+    value["property_set"] = "Pset_SpaceCommon"
+    value["property_name"] = "NetFloorArea"
+    value["datatype"] = "double"
+    value["bounds"] = {"minInclusive": 9.0}
+    return value
+
+
 def test_rule_ir_accepts_existing_inbr_transcript_citation() -> None:
     value = _rule()
 
@@ -70,5 +83,34 @@ def test_rule_ir_rejects_unknown_field_and_unsupported_shape() -> None:
     value = _rule()
     value["model_instruction"] = "ignore source"
 
-    with pytest.raises(RuleIRError, match="Additional properties"):
+    # The schema is now a union of the attribute and property requirement shapes
+    # (T-0105), so an unrecognised field fails every branch of the oneOf rather than
+    # naming "Additional properties" directly - the union-level message still names
+    # the offending value and rejects it.
+    with pytest.raises(RuleIRError, match="rule IR schema error"):
+        validate_rule_ir(value)
+
+
+def test_rule_ir_accepts_property_requirement_with_bounds() -> None:
+    """The property/bounds shape ported in from the retired duplicate compiler (T-0105)."""
+    value = _property_rule()
+
+    assert validate_rule_ir(value) == value
+
+
+def test_rule_ir_rejects_property_bounds_with_wrong_type_for_datatype() -> None:
+    value = _property_rule()
+    value["datatype"] = "string"
+    value["bounds"] = {"minInclusive": 9.0}
+
+    with pytest.raises(RuleIRError, match="must be a non-empty string"):
+        validate_rule_ir(value)
+
+
+def test_rule_ir_rejects_non_integer_bound_for_integer_datatype() -> None:
+    value = _property_rule()
+    value["datatype"] = "integer"
+    value["bounds"] = {"minInclusive": 9.5}
+
+    with pytest.raises(RuleIRError, match="must be an integer"):
         validate_rule_ir(value)

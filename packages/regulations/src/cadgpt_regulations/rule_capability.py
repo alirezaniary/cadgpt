@@ -73,6 +73,11 @@ def _unsupported_reason(rule: Mapping[str, Any]) -> str | None:
         return "TABLE_LOOKUP_REQUIRES_DEFERRED_EVALUATION"
     if any(key in rule for key in ("derived_observation", "observation")):
         return "DERIVED_OBSERVATION_NOT_NATIVE"
+    if rule.get("requirement_kind", "attribute") == "property":
+        # The compiler supports property/bounds requirements natively (T-0105); shape
+        # validity (datatype, bounds facets) is decided by validate_rule_ir below, not
+        # by a comparator, which a property rule does not carry.
+        return None
     comparator = rule.get("comparator")
     if comparator not in {"eq", "equals", "gt", "gte", "lt", "lte"}:
         return "UNSUPPORTED_COMPARATOR"

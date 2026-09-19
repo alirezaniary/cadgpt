@@ -66,6 +66,24 @@ def build_occurrence_assertions(
 
 
 def _semantic_identity(rule: JsonObject) -> JsonObject:
+    """Return the fields that decide whether two occurrences are the same assertion.
+
+    Two requirement kinds exist (T-0105): the original flat ``attribute`` shape, kept
+    byte-for-byte as before so existing assertion IDs do not move, and the newer
+    ``property``/``bounds`` shape, which has no ``attribute``/``comparator``/``value``
+    keys at all and needs its own identity fields instead.
+    """
+    if rule.get("requirement_kind", "attribute") == "property":
+        return {
+            "requirement_kind": "property",
+            "entity": str(rule["entity"]).upper(),
+            "property_set": rule["property_set"],
+            "property_name": rule["property_name"],
+            "datatype": rule["datatype"],
+            "bounds": rule["bounds"],
+            "unit": rule.get("unit"),
+            "ifc_versions": sorted(cast(list[str], rule["ifc_versions"])),
+        }
     return {
         "entity": str(rule["entity"]).upper(),
         "attribute": rule["attribute"],

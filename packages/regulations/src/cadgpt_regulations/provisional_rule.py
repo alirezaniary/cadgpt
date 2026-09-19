@@ -1,6 +1,6 @@
 """Lifecycle contracts for rules derived from Persian transcript checkpoints.
 
-Provisional artifacts are intentionally separate from :mod:`ids_compiler`: they
+Provisional artifacts are intentionally separate from :mod:`rule_compiler`: they
 retain the PDF/page/record citation from the Luna JSON while review is pending.
 """
 
