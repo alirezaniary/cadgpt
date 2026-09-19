@@ -1950,3 +1950,21 @@ nobody can trust.
 **Reopens if:** a builder is found to have kept working past the budget without a handoff, or a
 task is repeatedly split too aggressively (evidence of the split threshold being wrong rather
 than the discipline).
+
+**Decision — fix-now findings dispatch to a fresh builder against the same task file, never a
+`SendMessage` to the original builder's agent.** `docs/agents.md`'s "same task, same builder"
+rule for fix-now findings means same task file, not same agent conversation. The coordinator
+writes the reviewer's findings into the task file's Review section, then makes a new `Agent()`
+call pointed at that file.
+
+**Why:** a builder's task is terminal once its evidence block lands. `SendMessage` to a terminal
+task does not queue a cheap message — it resumes the agent by reconstructing its entire original
+transcript from disk (every file read, edit, and tool result from the first pass) and resending
+all of it as input tokens before the fix begins. That replay was the source of the "massive token
+burn" observed in the fix-now path. A cold builder re-reading the task file and the files it
+names is a fraction of that cost, and matches how `builder.md` is already written — the builder
+assumes no conversational memory beyond the task file.
+
+**Reopens if:** a fix genuinely needs the original builder's in-context reasoning (not just its
+output) to avoid re-deriving something expensive to rediscover — in which case that cost should
+be weighed explicitly against the replay cost, not defaulted into.

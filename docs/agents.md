@@ -102,7 +102,13 @@ true, and otherwise does not run:
 Findings come back in exactly two piles, and the coordinator does the sorting:
 
 1. **Fix now** — an invariant is violated, or the evidence block is false. Same task, same
-   builder, no new review afterwards.
+   builder, no new review afterwards. "Same builder" means the same task file, dispatched
+   fresh — write the findings into the task file's Review section, then a new `Agent()` call
+   pointed at that file. Never `SendMessage` the original builder's agent id or name: that
+   task is already terminal once its evidence lands, and messaging a terminal task resumes it
+   by replaying its entire original transcript from disk as input tokens before the fix even
+   starts. A cold builder re-reading the task file and the files it names costs a fraction of
+   that replay.
 2. **An observation for the judge** — everything else. The coordinator does not write this up
    as a task file itself; it records what the finding is, where, and why it might matter, and
    reports it. The judge weighs it against every other pending observation and decides whether
@@ -127,7 +133,9 @@ remediation never reaches the next phase.
 4. On return, read the evidence block. Missing or unconvincing sends it straight back — that is
    not a review, it is the task not being finished.
 5. Apply the review gate above. Dispatch the reviewer only if it fires.
-6. Triage findings into the two piles. Update the task file with the verdict.
+6. Triage findings into the two piles. Update the task file with the verdict. For fix-now,
+   dispatch a fresh builder `Agent()` call against the same task file — never resume the
+   original builder's agent.
 7. Update `docs/plan.md`: status, and anything learned that changes the route.
 8. Commit to `main` — the task file, the code and the plan update in one commit, referencing
    T-NNNN. Then loop.
