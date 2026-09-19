@@ -14,6 +14,7 @@ from cadgpt_regulations.acquisition import (
     check_acquisition_health,
     validate_acquisition_receipt,
 )
+from cadgpt_regulations.candidate_to_rule_ir import build_candidate_to_rule_ir_batch
 from cadgpt_regulations.catalog import load_catalog
 from cadgpt_regulations.errors import AcquisitionError, RegulationsError
 from cadgpt_regulations.extraction_ingest import (
@@ -328,6 +329,19 @@ def _parser() -> argparse.ArgumentParser:
     provisional_batch.add_argument("--revision", required=True)
     provisional_batch.add_argument("--edition", required=True)
 
+    candidate_to_rule_ir = subcommands.add_parser(
+        "candidate-to-rule-ir",
+        help="join provisional candidates to a verified citation and an IFC mapping",
+    )
+    candidate_to_rule_ir.add_argument(
+        "--batch-root",
+        type=Path,
+        required=True,
+        help="output root written by one or more provisional-batch runs",
+    )
+    candidate_to_rule_ir.add_argument("--mapping", type=Path, required=True)
+    candidate_to_rule_ir.add_argument("--output-root", type=Path, required=True)
+
     reanchor = subcommands.add_parser(
         "reanchor-transcript",
         help="optionally audit a Persian transcript against T-0027 source graph spans",
@@ -400,6 +414,32 @@ def _load_compiled_rule_artifacts(root: Path) -> list[dict[str, object]]:
     if not compiled:
         raise RegulationsError("compiled rules root contains no rule directories")
     return compiled
+
+
+def _load_batch_root(batch_root: Path) -> tuple[list[JsonObject], list[JsonObject]]:
+    """Load every candidate and transcript revision written by provisional-batch.
+
+    ``--batch-root`` accumulates across one or more ``provisional-batch`` runs
+    (one per chunk); this reads everything present rather than one chunk's batch
+    file, since candidates and revisions are content-addressed and safe to union.
+    """
+    candidates_root = batch_root / "candidates"
+    revisions_root = batch_root / "transcript-revisions"
+    if not candidates_root.is_dir() or not revisions_root.is_dir():
+        raise RegulationsError(
+            f"batch root is missing candidates/ or transcript-revisions/: {batch_root}"
+        )
+    candidates = [
+        load_object(path, description="provisional candidate")
+        for path in sorted(candidates_root.glob("*.json"))
+    ]
+    revisions = [
+        load_object(path, description="transcript revision")
+        for path in sorted(revisions_root.glob("*.json"))
+    ]
+    if not candidates:
+        raise RegulationsError(f"batch root has no candidates: {batch_root}")
+    return candidates, revisions
 
 
 def _load_jsonl_records(path: Path) -> list[JsonObject]:
@@ -909,6 +949,34 @@ def main(
             install_immutable_bytes(batch_path, canonical_bytes(batch))
             print(f"provisional batch: {batch_path}")
             print(f"candidates: {len(records)}")
+            return 0
+        if args.command == "candidate-to-rule-ir":
+            candidates, revisions = _load_batch_root(args.batch_root)
+            mapping = load_object(args.mapping, description="IFC target mapping")
+            join_outcome = build_candidate_to_rule_ir_batch(candidates, revisions, mapping)
+            validate_output_root(args.output_root, description="rule IR output root")
+            rules_root = ensure_private_tree(args.output_root, "rules")
+            for rule_ir in cast(list[JsonObject], join_outcome["mapped"]):
+                citation = cast(JsonObject, rule_ir["source_citation"])
+                document_directory = ensure_private_tree(
+                    rules_root, cast(str, citation["document_key"])
+                )
+                install_immutable_bytes(
+                    document_directory / f"{rule_ir['rule_key']}.json",
+                    canonical_bytes(rule_ir),
+                )
+            unmapped_path = args.output_root / "unmapped.json"
+            install_immutable_bytes(
+                unmapped_path,
+                canonical_bytes(cast(JsonObject, {"unmapped": join_outcome["unmapped"]})),
+            )
+            summary = cast(JsonObject, join_outcome["summary"])
+            print(f"candidate-to-rule-ir rules: {rules_root}")
+            print(f"candidate-to-rule-ir unmapped: {unmapped_path}")
+            print(
+                f"{summary['candidates']} candidates, {summary['mapped']} mapped, "
+                f"{summary['unmapped']} unmapped"
+            )
             return 0
         if args.command == "rule-release":
             compiled = _load_compiled_rule_artifacts(args.rules_root)

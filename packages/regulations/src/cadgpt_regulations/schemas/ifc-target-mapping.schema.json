@@ -1,0 +1,93 @@
+{
+  "$id": "https://cadgpt.local/schemas/ifc-target-mapping-1.0.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "entries"],
+  "properties": {
+    "schema_version": {"const": "ifc-target-mapping-1.0.0"},
+    "entries": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {"$ref": "#/$defs/attributeEntry"},
+          {"$ref": "#/$defs/propertyEntry"}
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "ifcVersions": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "minInclusive": {"type": ["number", "string"]},
+        "minExclusive": {"type": ["number", "string"]},
+        "maxInclusive": {"type": ["number", "string"]},
+        "maxExclusive": {"type": ["number", "string"]},
+        "enumeration": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": ["number", "string"]}
+        }
+      }
+    },
+    "attributeEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document_key",
+        "rule_key",
+        "ifc_versions",
+        "entity",
+        "attribute",
+        "comparator",
+        "value"
+      ],
+      "properties": {
+        "document_key": {"type": "string", "minLength": 1},
+        "rule_key": {"type": "string", "minLength": 1},
+        "ifc_versions": {"$ref": "#/$defs/ifcVersions"},
+        "entity": {"type": "string", "minLength": 1},
+        "attribute": {"type": "string", "minLength": 1},
+        "comparator": {"enum": ["eq", "equals", "gt", "gte", "lt", "lte"]},
+        "value": {"type": "number"},
+        "unit": {"type": ["string", "null"]}
+      }
+    },
+    "propertyEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document_key",
+        "rule_key",
+        "ifc_versions",
+        "entity",
+        "requirement_kind",
+        "property_set",
+        "property_name",
+        "datatype",
+        "bounds"
+      ],
+      "properties": {
+        "document_key": {"type": "string", "minLength": 1},
+        "rule_key": {"type": "string", "minLength": 1},
+        "ifc_versions": {"$ref": "#/$defs/ifcVersions"},
+        "entity": {"type": "string", "minLength": 1},
+        "requirement_kind": {"const": "property"},
+        "property_set": {"type": "string", "minLength": 1},
+        "property_name": {"type": "string", "minLength": 1},
+        "datatype": {"enum": ["double", "decimal", "integer", "string"]},
+        "bounds": {"$ref": "#/$defs/bounds"},
+        "unit": {"type": ["string", "null"]}
+      }
+    }
+  }
+}
