@@ -10,33 +10,18 @@ zip-backup/design-supersession history — it's in this project's auto-memory
 
 ## Git state
 
-`main`, HEAD `0feb396` ("INBR: T-0106 draft-index tool ... ; Haiku-worker rule"). **T-0105's
-code changes are UNCOMMITTED in the working tree right now** — see below before touching git.
+`main`, HEAD `9c5c342` ("T-0105: one IDS compiler, not two (reviewed, fix-now round closed)").
+Working tree clean as of this handoff.
 
 ## Task queue status (docs/tasks/T-0105 .. T-0111)
 
-1. **T-0105 (one IDS compiler)** — Status `built`, reviewed. Reviewer verified all 5 headline
-   claims hold (I1 kept, byte-identical attribute compile, real property-rule compile parsed
-   *and evaluated* by the engine, `ids_compiler` fully gone, suites green). Two **fix-now**
-   items were sent back to the same builder (agent `af16cc9294f41366d`, resumable by that ID
-   or by messaging this session's name if it's still listed in `ListAgents`):
-   - **H1**: `rule_relations.py:68-76` `_semantic_identity` crashes with a bare `KeyError` on
-     any property-kind rule (validated by the widened schema but not handled here).
-   - **H2**: `rule_capability.py:76-78` `classify_rule` hardcodes the attribute-only comparator
-     set, so it wrongly defers every property rule as `UNSUPPORTED_COMPARATOR` — this would
-     directly break T-0108, which is told to reuse `classify_rule` as-is.
-   - **This fix-now round's completion was NOT confirmed before the context clear.** First
-     action on resume: check `ListAgents` for `af16cc9294f41366d`. If it reports finished, read
-     `docs/tasks/T-0105-one-ids-compiler-not-two.md`'s Evidence section for what it fixed, spot
-     check `rule_relations.py` and `rule_capability.py` handle `requirement_kind: "property"`
-     without crashing/misclassifying, then commit (task file + `rule_compiler.py`, `rule_ir.py`,
-     `rule_relations.py`, `rule_capability.py`, `provisional_rule.py`,
-     `schemas/rule-ir.schema.json`, deleted `ids_compiler.py` + `test_ids_compiler.py`, updated
-     `test_rule_compiler.py`/`test_rule_ir.py`). If the agent is gone/unreachable, check
-     `git status`/`git diff` by hand — the fix may already be on disk — and either accept or
-     redispatch a fresh builder with the same two findings (full text was sent to it; re-derive
-     from `docs/tasks/T-0105-one-ids-compiler-not-two.md` plus this file if needed).
-   - **Logged, not fix-now** (don't act on these unless the judge prioritizes them): H3
+1. **T-0105 (one IDS compiler)** — **DONE.** Built, reviewed (all 5 headline claims verified:
+   I1 kept, byte-identical attribute compile, real property-rule compile parsed *and evaluated*
+   by the engine, `ids_compiler` fully gone, suites green), fix-now round closed and committed
+   in `9c5c342`: H1 (`rule_relations.py`'s `_semantic_identity` crashed on property-kind rules)
+   and H2 (`rule_capability.py`'s `classify_rule` wrongly deferred every property rule as
+   `UNSUPPORTED_COMPARATOR`, which would have broken T-0108) are both fixed and re-verified.
+   - **Logged, not acted on** (don't act on these unless the judge prioritizes them): H3
      (`rule_projection.py` rejects property sidecars — is T-0111's problem, off critical path),
      M1 (schema doesn't actually accept the documented `requirement_kind: "attribute"` default),
      M2 (a schema-rejection test assertion was weakened to a too-generic match), M3 (no
@@ -52,8 +37,8 @@ code changes are UNCOMMITTED in the working tree right now** — see below befor
    remaining-extraction work, not a new defect — it feeds T-0109's coverage manifest as
    `unresolved` chunks, which is exactly what that manifest exists to report honestly.
 
-3. **T-0107 (candidate-to-compiled-IDS command)** — not started. Next after T-0105 lands;
-   depends on both T-0105 (compiler) and T-0106 (index).
+3. **T-0107 (candidate-to-compiled-IDS command)** — not started. **Unblocked — dispatch next**;
+   both its dependencies (T-0105, T-0106) are done.
 
 4. **T-0108 (the IFC mapping table)** — not started. Depends on T-0105 + T-0107. **Must be
    dispatched per `docs/agents.md`'s Haiku-worker rule** — 484 `native_ids` candidates, batched
