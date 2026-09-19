@@ -1926,3 +1926,27 @@ never established; and the compiled `instructions` field carries the whole trans
 returns), a reviewer workflow before release (T-0104's ledger returns), or if the IFC mapping
 turns out not to be authorable at useful volume — in which case the corpus yields a searchable
 cited requirement catalogue rather than executable IDS, and that is a different product decision.
+
+**Decision — subagent context budget is 180k-220k tokens, enforced at task-write time and
+mid-task.** The coordinator sizes each task before writing it and splits into sequential task
+files rather than dispatch one a builder is expected to overrun on. If a builder runs long
+anyway, it stops before the evidence block, writes a handoff (what's done, what's verified,
+what's left, the exact next command) into the task file, and the coordinator dispatches a fresh
+builder session against that same file — the same session-reset discipline already used for the
+coordinator's own context (`docs/CHECKPOINT.md`, `docs/inbr-*-handoff.md`), one level down.
+In-place compaction is allowed only as the builder's own explicit judgment call when what
+remains is small and doesn't depend on state compaction would lose (an exact command's output, a
+quoted registration line) — never a default substitute for the handoff. Written up as a durable
+process rule in `docs/agents.md` ("Context budget: split before dispatch, hand off if one runs
+long anyway").
+
+**Why:** a subagent that fills its context window doesn't degrade gracefully — it starts
+dropping earlier tool output, and an evidence block written after that point can't be trusted.
+Auto-compaction summarizes instead of preserving the exact state a builder's evidence depends on,
+so it isn't a substitute for splitting or handing off; treating an approaching compaction
+boundary as a reason to let the harness compact and continue is how a task ends up with evidence
+nobody can trust.
+
+**Reopens if:** a builder is found to have kept working past the budget without a handoff, or a
+task is repeatedly split too aggressively (evidence of the split threshold being wrong rather
+than the discipline).

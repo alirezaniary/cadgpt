@@ -119,7 +119,9 @@ remediation never reaches the next phase.
    approved into the queue.
 2. Write `docs/tasks/T-NNNN-<slug>.md` for the judge-approved task. If the task cannot be
    specified without a decision the plan does not contain, that decision is the task — ask,
-   then write it to `docs/decisions.md` or `prd.md` §12 before continuing.
+   then write it to `docs/decisions.md` or `prd.md` §12 before continuing. Size it against the
+   context budget below before writing — split rather than write one task a builder is expected
+   to overrun on.
 3. Dispatch the builder with the task file path. One builder at a time unless two tasks touch
    disjoint files.
 4. On return, read the evidence block. Missing or unconvincing sends it straight back — that is
@@ -129,6 +131,33 @@ remediation never reaches the next phase.
 7. Update `docs/plan.md`: status, and anything learned that changes the route.
 8. Commit to `main` — the task file, the code and the plan update in one commit, referencing
    T-NNNN. Then loop.
+
+## Context budget: split before dispatch, hand off if one runs long anyway
+
+A subagent's context window is not a soft limit. A builder or reviewer that fills it mid-task
+doesn't degrade gracefully — it starts losing earlier tool output, and evidence written after
+that point can't be trusted. This is enforced at two points:
+
+**At task-writing time (loop step 2).** Before writing the task file, the coordinator sizes it:
+how many files it touches, how much of each has to be read versus written, whether it's a
+"heavy per-record text pass" (below — those never go to a builder inline regardless of size). A
+task the coordinator expects to run a builder past roughly 180k-220k tokens before it reaches
+the evidence block is not one task, it's several — split it into sequential task files with an
+explicit dependency line ("T-NNNN+1 starts once T-NNNN's migration lands") rather than writing
+one file and hoping the builder manages its own budget.
+
+**Mid-task, if a builder is running long anyway.** The builder is the one who notices — the
+coordinator never sees a builder's context fill from outside. Approaching the same 180k-220k
+budget without having reached the evidence block, the builder stops rather than pushing on or
+quietly narrowing what it tests to fit. It writes a handoff into the task file — what's done,
+what's verified, what's left, and the exact next command — the same shape the coordinator
+already uses on itself in `docs/CHECKPOINT.md` and `docs/inbr-*-handoff.md`. The coordinator
+reads the handoff and dispatches a fresh builder session against the same task file: a new
+context continuing the work, not a restart from the task description alone. Compacting the
+builder's own session in place instead of a full handoff is fine only when the builder can say
+what remains is small and none of it is the kind of state compaction loses — an exact command's
+output, a quoted registration line; that is a judgment the builder states explicitly, not a
+default.
 
 ## Heavy per-record text passes are Haiku work, not builder work
 
