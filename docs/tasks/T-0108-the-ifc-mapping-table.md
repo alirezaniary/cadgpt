@@ -32,6 +32,16 @@ author rules or explain results; it never decides pass or fail"). What it may no
 at check time. The mapping is committed data, read deterministically by a compiler with no
 model dependency, and that is what keeps I1 structural rather than remembered.
 
+**The 484-candidate authoring pass is Haiku-worker work, per `docs/agents.md`'s "Heavy
+per-record text passes" rule — not something the builder running this task does inline.**
+Dispatch one Haiku worker per candidate or small fixed batch, 3-5 concurrent, each given
+exactly that candidate's `statement_fa`, its exact transcript quote, and the mapping schema.
+The builder coordinating this task is the validator: re-check every returned mapping against
+the actual Persian sentence before accepting it, reject and redo any batch where a mapping
+shape or phrase repeats across more than 2-3 candidates (the templating signature from the
+190-chunk incident), and treat a batch with zero declined mappings as suspect rather than
+good news.
+
 ## Scope
 
 - **A mapping file for the `native_ids` candidates**, in the format T-0107 defined, stored where

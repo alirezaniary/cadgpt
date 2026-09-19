@@ -1881,6 +1881,30 @@ concerns. Their substance is explicitly deferred past "real IDS files exist":
   and count every candidate that did not compile, with its reason. `rule_release.py` already
   carries a `deferred` block and coverage counts for exactly this.
 
+## 2026-09-19 — Heavy per-record text-authoring passes run on Haiku workers only, never inline on a builder
+
+Settled by the user during this re-plan, prompted by T-0108 being the second task in this
+workstream shaped like the 190-chunk rule-extraction remediation: read one Persian record at a
+time and author a per-record judgement, at a count in the hundreds. The rule: that class of
+work is dispatched as small Haiku-worker batches (3-5 concurrent, one record or a small fixed
+batch each), never done inline by whichever Sonnet or Opus agent is running the task, with the
+dispatching agent as the independent validator — never trusting a worker's self-report. Written
+up as a durable process rule in `docs/agents.md` ("Heavy per-record text passes are Haiku work,
+not builder work") rather than left as a one-off instruction on T-0108, because the same shape
+will recur anywhere the corpus needs per-record authoring, not just this task.
+
+**Why:** the 190-chunk remediation is the proof this fails a different way otherwise — three
+sources each stamped one hardcoded sentence onto 600-1,600 records rather than reading them,
+undetected until someone checked for literal string repetition at scale. A single larger-model
+agent grinding through hundreds of similar records is exactly the setup that produces
+templating, and it is also the most expensive way to spend a Sonnet/Opus context window on work
+where only the validation needs that model's judgement, not the per-record read itself.
+
+T-0108 was updated to cite this rule explicitly for its 484-candidate mapping pass.
+
+**Reopens if:** a heavy per-record pass is dispatched inline by a builder instead of as Haiku
+batches, or a batch is accepted without the anti-templating check.
+
 **Decision — the Postgres import is off the critical path.** The compilers read files, not rows;
 the projection is a query convenience. T-0111 re-imports it from the authoritative index once
 that index exists, replacing the templated rows.

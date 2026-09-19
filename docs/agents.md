@@ -130,6 +130,35 @@ remediation never reaches the next phase.
 8. Commit to `main` — the task file, the code and the plan update in one commit, referencing
    T-NNNN. Then loop.
 
+## Heavy per-record text passes are Haiku work, not builder work
+
+A task can require reading many similar records and producing one authored judgement per
+record — a rule-extraction decision, a semantic mapping, a classification — where the record
+count runs into the hundreds. This is not implementation work and it does not go to a Sonnet
+builder to do inline, for two reasons proven the hard way on the INBR corpus: a single agent
+grinding through hundreds of near-identical records degrades into templating (three sources
+each stamped one hardcoded sentence onto 600-1,600 records rather than reading them), and it
+is the most expensive possible way to spend a Sonnet or Opus context window on work that does
+not require their judgement per record — only the validation does.
+
+The pattern, proven in `docs/inbr-haiku-remediation-runbook.md`:
+
+- **Workers are Haiku, one record or one small fixed batch per worker, 3-5 in flight at a
+  time.** A worker gets exactly the record(s), the source text, the schema, and the job — never
+  the whole corpus, so it cannot drift into skimming.
+- **The coordinator (Sonnet or Opus, whichever is already running the task) is the validator,
+  and never trusts a worker's self-reported "done."** It independently re-checks every result
+  against the actual source text before accepting it: does the record's own text support the
+  judgement, not just does the output parse.
+- **Anti-templating is a mechanical check, run by the coordinator, every batch.** If a single
+  reason string, mapping shape, or phrase repeats across more than 2-3 records in one batch,
+  the batch is rejected and redone — that repetition is the exact signature templating leaves.
+- **A nonzero "declined" or "no assertion" count is expected.** A worker that accepts 100% of
+  its records did not do the job; batches without any refusals get the same scrutiny as a
+  repeated string.
+- The task file states this explicitly wherever it applies — see `docs/tasks/T-0108-the-ifc-mapping-table.md`
+  for the current example — rather than leaving model choice to whoever picks up the task.
+
 ## What is persisted, and where
 
 ```
